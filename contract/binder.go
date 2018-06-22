@@ -117,31 +117,36 @@ func (binder *Binder) submitOrder(ord order.Order) error {
 	return err
 }
 
-// SubmitMatch will submit a matched order pair to the RenEx accounts
-func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
+func (binder *Binder) SendTx(f func () (*types.Transaction, error)) error {
 	tx, err := func() (*types.Transaction, error) {
 		binder.mu.Lock()
 		defer binder.mu.Unlock()
 
-		return binder.submitMatch(buy, sell)
+		return sendTx(f)
 	}()
 	_, err := binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
 
-func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
-	tx, err := binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
+func (binder *Binder) sendTx(f func () (*types.Transaction, error)) (*types.Transaction, error) {
+	tx, err := f()
 	if err == core.ErrNonceTooLow || err core.ErrReplaceUnderpriced {
 		binder.nonce.Add(binder.nonce, big.NewInt(1))
-		return binder.submitMatch(buy, sell)
+		return sendTx(f)
 	}
 	if err == core.ErrNonceTooHigh {
 		binder.nonce.Sub(binder.nonce, big.NewInt(1))
-		return binder.submitMatch(buy, sell)
+		return sendTx(f)
 	}
-	
 	binder.nonce.Add(binder.nonce, big.NewInt(1))
 	return tx, err
+}
+
+// SubmitMatch will submit a matched order pair to the RenEx accounts
+func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
+	return binder.SendTx(func() (*types.Transaction, error) {
+		return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
+	})
 }
 
 // Settle the order pair which gets confirmed by the Orderbook
