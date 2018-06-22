@@ -59,7 +59,7 @@ func Start() bool {
 	// cmd.Stderr = os.Stderr
 	globalGanacheCmd.Start()
 	go StopOnInterrupt()
-	
+
 	time.Sleep(10 * time.Second)
 	return true
 }
@@ -117,7 +117,8 @@ func Connect(ganacheRPC string) (contract.Conn, error) {
 		RawClient: raw,
 		Client:    ethclient,
 		Config: contract.Config{
-			Network: contract.NetworkGanache,
+			Network: contract.NetworkLocal,
+			URI:     "http://localhost:8545",
 		},
 	}, nil
 }

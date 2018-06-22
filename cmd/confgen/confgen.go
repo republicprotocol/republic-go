@@ -14,8 +14,7 @@ import (
 )
 
 func main() {
-	host := flag.String("host", "0.0.0.0", "ip address of the node")
-	network := flag.String("network", "kovan", "ethereum network")
+	network := flag.String("network", "nightly", "Republic Protocol network")
 
 	flag.Parse()
 
@@ -27,14 +26,19 @@ func main() {
 	var ethereumConfig contract.Config
 
 	switch *network {
-	case "ropsten":
+	case string(contract.NetworkTestnet):
 		ethereumConfig = contract.Config{
-			Network: contract.NetworkRopsten,
-			URI:     "https://ropsten.infura.io",
+			Network: contract.NetworkTestnet,
+			URI:     "https://kovan.infura.io",
 		}
-	case "kovan":
+	case string(contract.NetworkFalcon):
 		ethereumConfig = contract.Config{
-			Network: contract.NetworkKovan,
+			Network: contract.NetworkFalcon,
+			URI:     "https://kovan.infura.io",
+		}
+	case string(contract.NetworkNightly):
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkNightly,
 			URI:     "https://kovan.infura.io",
 		}
 	default:
@@ -43,7 +47,7 @@ func main() {
 
 	conf := config.Config{
 		Keystore:                keystore,
-		Host:                    *host,
+		Host:                    "0.0.0.0",
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},

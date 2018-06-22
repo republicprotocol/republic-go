@@ -116,7 +116,7 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 				},
 			},
 			Ethereum: contract.Config{
-				Network: contract.NetworkGanache,
+				Network: contract.NetworkLocal,
 				URI:     "http://localhost:8545",
 			},
 		})
