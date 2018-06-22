@@ -72,7 +72,7 @@ func main() {
 	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
 
 	// Get ethereum bindings
-	contractBinder, err := contract.NewBinder(context.Background(), auth, conn)
+	contractBinder, err := contract.NewBinder(auth, conn)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
