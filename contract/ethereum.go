@@ -30,20 +30,6 @@ const (
 	NetworkLocal Network = "local"
 )
 
-// Config defines the different settings for connecting the Darknode
-// to an Ethereum network, and the Republic Protocol smart contracts deployed
-// on Ethereum.
-type Config struct {
-	Network                 Network `json:"network"` // One of "ganache", "ropsten", or "mainnet" ("mainnet" is not current supported)
-	URI                     string  `json:"uri"`
-	RepublicTokenAddress    string  `json:"republicTokenAddress"`
-	DarknodeRegistryAddress string  `json:"darknodeRegistryAddress"`
-	OrderbookAddress        string  `json:"orderbookAddress"`
-	RewardVaultAddress      string  `json:"rewardVaultAddress"`
-	RenExBalancesAddress    string  `json:"renExBalancesAddress"`
-	RenExSettlementAddress  string  `json:"renExSettlementAddress"`
-}
-
 // Conn contains the client and the contracts deployed to it
 type Conn struct {
 	RawClient *ethrpc.Client
