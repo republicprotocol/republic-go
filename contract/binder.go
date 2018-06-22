@@ -23,14 +23,14 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
-// ErrPodNotFound is returned when dark node address was not found in any pod
+// ErrPodNotFound is returned when dark node address was not found in any pod.
 var ErrPodNotFound = errors.New("cannot find node in any pod")
 
-// ErrLengthMismatch is returned when ID is not an expected 20 byte value
+// ErrLengthMismatch is returned when ID is not an expected 20 byte value.
 var ErrLengthMismatch = errors.New("length mismatch")
 
 // ErrMismatchedOrderLengths is returned when there isn't an equal number of order IDs,
-// signatures and order parities
+// signatures and order parities.
 var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 
 // BlocksForConfirmation is the number of Ethereum blocks required to consider
@@ -40,7 +40,7 @@ var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 // been reached.
 const BlocksForConfirmation = 1
 
-// Binder implements all methods that will communicate with the smart contracts
+// Binder implements all methods that will communicate with the smart contracts.
 type Binder struct {
 	mu           *sync.RWMutex
 	network      Network
@@ -56,7 +56,7 @@ type Binder struct {
 	renExSettlement bindings.RenExSettlement
 }
 
-// NewBinder returns a Binder to communicate with contracts
+// NewBinder returns a Binder to communicate with contracts.
 func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	auth.GasPrice = big.NewInt(20000000000)
 
@@ -98,7 +98,7 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 		orderbook:        *orderbook}, nil
 }
 
-// SubmitOrder to the RenEx accounts
+// SubmitOrder to the RenEx accounts.
 func (binder *Binder) SubmitOrder(ord order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -117,7 +117,7 @@ func (binder *Binder) submitOrder(ord order.Order) error {
 	return err
 }
 
-// SubmitMatch will submit a matched order pair to the RenEx accounts
+// SubmitMatch will submit a matched order pair to the RenEx accounts.
 func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	tx, err := func() (*types.Transaction, error) {
 		binder.mu.Lock()
@@ -144,7 +144,7 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 	return tx, err
 }
 
-// Settle the order pair which gets confirmed by the Orderbook
+// Settle the order pair which gets confirmed by the Orderbook.
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -165,7 +165,7 @@ func (binder *Binder) settle(buy order.Order, sell order.Order) error {
 	return binder.submitMatch(buy.ID, sell.ID)
 }
 
-// SettlementDetail will return settlement details from the smart contract
+// SettlementDetail will return settlement details from the smart contract.
 func (binder *Binder) SettlementDetail(buy, sell order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -181,7 +181,7 @@ func (binder *Binder) settlementDetail(buy, sell order.ID) (*big.Int, *big.Int, 
 	return price, lowVolume, highVolume, lowFee, highFee, nil
 }
 
-// Register a new dark node with the dark node registrar
+// Register a new dark node with the dark node registrar.
 func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (*types.Transaction, error) {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -245,7 +245,7 @@ func (binder *Binder) refund(darknodeID []byte) (*types.Transaction, error) {
 	return tx, err
 }
 
-// GetBond retrieves the bond of an existing dark node
+// GetBond retrieves the bond of an existing dark node.
 func (binder *Binder) GetBond(darknodeID []byte) (stackint.Int1024, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -282,7 +282,7 @@ func (binder *Binder) isRegistered(darknodeAddr identity.Address) (bool, error) 
 	return binder.darknodeRegistry.IsRegistered(binder.callOpts, darknodeIDByte)
 }
 
-// IsDeregistered returns true if the node is deregistered
+// IsDeregistered returns true if the node is deregistered.
 func (binder *Binder) IsDeregistered(darknodeID []byte) (bool, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -298,7 +298,7 @@ func (binder *Binder) isDeregistered(darknodeID []byte) (bool, error) {
 	return binder.darknodeRegistry.IsDeregistered(binder.callOpts, darknodeIDByte)
 }
 
-// ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
+// ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it.
 func (binder *Binder) ApproveRen(value *stackint.Int1024) (*types.Transaction, error) {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
@@ -315,7 +315,7 @@ func (binder *Binder) approveRen(value *stackint.Int1024) (*types.Transaction, e
 	return txn, err
 }
 
-// GetOwner gets the owner of the given dark node
+// GetOwner gets the owner of the given dark node.
 func (binder *Binder) GetOwner(darknodeID []byte) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -372,7 +372,7 @@ func (binder *Binder) darknodes() (identity.Addresses, error) {
 	return arr, nil
 }
 
-// MinimumBond gets the minimum viable bond amount
+// MinimumBond gets the minimum viable bond amount.
 func (binder *Binder) MinimumBond() (stackint.Int1024, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -401,7 +401,7 @@ func (binder *Binder) minimumEpochInterval() (*big.Int, error) {
 	return binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 }
 
-// MinimumPodSize gets the minimum pod size
+// MinimumPodSize gets the minimum pod size.
 func (binder *Binder) MinimumPodSize() (stackint.Int1024, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -718,7 +718,7 @@ func (binder *Binder) confirmOrder(id order.ID, match order.ID) error {
 	}
 }
 
-// Priority will return the priority of the order
+// Priority will return the priority of the order.
 func (binder *Binder) Priority(id order.ID) (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -735,7 +735,7 @@ func (binder *Binder) priority(id order.ID) (uint64, error) {
 	return priority.Uint64(), nil
 }
 
-// Status will return the status of the order
+// Status will return the status of the order.
 func (binder *Binder) Status(id order.ID) (order.Status, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -829,7 +829,7 @@ func (binder *Binder) sellOrders(offset, limit int) ([]order.ID, error) {
 	return orders, nil
 }
 
-// Trader returns the trader who submits the order
+// Trader returns the trader who submits the order.
 func (binder *Binder) Trader(id order.ID) (string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -846,7 +846,7 @@ func (binder *Binder) trader(id order.ID) (string, error) {
 	return address.String(), nil
 }
 
-// Broker returns the address of the broker who submitted the order
+// Broker returns the address of the broker who submitted the order.
 func (binder *Binder) Broker(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -863,7 +863,7 @@ func (binder *Binder) broker(id order.ID) (common.Address, error) {
 	return address, nil
 }
 
-// Confirmer returns the address of the confirmer who submitted the order
+// Confirmer returns the address of the confirmer who submitted the order.
 func (binder *Binder) Confirmer(id order.ID) (common.Address, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -892,7 +892,7 @@ func (binder *Binder) fee() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-// Depth will return depth of confirmation blocks
+// Depth will return depth of confirmation blocks.
 func (binder *Binder) Depth(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -910,7 +910,7 @@ func (binder *Binder) depth(orderID order.ID) (uint, error) {
 }
 
 // BlockNumber will return the block number when the order status
-// last mode modified
+// last mode modified.
 func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -927,7 +927,7 @@ func (binder *Binder) blockNumber(orderID order.ID) (uint, error) {
 	return uint(blockNumber.Uint64()), nil
 }
 
-// OrderCounts returns the total number of orders in the orderbook
+// OrderCounts returns the total number of orders in the orderbook.
 func (binder *Binder) OrderCounts() (uint64, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
@@ -944,7 +944,7 @@ func (binder *Binder) orderCounts() (uint64, error) {
 	return counts.Uint64(), nil
 }
 
-// OrderID returns the order at a given index in the orderbook
+// OrderID returns the order at a given index in the orderbook.
 func (binder *Binder) OrderID(index int) ([32]byte, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
