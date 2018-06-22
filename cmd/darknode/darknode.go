@@ -138,7 +138,18 @@ func main() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
 
-		// FIXME: Wait until registration has been approved.
+		// Wait until registration
+		isRegistered, err := contractBinder.IsRegistered(config.Address)
+		if err != nil {
+			logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
+		}
+		for !isRegistered {
+			time.Sleep(14 * time.Second)
+			isRegistered, err = contractBinder.IsRegistered(config.Address)
+			if err != nil {
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
+			}
+		}
 
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
