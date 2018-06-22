@@ -50,7 +50,7 @@ var _ = Describe("Contract Binder", func() {
 				publicKey, err := crypto.BytesFromRsaPublicKey(&(keystores[i].RsaKey.PublicKey))
 
 				// Register darknode with the darknodeRegistry
-				_, err = binder.Register(darknodeAddr.ID(), publicKey, &bond)
+				err = binder.Register(darknodeAddr.ID(), publicKey, &bond)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Darknode will be waiting to be registered until a new
@@ -128,7 +128,7 @@ var _ = Describe("Contract Binder", func() {
 			for i := 0; i < numberOfDarknodes; i++ {
 				darknodeAddr := identity.Address(keystores[i].Address())
 				// Deregister darknode
-				_, err = binder.Deregister(darknodeAddr.ID())
+				err = binder.Deregister(darknodeAddr.ID())
 				Expect(err).ShouldNot(HaveOccurred())
 				// Darknode will be waiting to be deregistered until a
 				// new epoch
@@ -151,12 +151,12 @@ var _ = Describe("Contract Binder", func() {
 				Expect(tx).To(BeTrue())
 
 				// Deregister the same darknode should return an error
-				_, err = binder.Deregister(darknodeAddr.ID())
+				err = binder.Deregister(darknodeAddr.ID())
 				Expect(err).Should(HaveOccurred())
 
 				// Refund deregistered node should return an error since
 				// the darknode had a bond amount of 0
-				_, err = binder.Refund(darknodeAddr.ID())
+				err = binder.Refund(darknodeAddr.ID())
 				Expect(err).Should(HaveOccurred())
 			}
 		})

@@ -1,7 +1,6 @@
 package contract
 
 import (
-	"go/types"
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
@@ -66,7 +65,7 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 	if err != nil {
 		return Binder{}, err
 	}
-	transactOpts.Nonce = nonce	
+	transactOpts.Nonce = big.NewInt(int64(nonce))
 
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
@@ -110,29 +109,29 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 // and will wait until the block has been mined on the blockchain. This will allow
 // parallel requests to the blockchain since the binder will be unlocked before
 // waiting for transaction to complete execution on the blockchain.
-func (binder *Binder) SendTx(f func () (*types.Transaction, error)) error {
+func (binder *Binder) SendTx(f func() (*types.Transaction, error)) error {
 	tx, err := func() (*types.Transaction, error) {
 		binder.mu.Lock()
 		defer binder.mu.Unlock()
 
-		return sendTx(f)
+		return binder.sendTx(f)
 	}()
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
 
-func (binder *Binder) sendTx(f func () (*types.Transaction, error)) (*types.Transaction, error) {
+func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Transaction, error) {
 	tx, err := f()
-	if err == core.ErrNonceTooLow || err core.ErrReplaceUnderpriced {
-		binder.nonce.Add(binder.nonce, big.NewInt(1))
-		return sendTx(f)
+	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced {
+		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
+		return binder.sendTx(f)
 	}
 	if err == core.ErrNonceTooHigh {
-		binder.nonce.Sub(binder.nonce, big.NewInt(1))
-		return sendTx(f)
+		binder.transactOpts.Nonce.Sub(binder.transactOpts.Nonce, big.NewInt(1))
+		return binder.sendTx(f)
 	}
 	if err == nil {
-		binder.nonce.Add(binder.nonce, big.NewInt(1))
+		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return tx, nil
 	}
 	return tx, err
@@ -171,7 +170,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		return err
 	}
 	return binder.SendTx(func() (*types.Transaction, error) {
-		return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
+		return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy.ID, sell.ID)
 	})
 }
 
@@ -192,7 +191,7 @@ func (binder *Binder) settlementDetail(buy, sell order.ID) (*big.Int, *big.Int, 
 }
 
 // Register a new dark node with the dark node registrar
-func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) (error) {
+func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stackint.Int1024) error {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return err
@@ -203,7 +202,7 @@ func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stacki
 }
 
 // Deregister an existing dark node.
-func (binder *Binder) Deregister(darknodeID []byte) (error) {
+func (binder *Binder) Deregister(darknodeID []byte) error {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return err
@@ -214,7 +213,7 @@ func (binder *Binder) Deregister(darknodeID []byte) (error) {
 }
 
 // Refund withdraws the bond. Must be called before reregistering.
-func (binder *Binder) Refund(darknodeID []byte) (*types.Transaction, error) {
+func (binder *Binder) Refund(darknodeID []byte) error {
 	darknodeIDByte, err := toByte(darknodeID)
 	if err != nil {
 		return err
@@ -278,7 +277,7 @@ func (binder *Binder) isDeregistered(darknodeID []byte) (bool, error) {
 }
 
 // ApproveRen doesn't actually talk to the DNR - instead it approves Ren to it
-func (binder *Binder) ApproveRen(value *stackint.Int1024) (error) {
+func (binder *Binder) ApproveRen(value *stackint.Int1024) error {
 	return binder.SendTx(func() (*types.Transaction, error) {
 		return binder.republicToken.Approve(binder.transactOpts, common.HexToAddress(binder.conn.Config.DarknodeRegistryAddress), value.ToBigInt())
 	})
@@ -502,7 +501,7 @@ func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 	if err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.darknodeRegistry.Epoch(binder.transactOpts)
 	}); err != nil {
-		return nil, err
+		return registry.Epoch{}, err
 	}
 
 	return binder.epoch()
@@ -544,7 +543,7 @@ func (binder *Binder) OpenBuyOrder(signature [65]byte, id order.ID) error {
 	}); err != nil {
 		return err
 	}
-	
+
 	return binder.waitForOrderDepth(id)
 }
 
@@ -557,7 +556,7 @@ func (binder *Binder) OpenSellOrder(signature [65]byte, id order.ID) error {
 	}); err != nil {
 		return err
 	}
-	
+
 	return binder.waitForOrderDepth(id)
 }
 
@@ -572,8 +571,14 @@ func (binder *Binder) CancelOrder(signature [65]byte, id order.ID) error {
 
 // ConfirmOrder match on the Orderbook.
 func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
+	before, err := binder.orderbook.OrderDepth(binder.callOpts, id)
+	if err != nil {
+		return err
+	}
+
 	if err := binder.SendTx(func() (*types.Transaction, error) {
-		return binder.confirmOrder(id, match)
+		orderMatches := [][32]byte{match}
+		return binder.orderbook.ConfirmOrder(binder.transactOpts, [32]byte(id), orderMatches)
 	}); err != nil {
 		return err
 	}
@@ -588,15 +593,6 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 			return nil
 		}
 	}
-}
-
-func (binder *Binder) confirmOrder(id order.ID, match order.ID) (*types.Transaction, error) {
-	orderMatches := [][32]byte{match}
-	before, err := binder.orderbook.OrderDepth(binder.callOpts, id)
-	if err != nil {
-		return nil, err
-	}
-	return binder.orderbook.ConfirmOrder(binder.transactOpts, [32]byte(id), orderMatches)
 }
 
 // Priority will return the priority of the order
