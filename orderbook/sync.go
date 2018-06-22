@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -54,7 +53,7 @@ func (change *Change) Equal(other *Change) bool {
 // storage.
 type Syncer interface {
 
-	// Sync orders and order states from the Ren Ledger to this local
+	// Sync orders and order states from the Orderbook to this local
 	// Orderbooker. Returns a list of changes that were made to this local
 	// Orderbooker during the synchronization.
 	Sync() (ChangeSet, error)
@@ -63,18 +62,18 @@ type Syncer interface {
 type syncer struct {
 	storer SyncStorer
 
-	renLedger      cal.RenLedger
+	contract       ContractBinder
 	renLedgerLimit int
 }
 
 // NewSyncer returns a new Syncer that will sync a bounded number of orders
-// from a cal.RenLedger. It uses a SyncStorer to prevent re-syncing the entire
-// cal.RenLedger when it reboots.
-func NewSyncer(storer SyncStorer, renLedger cal.RenLedger, renLedgerLimit int) Syncer {
+// from the ContractBinder. It uses a SyncStorer to prevent re-syncing the entire
+// ContractBinder when it reboots.
+func NewSyncer(storer SyncStorer, contract ContractBinder, renLedgerLimit int) Syncer {
 	return &syncer{
 		storer: storer,
 
-		renLedger:      renLedger,
+		contract:       contract,
 		renLedgerLimit: renLedgerLimit,
 	}
 }
@@ -92,22 +91,22 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		return changeset, err
 	}
 
-	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(int(buyPointer), syncer.renLedgerLimit)
+	buyOrderIDs, buyErr := syncer.contract.BuyOrders(int(buyPointer), syncer.renLedgerLimit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
-			status, err := syncer.renLedger.Status(ord)
+			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
 				buyErr = err
 				continue
 			}
-			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
 				buyErr = err
 				continue
 			}
-			trader, err := syncer.renLedger.Trader(ord)
+			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
 				buyErr = err
@@ -127,23 +126,23 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	}
 
 	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(int(sellPointer), syncer.renLedgerLimit)
+	sellOrderIDs, sellErr := syncer.contract.SellOrders(int(sellPointer), syncer.renLedgerLimit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
 
-			status, err := syncer.renLedger.Status(ord)
+			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
 				sellErr = err
 				continue
 			}
-			blockNumber, err := syncer.renLedger.BlockNumber(ord)
+			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
 				sellErr = err
 				continue
 			}
-			trader, err := syncer.renLedger.Trader(ord)
+			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
 				sellErr = err
@@ -188,7 +187,7 @@ func (syncer *syncer) purge() ChangeSet {
 		dispatch.ForAll(changesCollection, func(i int) {
 			change := changesCollection[i]
 
-			status, err := syncer.renLedger.Status(change.OrderID)
+			status, err := syncer.contract.Status(change.OrderID)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync change status: %v", err))
 				return
@@ -197,7 +196,7 @@ func (syncer *syncer) purge() ChangeSet {
 				return
 			}
 
-			blockNumber, err := syncer.renLedger.BlockNumber(change.OrderID)
+			blockNumber, err := syncer.contract.BlockNumber(change.OrderID)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync change block: %v", err))
 				return

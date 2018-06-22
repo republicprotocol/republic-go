@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
 )
 
@@ -27,8 +27,8 @@ type Ome interface {
 	// Run the secure order matching engine until the done channel is closed.
 	Run(done <-chan struct{}) <-chan error
 
-	// OnChangeEpoch should be called whenever a new cal.Epoch is observed.
-	OnChangeEpoch(cal.Epoch)
+	// OnChangeEpoch should be called whenever a new Epoch is observed.
+	OnChangeEpoch(registry.Epoch)
 }
 
 type ome struct {
@@ -45,14 +45,14 @@ type ome struct {
 	computationBacklog   map[ComputationID]Computation
 
 	epochMu   *sync.RWMutex
-	epochCurr *cal.Epoch
-	epochPrev *cal.Epoch
+	epochCurr *registry.Epoch
+	epochPrev *registry.Epoch
 }
 
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
 // from the Ethereum blockchain, and an smpc.Smpcer to run the secure
 // multi-party computations necessary for the secure order matching engine.
-func NewOme(addr identity.Address, ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch cal.Epoch) Ome {
+func NewOme(addr identity.Address, ranker Ranker, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch registry.Epoch) Ome {
 	ome := &ome{
 		addr:      addr,
 		ranker:    ranker,
@@ -162,10 +162,10 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	return errs
 }
 
-// OnChangeEpoch updates the Ome to the next cal.Epoch. This will cause
+// OnChangeEpoch updates the Ome to the next Epoch. This will cause
 // cascading changes throughout the Ome, most notably it will connect to a new
 // Smpc network that will handle future Computations.
-func (ome *ome) OnChangeEpoch(epoch cal.Epoch) {
+func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
 	ome.epochMu.Lock()
 	defer ome.epochMu.Unlock()
 

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -24,17 +24,17 @@ func main() {
 		log.Fatalf("cannot create keystore: %v", err)
 	}
 
-	var ethereumConfig ethereum.Config
+	var ethereumConfig contract.Config
 
 	switch *network {
 	case "ropsten":
-		ethereumConfig = ethereum.Config{
-			Network: ethereum.NetworkRopsten,
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkRopsten,
 			URI:     "https://ropsten.infura.io",
 		}
 	case "kovan":
-		ethereumConfig = ethereum.Config{
-			Network: ethereum.NetworkKovan,
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkKovan,
 			URI:     "https://kovan.infura.io",
 		}
 	default:

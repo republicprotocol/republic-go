@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
-	"math/big"
+	"errors"
 	"runtime"
 	"time"
 
@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/registry"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -20,7 +19,7 @@ import (
 
 var _ = Describe("Crypter", func() {
 
-	var darkpool cal.Darkpool
+	var contract *registryBinder
 	var darknodeKeystores map[identity.Address]crypto.Keystore
 
 	var crypter Crypter
@@ -28,13 +27,13 @@ var _ = Describe("Crypter", func() {
 
 	BeforeEach(func() {
 		var err error
-		darkpool, darknodeKeystores, err = newMockDarkpool()
+		contract, darknodeKeystores, err = newRegistryBinder()
 		Expect(err).ShouldNot(HaveOccurred())
 		keystore, err := crypto.RandomKeystore()
 		Expect(err).ShouldNot(HaveOccurred())
-		darknodes, err := darkpool.Darknodes()
+		darknodes, err := contract.Darknodes()
 		Expect(err).ShouldNot(HaveOccurred())
-		crypter = NewCrypter(keystore, darkpool, len(darknodes)/2, time.Second)
+		crypter = NewCrypter(keystore, contract, len(darknodes)/2, time.Second)
 		message = []byte("REN")
 	})
 
@@ -65,7 +64,7 @@ var _ = Describe("Crypter", func() {
 		})
 
 		It("should not return an error for registered addresses", func() {
-			darknodes, err := darkpool.Darknodes()
+			darknodes, err := contract.Darknodes()
 			Expect(err).ShouldNot(HaveOccurred())
 			for _, darknode := range darknodes {
 				keystore := darknodeKeystores[darknode]
@@ -81,7 +80,7 @@ var _ = Describe("Crypter", func() {
 	Context("when encrypting", func() {
 
 		It("should encrypt messages for registered addresses", func() {
-			darknodes, err := darkpool.Darknodes()
+			darknodes, err := contract.Darknodes()
 			Expect(err).ShouldNot(HaveOccurred())
 			for _, darknode := range darknodes {
 				keystore := darknodeKeystores[darknode]
@@ -119,17 +118,22 @@ var _ = Describe("Crypter", func() {
 	})
 })
 
-type mockDarkpool struct {
+// ErrPublicKeyNotFound is returned when an rsa.PublicKey cannot be found for a
+// given identity.Address. This happens when an identity.Address is not registered in
+// the current Epoch.
+var ErrPublicKeyNotFound = errors.New("public key not found")
+
+type registryBinder struct {
 	darknodes map[identity.Address]crypto.Keystore
-	pods      []cal.Pod
+	pods      []Pod
 }
 
-func newMockDarkpool() (cal.Darkpool, map[identity.Address]crypto.Keystore, error) {
-	darkpool := mockDarkpool{
+func newRegistryBinder() (*registryBinder, map[identity.Address]crypto.Keystore, error) {
+	binder := registryBinder{
 		darknodes: map[identity.Address]crypto.Keystore{},
-		pods:      []cal.Pod{},
+		pods:      []Pod{},
 	}
-	pod := cal.Pod{
+	pod := Pod{
 		Hash:      [32]byte{},
 		Darknodes: []identity.Address{},
 	}
@@ -137,65 +141,30 @@ func newMockDarkpool() (cal.Darkpool, map[identity.Address]crypto.Keystore, erro
 	for i := 0; i < 6; i++ {
 		keystore, err := crypto.RandomKeystore()
 		if err != nil {
-			return &darkpool, darkpool.darknodes, err
+			return &binder, binder.darknodes, err
 		}
-		darkpool.darknodes[identity.Address(keystore.Address())] = keystore
+		binder.darknodes[identity.Address(keystore.Address())] = keystore
 		pod.Darknodes = append(pod.Darknodes, identity.Address(keystore.Address()))
 	}
-	return &darkpool, darkpool.darknodes, nil
+	return &binder, binder.darknodes, nil
 }
 
-func (darkpool *mockDarkpool) Darknodes() (identity.Addresses, error) {
+func (binder *registryBinder) Darknodes() (identity.Addresses, error) {
 	darknodes := identity.Addresses{}
-	for _, pod := range darkpool.pods {
+	for _, pod := range binder.pods {
 		darknodes = append(darknodes, pod.Darknodes...)
 	}
 	return darknodes, nil
 }
 
-func (darkpool *mockDarkpool) Epoch() (cal.Epoch, error) {
-	darknodes, err := darkpool.Darknodes()
-	if err != nil {
-		return cal.Epoch{}, err
-	}
-	return cal.Epoch{
-		Hash:      [32]byte{},
-		Pods:      darkpool.pods,
-		Darknodes: darknodes,
-	}, nil
-}
-
-func (darkpool *mockDarkpool) Pods() ([]cal.Pod, error) {
-	return darkpool.pods, nil
-}
-
-func (darkpool *mockDarkpool) Pod(addr identity.Address) (cal.Pod, error) {
-	for _, pod := range darkpool.pods {
-		for _, darknode := range pod.Darknodes {
-			if addr == darknode {
-				return pod, nil
-			}
-		}
-	}
-	return cal.Pod{}, cal.ErrPodNotFound
-}
-
-func (darkpool *mockDarkpool) PublicKey(addr identity.Address) (rsa.PublicKey, error) {
-	if keystore, ok := darkpool.darknodes[addr]; ok {
+func (binder *registryBinder) PublicKey(addr identity.Address) (rsa.PublicKey, error) {
+	if keystore, ok := binder.darknodes[addr]; ok {
 		return keystore.RsaKey.PublicKey, nil
 	}
-	return rsa.PublicKey{}, cal.ErrPublicKeyNotFound
+	return rsa.PublicKey{}, ErrPublicKeyNotFound
 }
 
-func (darkpool *mockDarkpool) IsRegistered(addr identity.Address) (bool, error) {
-	_, ok := darkpool.darknodes[addr]
+func (binder *registryBinder) IsRegistered(addr identity.Address) (bool, error) {
+	_, ok := binder.darknodes[addr]
 	return ok, nil
-}
-
-func (darkpool *mockDarkpool) NextEpoch() (cal.Epoch, error) {
-	panic("unimplemented")
-}
-
-func (darkpool *mockDarkpool) MinimumEpochInterval() (*big.Int, error) {
-	panic("unimplemented")
 }

@@ -10,12 +10,12 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/republicprotocol/republic-go/contract"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -30,7 +30,7 @@ const (
 	red    = "\x1b[31;1m"
 )
 
-// Registry command-line tool for interacting with the darknodeRegister contract
+// contract command-line tool for interacting with the darknodeRegister contract
 // on Kovan(default) or Ropsten testnet.
 func main() {
 
@@ -59,11 +59,11 @@ func main() {
 			Aliases: []string{"e"},
 			Usage:   "calling epoch",
 			Action: func(c *cli.Context) error {
-				registry, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				_, err = registry.TriggerEpoch()
+				_, err = contract.NextEpoch()
 				log.Println("Epoch called.")
 				return err
 			},
@@ -73,24 +73,24 @@ func main() {
 			Aliases: []string{"c"},
 			Usage:   "check if the node is registered or not",
 			Action: func(c *cli.Context) error {
-				registrar, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
 
-				return CheckRegistration(c.Args(), registrar)
+				return CheckRegistration(c.Args(), contract)
 			},
 		},
 		{
 			Name:    "register",
 			Aliases: []string{"r"},
-			Usage:   "register nodes in the dark node registry",
+			Usage:   "register nodes in the dark node contract",
 			Action: func(c *cli.Context) error {
-				registry, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return RegisterAll(registry)
+				return RegisterAll(contract)
 			},
 		},
 		{
@@ -98,34 +98,34 @@ func main() {
 			Aliases: []string{"a"},
 			Usage:   "approve nodes with enough REN token",
 			Action: func(c *cli.Context) error {
-				registry, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return Approve(registry)
+				return Approve(contract)
 			},
 		},
 		{
 			Name:    "deregister",
 			Aliases: []string{"d"},
-			Usage:   "deregister nodes in the dark node registry",
+			Usage:   "deregister nodes in the dark node contract",
 			Action: func(c *cli.Context) error {
-				registry, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return DeregisterAll(c.Args(), registry)
+				return DeregisterAll(c.Args(), contract)
 			},
 		},
 		{
 			Name:  "refund",
 			Usage: "refund ren",
 			Action: func(c *cli.Context) error {
-				registry, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return Refund(c.Args(), registry)
+				return Refund(c.Args(), contract)
 			},
 		},
 		{
@@ -133,11 +133,11 @@ func main() {
 			Aliases: []string{"p"},
 			Usage:   "get the index of the pool the node is in, return -1 if no pool found",
 			Action: func(c *cli.Context) error {
-				registrar, err := NewRegistry(c, key)
+				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return GetPool(c.Args(), registrar)
+				return GetPool(c.Args(), contract)
 			},
 		},
 	}
@@ -157,24 +157,22 @@ func LoadKey() (*keystore.Key, error) {
 	return key, err
 }
 
-func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error) {
-	var config ethereum.Config
+func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
+	var config contract.Config
 	switch c.GlobalString("network") {
 	case "ropsten":
-		config = ethereum.Config{
-			Network:                 ethereum.NetworkRopsten,
-			URI:                     "https://ropsten.infura.io",
-			RepublicTokenAddress:    ethereum.RepublicTokenAddressOnRopsten.String(),
-			DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnRopsten.String(),
+		config = contract.Config{
+			Network: contract.NetworkRopsten,
+			URI:     "https://ropsten.infura.io",
 		}
 	case "kovan":
-		config = ethereum.Config{
-			Network:                 ethereum.NetworkKovan,
+		config = contract.Config{
+			Network:                 contract.NetworkKovan,
 			URI:                     "https://kovan.infura.io",
 			RepublicTokenAddress:    "0x5e8148ab05ae724af7e6c2cbacdc65cca53ab3aa", // falconry contract address, remove this for federation zero
 			DarknodeRegistryAddress: "0x3aa3a8c5b2a4a2b0ee631650d88e9dc24f4c9254", // falconry contract address, remove this for federation zero
-			RenLedgerAddress:        "0x3DC8f53e3311750b4003BC535bea9a0bDAc172De", // falconry contract address, remove this for federation zero
-			RenExAccountsAddress:    "0x20b3cd8d1b9c7854f0efab0e774b9517e149a63b", // falconry contract address, remove this for federation zero
+			OrderbookAddress:        "0x3DC8f53e3311750b4003BC535bea9a0bDAc172De", // falconry contract address, remove this for federation zero
+			RenExSettlementAddress:  "0x20b3cd8d1b9c7854f0efab0e774b9517e149a63b", // falconry contract address, remove this for federation zero
 		}
 	default:
 		log.Fatal("unrecognized network name")
@@ -183,15 +181,15 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (dnr.DarknodeRegistry, error
 	auth := bind.NewKeyedTransactor(key.PrivateKey)
 	auth.GasPrice = big.NewInt(5000000000)
 
-	client, err := ethereum.Connect(config)
+	client, err := contract.Connect(config)
 	if err != nil {
 		log.Fatal("fail to connect to ethereum")
 	}
 
-	return dnr.NewDarknodeRegistry(context.Background(), client, auth, &bind.CallOpts{})
+	return contract.NewBinder(context.Background(), auth, client)
 }
 
-func RegisterAll(registry dnr.DarknodeRegistry) error {
+func RegisterAll(contract contract.Binder) error {
 
 	conf, err := loadConfig("./deployment.json")
 	if err != nil {
@@ -206,19 +204,19 @@ func RegisterAll(registry dnr.DarknodeRegistry) error {
 		}
 
 		// Check if node has already been registered
-		isRegistered, err := registry.IsRegistered(address)
+		isRegistered, err := contract.IsRegistered(address)
 		if err != nil {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
 		// Register the node if not registered
 		if !isRegistered {
-			minimumBond, err := registry.MinimumBond()
+			minimumBond, err := contract.MinimumBond()
 			if err != nil {
 				return err
 			}
 
-			_, err = registry.Register(address.ID(), pk, &minimumBond)
+			_, err = contract.Register(address.ID(), pk, &minimumBond)
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address, red, reset, err)
 			} else {
@@ -234,7 +232,7 @@ func RegisterAll(registry dnr.DarknodeRegistry) error {
 }
 
 // DeregisterAll takes a slice of republic private keys and registers them
-func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
+func DeregisterAll(addresses []string, contract contract.Binder) error {
 	conf, err := loadConfig("./deployment.json")
 	if err != nil {
 		return errors.New("could not read file deployment.json")
@@ -244,13 +242,13 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 		address := conf.Configs[i].Config.Address
 
 		// Check if node has already been registered
-		isRegistered, err := registry.IsRegistered(address)
+		isRegistered, err := contract.IsRegistered(address)
 		if err != nil {
 			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
 		}
 
 		if isRegistered {
-			_, err = registry.Deregister(address.ID())
+			_, err = contract.Deregister(address.ID())
 			if err != nil {
 				return fmt.Errorf("[%v] %sCouldn't deregister node%s: %v\n", address, red, reset, err)
 			} else {
@@ -264,13 +262,13 @@ func DeregisterAll(addresses []string, registry dnr.DarknodeRegistry) error {
 	return nil
 }
 
-func Approve(registry dnr.DarknodeRegistry) error {
+func Approve(contract contract.Binder) error {
 
 	bond, err := stackint.FromString("100000000000000000000000")
 	if err != nil {
 		return err
 	}
-	_, err = registry.ApproveRen(&bond)
+	_, err = contract.ApproveRen(&bond)
 	if err != nil {
 		return err
 	}
@@ -280,12 +278,12 @@ func Approve(registry dnr.DarknodeRegistry) error {
 
 // GetPool will get the index of the pool the node is in.
 // The address should be the ethereum address
-func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
+func GetPool(addresses []string, contract contract.Binder) error {
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
 
-	pod, err := registry.Pod(identity.Address(addresses[0]))
+	pod, err := contract.Pod(identity.Address(addresses[0]))
 	if err != nil {
 		fmt.Println(-1)
 		return err
@@ -296,13 +294,13 @@ func GetPool(addresses []string, registry dnr.DarknodeRegistry) error {
 }
 
 // CheckRegistration will check if the node with given address is registered with
-// the darknode registry. The address will be the ethereum address.
-func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error {
+// the darknode contract. The address will be the ethereum address.
+func CheckRegistration(addresses []string, contract contract.Binder) error {
 	if len(addresses) != 1 {
 		return fmt.Errorf("%sPlease provide one node address.%s\n", red, reset)
 	}
 
-	isRegistered, err := registrar.IsRegistered(identity.Address(addresses[0]))
+	isRegistered, err := contract.IsRegistered(identity.Address(addresses[0]))
 	if err != nil {
 		return err
 	}
@@ -311,13 +309,13 @@ func CheckRegistration(addresses []string, registrar dnr.DarknodeRegistry) error
 	return nil
 }
 
-func Refund(addresses []string, registry dnr.DarknodeRegistry) error {
+func Refund(addresses []string, contract contract.Binder) error {
 	for i := range addresses {
 		address, err := republicAddressToEthAddress(addresses[i])
 		if err != nil {
 			return err
 		}
-		_, err = registry.Refund(address.Bytes())
+		_, err = contract.Refund(address.Bytes())
 		if err != nil {
 			return err
 		}
