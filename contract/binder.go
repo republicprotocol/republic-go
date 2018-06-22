@@ -44,20 +44,18 @@ const BlocksForConfirmation = 1
 type Binder struct {
 	mu           *sync.RWMutex
 	network      Network
-	context      context.Context
 	conn         Conn
 	transactOpts *bind.TransactOpts
 	callOpts     *bind.CallOpts
 
-	republicToken    bindings.RepublicToken
-	darknodeRegistry bindings.DarknodeRegistry
-	orderbook        bindings.Orderbook
-
-	renExSettlement bindings.RenExSettlement
+	republicToken    *bindings.RepublicToken
+	darknodeRegistry *bindings.DarknodeRegistry
+	orderbook        *bindings.Orderbook
+	renExSettlement  *bindings.RenExSettlement
 }
 
 // NewBinder returns a Binder to communicate with contracts
-func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder, error) {
+func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := auth
 	transactOpts.GasPrice = big.NewInt(20000000000)
 
@@ -94,15 +92,15 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
-		context:      ctx,
 		conn:         conn,
 		transactOpts: transactOpts,
 		callOpts:     &bind.CallOpts{},
 
-		republicToken:    *republicToken,
-		darknodeRegistry: *darknodeRegistry,
-		renExSettlement:  *renExSettlement,
-		orderbook:        *orderbook}, nil
+		republicToken:    republicToken,
+		darknodeRegistry: darknodeRegistry,
+		orderbook:        orderbook,
+		renExSettlement:  renExSettlement,
+	}, nil
 }
 
 // SendTx locks binder resources to execute function f (handling nonces explicitly)

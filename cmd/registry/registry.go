@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -186,7 +185,7 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
 		log.Fatal("fail to connect to ethereum")
 	}
 
-	return contract.NewBinder(context.Background(), auth, client)
+	return contract.NewBinder(auth, client)
 }
 
 func RegisterAll(contract contract.Binder) error {
