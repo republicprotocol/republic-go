@@ -108,7 +108,7 @@ var _ = Describe("Contract Binder", func() {
 			conn.TransferEth(context.Background(), &transOpts, auth.From, value)
 
 			// Get binder for the darknode
-			darknodeBinder, err := contract.NewBinder(context.Background(), auth, conn)
+			darknodeBinder, err := contract.NewBinder(auth, conn)
 			if err != nil {
 				log.Fatalf("cannot get ethereum bindings: %v", err)
 			}

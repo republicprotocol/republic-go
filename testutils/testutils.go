@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -74,7 +73,7 @@ func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Conn, co
 		auth := ganache.GenesisTransactor()
 		// GasLimit must not be set to 0 to avoid "Out Of Gas" errors
 		auth.GasLimit = 3000000
-		binder, err := contract.NewBinder(context.Background(), &auth, conn)
+		binder, err := contract.NewBinder(&auth, conn)
 
 		return conn, binder, ginkgo.BeforeSuite(body, timeout...)
 	}

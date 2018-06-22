@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -191,5 +190,5 @@ func loadContractBinder(configFile string, keystore crypto.Keystore) (contract.B
 
 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
 
-	return contract.NewBinder(context.Background(), auth, conn)
+	return contract.NewBinder(auth, conn)
 }
