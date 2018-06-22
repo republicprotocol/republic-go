@@ -43,20 +43,18 @@ const BlocksForConfirmation = 1
 type Binder struct {
 	mu           *sync.RWMutex
 	network      Network
-	context      context.Context
 	conn         Conn
 	transactOpts *bind.TransactOpts
 	callOpts     *bind.CallOpts
 
-	republicToken    bindings.RepublicToken
-	darknodeRegistry bindings.DarknodeRegistry
-	orderbook        bindings.Orderbook
-
-	renExSettlement bindings.RenExSettlement
+	republicToken    *bindings.RepublicToken
+	darknodeRegistry *bindings.DarknodeRegistry
+	orderbook        *bindings.Orderbook
+	renExSettlement  *bindings.RenExSettlement
 }
 
 // NewBinder returns a Binder to communicate with contracts
-func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder, error) {
+func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	auth.GasPrice = big.NewInt(20000000000)
 
 	darknodeRegistry, err := bindings.NewDarknodeRegistry(common.HexToAddress(conn.Config.DarknodeRegistryAddress), bind.ContractBackend(conn.Client))
@@ -86,15 +84,15 @@ func NewBinder(ctx context.Context, auth *bind.TransactOpts, conn Conn) (Binder,
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
-		context:      ctx,
 		conn:         conn,
 		transactOpts: auth,
 		callOpts:     &bind.CallOpts{},
 
-		republicToken:    *republicToken,
-		darknodeRegistry: *darknodeRegistry,
-		renExSettlement:  *renExSettlement,
-		orderbook:        *orderbook}, nil
+		republicToken:    republicToken,
+		darknodeRegistry: darknodeRegistry,
+		orderbook:        orderbook,
+		renExSettlement:  renExSettlement,
+	}, nil
 }
 
 // SubmitOrder to the RenEx accounts
@@ -112,7 +110,7 @@ func (binder *Binder) submitOrder(ord order.Order) error {
 	if err != nil {
 		return err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
 
@@ -129,7 +127,7 @@ func (binder *Binder) submitMatch(buy, sell order.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
 
@@ -188,7 +186,7 @@ func (binder *Binder) register(darknodeID []byte, publicKey []byte, bond *stacki
 	if err != nil {
 		return nil, err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, txn)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), txn)
 	return txn, err
 }
 
@@ -209,7 +207,7 @@ func (binder *Binder) deregister(darknodeID []byte) (*types.Transaction, error) 
 	if err != nil {
 		return nil, err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return tx, err
 }
 
@@ -230,7 +228,7 @@ func (binder *Binder) refund(darknodeID []byte) (*types.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return tx, err
 }
 
@@ -300,7 +298,7 @@ func (binder *Binder) approveRen(value *stackint.Int1024) (*types.Transaction, e
 	if err != nil {
 		return nil, err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, txn)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), txn)
 	return txn, err
 }
 
@@ -547,7 +545,7 @@ func (binder *Binder) nextEpoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
@@ -681,7 +679,7 @@ func (binder *Binder) cancelOrder(signature [65]byte, id order.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	if err != nil {
 		return err
 	}
@@ -706,7 +704,7 @@ func (binder *Binder) confirmOrder(id order.ID, match order.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	if err != nil {
 		return err
 	}
@@ -971,7 +969,7 @@ func (binder *Binder) orderID(index int) ([32]byte, error) {
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID) error {
-	_, err := binder.conn.PatchedWaitMined(binder.context, tx)
+	_, err := binder.conn.PatchedWaitMined(context.Background(), tx)
 	if err != nil {
 		return err
 	}
