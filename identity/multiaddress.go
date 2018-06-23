@@ -25,7 +25,7 @@ func init() {
 		Size:       multiaddr.LengthPrefixedVarSize,
 		Name:       "republic",
 		Path:       false,
-		Transcoder: multiaddr.NewTranscoderFromFunctions(republicStB, republicBtS),
+		Transcoder: multiaddr.NewTranscoderFromFunctions(republicStB, republicBtS, nil),
 	}
 	multiaddr.AddProtocol(republic)
 }
