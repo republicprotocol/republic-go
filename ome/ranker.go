@@ -189,6 +189,10 @@ func (ranker *delegateRanker) insertComputations(coms Computations) {
 		ranker.computations = append(
 			ranker.computations[:index],
 			append([]Computation{com}, ranker.computations[index:]...)...)
+
+		if err := ranker.storer.PutComputation(com); err != nil {
+			logger.Error(fmt.Sprintf("cannot insert new computation %v: %v", com.ID, err))
+		}
 	}
 }
 
