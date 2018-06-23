@@ -22,10 +22,11 @@ import (
 )
 
 func main() {
-	relayParam := flag.String("relay", "https://kovan-renexchange.herokuapp.com", "Binding and port of the relay")
+	networkParam := flag.String("network", "nightly", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
+	relayParam := fmt.Sprintf("https://ingress-api-%v.herokuapp.com", *networkParam)
 
 	flag.Parse()
 
@@ -121,7 +122,8 @@ func main() {
 		}
 		buf := bytes.NewBuffer(data)
 
-		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", *relayParam), "application/json", buf)
+		log.Printf("sending to %v", fmt.Sprintf("%v/orders", relayParam))
+		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", relayParam), "application/json", buf)
 		if err != nil {
 			log.Fatalf("cannot send request: %v", err)
 		}
