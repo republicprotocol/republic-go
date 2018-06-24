@@ -57,10 +57,13 @@ func Start() bool {
 	// could be nice.
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
-	globalGanacheCmd.Start()
+	err := globalGanacheCmd.Start()
+	if err != nil {
+		panic(err)
+	}
 	go StopOnInterrupt()
-	
-	time.Sleep(10 * time.Second)
+
+	time.Sleep(30 * time.Second)
 	return true
 }
 
