@@ -125,7 +125,7 @@ func main() {
 	go func() {
 		bindParam := "0.0.0.0"
 		portParam := "18515"
-		log.Printf("starting status server at %v:%v...", bindParam, portParam)
+		log.Printf("HTTP listening on %v:%v...", bindParam, portParam)
 
 		statusAdapter := adapter.NewStatusAdapter(statusProvider)
 		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
@@ -212,7 +212,7 @@ func main() {
 	}()
 
 	// Start gRPC server and run until the server is stopped
-	log.Printf("listening on %v:%v...", config.Host, config.Port)
+	log.Printf("gRPC listening on %v:%v...", config.Host, config.Port)
 	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", config.Host, config.Port))
 	if err != nil {
 		log.Fatalf("cannot listen on %v:%v: %v", config.Host, config.Port, err)
