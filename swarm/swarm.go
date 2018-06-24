@@ -39,10 +39,10 @@ func NewServer(verifier crypto.Verifier, client Client, dht *dht.DHT) Server {
 }
 
 func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (identity.MultiAddress, error) {
-	if server.verifier.Verify(from.Hash(), from.Signature) == nil {
-		return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
+	if err := server.verifier.Verify(from.Hash(), from.Signature); err != nil {
+		return server.dhtManager.client.MultiAddress(), err
 	}
-	return server.dhtManager.client.MultiAddress(), nil
+	return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
 }
 
 func (server *server) Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
