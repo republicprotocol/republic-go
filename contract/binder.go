@@ -128,6 +128,14 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return tx, nil
 	}
+	// if strings.Contains(err.Error(), "nonce") {
+	// 	nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
+	// 	if err != nil {
+	// 		return tx, err
+	// 	}
+	// 	binder.transactOpts.Nonce = big.NewInt(int64(nonce))
+	// 	return binder.sendTx(f)
+	// }
 	return tx, err
 }
 
@@ -136,6 +144,10 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(ord)
 	})
+	if err != nil {
+		return err
+	}
+
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
 }
@@ -151,6 +163,9 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.submitMatch(buy, sell)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
@@ -175,6 +190,9 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.submitMatch(buy.ID, sell.ID)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
@@ -205,6 +223,9 @@ func (binder *Binder) Register(darknodeID []byte, publicKey []byte, bond *stacki
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.register(darknodeIDByte, publicKey, bond)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
@@ -223,6 +244,9 @@ func (binder *Binder) Deregister(darknodeID []byte) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.deregister(darknodeIDByte)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
@@ -241,6 +265,9 @@ func (binder *Binder) Refund(darknodeID []byte) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.refund(darknodeIDByte)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
@@ -284,6 +311,7 @@ func (binder *Binder) isRegistered(darknodeAddr identity.Address) (bool, error) 
 	if err != nil {
 		return false, err
 	}
+	// log.Println("registering", string(darknodeIDByte[:]))
 	return binder.darknodeRegistry.IsRegistered(binder.callOpts, darknodeIDByte)
 }
 
@@ -300,6 +328,7 @@ func (binder *Binder) isDeregistered(darknodeID []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// log.Println("deregistering", string(darknodeIDByte[:]))
 	return binder.darknodeRegistry.IsDeregistered(binder.callOpts, darknodeIDByte)
 }
 
@@ -308,6 +337,9 @@ func (binder *Binder) ApproveRen(value *stackint.Int1024) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.approveRen(value)
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
