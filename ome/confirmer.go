@@ -167,6 +167,13 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			case <-done:
 				return
 			case errs <- err:
+				if orderParity == order.ParityBuy {
+					delete(confirmer.confirmingBuyOrders, ord)
+					delete(confirmer.confirmingSellOrders, ordMatch)
+					continue
+				}
+				delete(confirmer.confirmingBuyOrders, ordMatch)
+				delete(confirmer.confirmingSellOrders, ord)
 				continue
 			}
 		}
