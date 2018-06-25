@@ -40,8 +40,7 @@ func NewServer(verifier crypto.Verifier, client Client, dht *dht.DHT) Server {
 
 func (server *server) Ping(ctx context.Context, from identity.MultiAddress) (identity.MultiAddress, error) {
 	if err := server.verifier.Verify(from.Hash(), from.Signature); err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot accept ping from %v: %v", from, err))
-		return server.dhtManager.client.MultiAddress(), err
+		return server.dhtManager.client.MultiAddress(), nil
 	}
 	return server.dhtManager.client.MultiAddress(), server.dhtManager.updateDHT(from)
 }
