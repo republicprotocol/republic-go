@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -81,15 +82,11 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				// Confirm Computations on the blockchain and register them for
 				// observation (we need to wait for finality)
 				if err := confirmer.beginConfirmation(com); err != nil {
-					select {
-					case <-done:
-						return
-					case errs <- err:
-						// An error in confirmation should not stop the
-						// Confirmer from monitoring the Computation for
-						// confirmation (another node might have succeeded), so
-						// we pass through
-					}
+					// An error in confirmation should not stop the
+					// Confirmer from monitoring the Computation for
+					// confirmation (another node might have succeeded), so
+					// we pass through
+					logger.Error(err.Error())
 				}
 
 				// Wait for the confirmation of these orders to pass the depth
