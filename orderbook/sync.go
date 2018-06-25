@@ -95,6 +95,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for _, ord := range buyOrderIDs {
 			depth, err := syncer.renLedger.Depth(ord)
 			if err == nil && depth > 6000 {
+				syncer.syncBuyPointer++
 				continue
 			}
 			status, err := syncer.renLedger.Status(ord)
@@ -126,6 +127,7 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 		for _, ord := range sellOrderIDs {
 			depth, err := syncer.renLedger.Depth(ord)
 			if err == nil && depth > 6000 {
+				syncer.syncSellPointer++
 				continue
 			}
 			status, err := syncer.renLedger.Status(ord)
