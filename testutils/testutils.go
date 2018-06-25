@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -63,8 +62,6 @@ func SkipCIDescribe(d string, f func()) bool {
 
 func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Conn, contract.Binder, bool) {
 	if !GetCIEnv() {
-		fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
-
 		conn, err := ganache.StartAndConnect()
 		if err != nil {
 			log.Fatalf("cannot connect to ganache: %v", err)
