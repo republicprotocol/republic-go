@@ -22,6 +22,9 @@ import (
 	"github.com/republicprotocol/republic-go/contract/bindings"
 )
 
+const reset = "\x1b[0m"
+const green = "\x1b[32;1m"
+
 var genesisPrivateKey, genesisTransactor = genesis()
 
 // GenesisPrivateKey used by Ganache.
@@ -57,7 +60,10 @@ func Start() bool {
 	// could be nice.
 	// cmd.Stdout = os.Stdout
 	// cmd.Stderr = os.Stderr
-	globalGanacheCmd.Start()
+	err := globalGanacheCmd.Start()
+	if err != nil {
+		panic(err)
+	}
 	go StopOnInterrupt()
 
 	time.Sleep(10 * time.Second)
@@ -111,6 +117,7 @@ func Connect(ganacheRPC string) (contract.Conn, error) {
 	if err != nil {
 		return contract.Conn{}, err
 	}
+	fmt.Printf("Ganache is listening on %shttp://localhost:8545%s...\n", green, reset)
 	ethclient := ethclient.NewClient(raw)
 
 	return contract.Conn{
