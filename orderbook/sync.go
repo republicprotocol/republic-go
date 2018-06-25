@@ -93,6 +93,10 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	buyOrderIDs, buyErr := syncer.renLedger.BuyOrders(syncer.syncBuyPointer, syncer.renLedgerLimit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
+			depth, err := syncer.renLedger.Depth(ord)
+			if err == nil && depth > 6000 {
+				continue
+			}
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
 				log.Println("cannot sync order status", err)
@@ -120,7 +124,10 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	sellOrderIDs, sellErr := syncer.renLedger.SellOrders(syncer.syncSellPointer, syncer.renLedgerLimit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
-
+			depth, err := syncer.renLedger.Depth(ord)
+			if err == nil && depth > 6000 {
+				continue
+			}
 			status, err := syncer.renLedger.Status(ord)
 			if err != nil {
 				log.Println("cannot sync order status", err)
