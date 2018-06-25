@@ -79,6 +79,11 @@ func main() {
 
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+	multiAddrSignature, err := crypter.Sign(multiAddr.Hash())
+	if err != nil {
+		log.Fatalf("cannot sign own multiaddress: %v", err)
+	}
+	multiAddr.Signature = multiAddrSignature
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
