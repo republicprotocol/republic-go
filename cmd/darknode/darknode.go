@@ -5,8 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/big"
 	"net"
+	netHttp "net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -14,16 +14,14 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/accounts"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/ledger"
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
+	"github.com/republicprotocol/republic-go/http"
+	"github.com/republicprotocol/republic-go/http/adapter"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
@@ -31,7 +29,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
-	"github.com/republicprotocol/republic-go/stream"
+	"github.com/republicprotocol/republic-go/status"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -65,15 +63,27 @@ func main() {
 	}
 	log.Printf("address %v", multiAddr)
 
+	// Connect to Ethereum
+	conn, err := contract.Connect(config.Ethereum)
+	if err != nil {
+		log.Fatalf("cannot connect to ethereum: %v", err)
+	}
+
+	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
+
 	// Get ethereum bindings
-	auth, darkPool, darkPoolAccounts, _, renLedger, err := getEthereumBindings(config.Keystore, config.Ethereum)
+	contractBinder, err := contract.NewBinder(auth, conn)
 	if err != nil {
 		log.Fatalf("cannot get ethereum bindings: %v", err)
 	}
-	log.Printf("ethereum %v", auth.From.Hex())
 
 	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, darkPool, 256, time.Minute)
+	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+	multiAddrSignature, err := crypter.Sign(multiAddr.Hash())
+	if err != nil {
+		log.Fatalf("cannot sign own multiaddress: %v", err)
+	}
+	multiAddr.Signature = multiAddrSignature
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam)
@@ -96,21 +106,55 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(renLedger, 32), &store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 1024), store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamClient := grpc.NewStreamClient(&crypter, config.Address)
-	streamService := grpc.NewStreamService(&crypter, config.Address)
-	streamer := stream.NewStreamRecycler(stream.NewStreamer(config.Address, streamClient, &streamService))
-	streamService.Register(server)
+	streamer := grpc.NewStreamer(&crypter, config.Address)
+	streamerService := grpc.NewStreamerService(&crypter, streamer)
+	streamerService.Register(server)
+
+	// Populate status information
+	statusProvider := status.NewProvider(&dht)
+	statusProvider.WriteNetwork(string(config.Ethereum.Network))
+	statusProvider.WriteMultiAddress(multiAddr)
+	statusProvider.WriteEthereumAddress(auth.From.Hex())
+
+	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
+	if err != nil {
+		log.Fatalf("could not determine public key: %v", err)
+	}
+	statusProvider.WritePublicKey(pk)
+
+	// Start the status server
+	go func() {
+		bindParam := "0.0.0.0"
+		portParam := "18515"
+		log.Printf("HTTP listening on %v:%v...", bindParam, portParam)
+
+		statusAdapter := adapter.NewStatusAdapter(statusProvider)
+		if err := netHttp.ListenAndServe(fmt.Sprintf("%v:%v", bindParam, portParam), http.NewStatusServer(statusAdapter)); err != nil {
+			log.Fatalf("error listening and serving: %v", err)
+		}
+	}()
 
 	// Start the secure order matching engine
 	go func() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
 
-		// FIXME: Wait until registration has been approved.
+		// Wait until registration
+		isRegistered, err := contractBinder.IsRegistered(config.Address)
+		if err != nil {
+			logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
+		}
+		for !isRegistered {
+			time.Sleep(14 * time.Second)
+			isRegistered, err = contractBinder.IsRegistered(config.Address)
+			if err != nil {
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
+			}
+		}
 
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
@@ -127,18 +171,18 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := darkPool.Epoch()
+		epoch, err := contractBinder.Epoch()
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
-		ranker, err := ome.NewRanker(done, config.Address, epoch)
+		ranker, err := ome.NewRanker(done, config.Address, store, store, epoch)
 		if err != nil {
 			log.Fatalf("cannot create new ranker: %v", err)
 		}
-		matcher := ome.NewMatcher(&store, smpcer)
-		confirmer := ome.NewConfirmer(&store, renLedger, 14*time.Second, 1)
-		settler := ome.NewSettler(&store, smpcer, darkPoolAccounts)
-		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, &store, orderbook, smpcer, epoch)
+		matcher := ome.NewMatcher(store, smpcer)
+		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
+		settler := ome.NewSettler(store, smpcer, &contractBinder)
+		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
@@ -153,7 +197,7 @@ func main() {
 				time.Sleep(14 * time.Second)
 
 				// Get the epoch
-				nextEpoch, err := darkPool.Epoch()
+				nextEpoch, err := contractBinder.Epoch()
 				if err != nil {
 					logger.Error(fmt.Sprintf("cannot sync epoch: %v", err))
 					continue
@@ -173,7 +217,7 @@ func main() {
 	}()
 
 	// Start gRPC server and run until the server is stopped
-	log.Printf("listening on %v:%v...", config.Host, config.Port)
+	log.Printf("gRPC listening on %v:%v...", config.Host, config.Port)
 	lis, err := net.Listen("tcp", fmt.Sprintf("%v:%v", config.Host, config.Port))
 	if err != nil {
 		log.Fatalf("cannot listen on %v:%v: %v", config.Host, config.Port, err)
@@ -195,33 +239,4 @@ func getIPAddress() (string, error) {
 	}
 
 	return string(out), nil
-}
-
-func getEthereumBindings(keystore crypto.Keystore, conf ethereum.Config) (*bind.TransactOpts, cal.Darkpool, cal.DarkpoolAccounts, cal.DarkpoolFees, cal.RenLedger, error) {
-	conn, err := ethereum.Connect(conf)
-	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("cannot connect to ethereum: %v", err)
-	}
-	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
-	auth.GasPrice = big.NewInt(1000000000)
-
-	darkpool, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	renLedger, err := ledger.NewRenLedgerContract(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to ren ledger: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	acts, err := accounts.NewRenExAccounts(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to RenEx accounts: %v", err))
-		return auth, nil, nil, nil, nil, err
-	}
-
-	return auth, &darkpool, &acts, nil, &renLedger, nil
 }

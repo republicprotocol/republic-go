@@ -6,48 +6,86 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// ErrOrderFragmentNotFound is return when attempting to load an order that
+// ErrOrderFragmentNotFound is returned when attempting to read an order that
 // cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
-// ErrOrderNotFound is return when attempting to load an order that cannot be
-// found.
-var ErrOrderNotFound = errors.New("order not found")
+// ErrChangeNotFound is returned when attempting to read a change that cannot
+// be found.
+var ErrChangeNotFound = errors.New("order not found")
 
-// Storer for the orders and order fragments that are received by the
-// Orderbook.
-type Storer interface {
-	InsertOrderFragment(orderFragment order.Fragment) error
-	InsertOrder(order order.Order) error
-	OrderFragment(id order.ID) (order.Fragment, error)
-	Order(id order.ID) (order.Order, error)
-	RemoveOrderFragment(id order.ID) error
-	RemoveOrder(id order.ID) error
+// ErrCursorOutOfRange is returned when an iterator cursor is used to read a
+// value outside the range of the iterator.
+var ErrCursorOutOfRange = errors.New("cursor out of range")
+
+// ChangeStorer for the Changes that are synchronised.
+type ChangeStorer interface {
+	PutChange(change Change) error
+	DeleteChange(id order.ID) error
+	Change(id order.ID) (Change, error)
+	Changes() (ChangeIterator, error)
 }
 
-// SyncPointer points to the last order.Order that was successfully
-// synchronized by the Syncer. It is primarily used to prevent re-syncing all
-// orders aftter a reboot.
-type SyncPointer = int
+// ChangeIterator is used to iterate over a Change collection.
+type ChangeIterator interface {
 
-// SyncStorer exposes functionality for storing and loading synchronization
-// data that the Syncer uses to keep track of where it is in the
-// synchronization process.
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the Change collection, otherwise false.
+	Next() bool
+
+	// Cursor returns the Change at the current cursor location. Returns
+	// an error if the cursor is out of range.
+	Cursor() (Change, error)
+
+	// Collect all Changes in the iterator into a slice.
+	Collect() ([]Change, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
+}
+
+// OrderFragmentStorer for the order.Fragments that are received.
+type OrderFragmentStorer interface {
+	PutOrderFragment(orderFragment order.Fragment) error
+	DeleteOrderFragment(id order.ID) error
+	OrderFragment(id order.ID) (order.Fragment, error)
+	OrderFragments() (OrderFragmentIterator, error)
+}
+
+// OrderFragmentIterator is used to iterate over an order.Fragment collection.
+type OrderFragmentIterator interface {
+
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the order.Fragment collection, otherwise false.
+	Next() bool
+
+	// Cursor returns the order.Fragment at the current cursor location.
+	// Returns an error if the cursor is out of range.
+	Cursor() (order.Fragment, error)
+
+	// Collect all order.Fragments in the iterator into a slice.
+	Collect() ([]order.Fragment, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
+}
+
+// PointerStorer for the synchronisation pointers used to track the progress
+// of synchronising order.Orders.
+type PointerStorer interface {
+	PutBuyPointer(pointer Pointer) error
+	BuyPointer() (Pointer, error)
+
+	PutSellPointer(pointer Pointer) error
+	SellPointer() (Pointer, error)
+}
+
+// Pointer points to the last order.Order that was successfully synchronised.
+type Pointer int
+
+// SyncStorer combines the ChangeStorer interface and the PointerStorer
+// interface into a unified interface that is convenient for synchronisation.
 type SyncStorer interface {
-
-	// InsertBuyPointer into the Storer. The prevents the Syncer needing to
-	// re-sync all buy orders after a reboot.
-	InsertBuyPointer(SyncPointer) error
-
-	// InsertSellPointer into the Storer. The prevents the Syncer needing to
-	// re-sync all sell orders after a reboot.
-	InsertSellPointer(SyncPointer) error
-
-	// BuyPointer returns the SyncPointer stored in the Storer. It defaults to
-	// zero.
-	BuyPointer() (SyncPointer, error)
-
-	// SellPointer returns the SyncPointer stored in the Storer. It defaults to
-	// zero.
-	SellPointer() (SyncPointer, error)
+	ChangeStorer
+	PointerStorer
 }

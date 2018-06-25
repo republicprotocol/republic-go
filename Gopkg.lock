@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
-  revision = "59944ff78bc1de686b0aba1444dfd380f48f03d4"
+  revision = "06cfa1db77dae2425e143980408e642f7a9d5b09"
 
 [[projects]]
   branch = "master"
@@ -41,8 +41,8 @@
     "rpc",
     "trie"
   ]
-  revision = "eae63c511ceafab14b92e274c1b18bf1700e2d3d"
-  version = "v1.8.10"
+  revision = "dea1ce052a10cd7d401a5c04f83f371a06fe293c"
+  version = "v1.8.11"
 
 [[projects]]
   name = "github.com/go-stack/stack"
@@ -108,19 +108,19 @@
   branch = "master"
   name = "github.com/mr-tron/base58"
   packages = ["base58"]
-  revision = "c1bdf7c52f59d6685ca597b9955a443ff95eeee6"
+  revision = "4df4dc6e86a912614d09719d10cad427b087cbfb"
 
 [[projects]]
   branch = "master"
   name = "github.com/multiformats/go-multiaddr"
   packages = ["."]
-  revision = "f36800afeb9c141e1adb7da099e6f010dfd4c419"
+  revision = "96804982667ed1672985566d0d0c2a7ed6f10e1f"
 
 [[projects]]
-  branch = "master"
   name = "github.com/multiformats/go-multihash"
   packages = ["."]
   revision = "8be2a682ab9f254311de1375145a2f78a809b07d"
+  version = "v1.0.8"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -173,12 +173,6 @@
   version = "v1.1"
 
 [[projects]]
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/republicprotocol/go-do"
   packages = ["."]
@@ -219,7 +213,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
+  revision = "0d5a0ceb10cf9ab89fdd744cc8c50a83134f6697"
 
 [[projects]]
   name = "github.com/urfave/cli"
@@ -236,7 +230,7 @@
     "scrypt",
     "sha3"
   ]
-  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
@@ -254,7 +248,7 @@
     "trace",
     "websocket"
   ]
-  revision = "1e491301e022f8f977054da4c2d852decd59571f"
+  revision = "afe8f62b1d6bbd81f31868121a50b06d8188e1f9"
 
 [[projects]]
   branch = "master"
@@ -263,7 +257,7 @@
     "cpu",
     "unix"
   ]
-  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
+  revision = "63fc586f45fe72d95d5240a5d5eb95e6503907d3"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -306,13 +300,13 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "c65208ee29128450a4a024e3b7710f3a8d14028d"
+  revision = "25b95b48224cce18163c7d49dcfb89a2d5ecd209"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "32ee49c4dd805befd833990acba36cb75042378c"
+  revision = "80063a038e333bbe006c878e4c5ce4c74d055498"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -321,15 +315,16 @@
     "balancer",
     "balancer/base",
     "balancer/roundrobin",
-    "channelz",
     "codes",
     "connectivity",
     "credentials",
     "encoding",
     "encoding/proto",
-    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
+    "internal/backoff",
+    "internal/channelz",
+    "internal/grpcrand",
     "keepalive",
     "metadata",
     "naming",
@@ -342,8 +337,8 @@
     "tap",
     "transport"
   ]
-  revision = "7a6a684ca69eb4cae85ad0a484f2e531598c047b"
-  version = "v1.12.2"
+  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
+  version = "v1.13.0"
 
 [[projects]]
   name = "gopkg.in/fatih/set.v0"
@@ -372,6 +367,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "046b8ad828be6aa4fdffa67a8647a0a12f206303bf4cf1f66565b3d7f8ece315"
+  inputs-digest = "75537b2182b26aa1bfab8ac1eadec2c7d7fe6f4cf93f4f33c8855af9c8c358c3"
   solver-name = "gps-cdcl"
   solver-version = 1

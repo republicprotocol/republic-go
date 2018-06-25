@@ -90,7 +90,7 @@ func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order
 		// Store the computation as a mismatch
 		com.State = ComputationStateMismatched
 		com.Match = false
-		if err := matcher.storer.InsertComputation(com); err != nil {
+		if err := matcher.storer.PutComputation(com); err != nil {
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 		}
 		// Trigger the callback with a mismatch
@@ -105,7 +105,7 @@ func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
 	if isExpired(com, buyFragment, sellFragment) {
 		com.State = ComputationStateRejected
-		if err := matcher.storer.InsertComputation(com); err != nil {
+		if err := matcher.storer.PutComputation(com); err != nil {
 			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
 		}
 		return
@@ -155,7 +155,7 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 			// Store the computation as a match
 			com.State = ComputationStateMatched
 			com.Match = true
-			if err := matcher.storer.InsertComputation(com); err != nil {
+			if err := matcher.storer.PutComputation(com); err != nil {
 				logger.Compute(logger.LevelError, fmt.Sprintf("cannot store matched computation buy = %v, sell = %v", com.Buy, com.Sell))
 			}
 
@@ -172,7 +172,7 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	// Store the computation as a mismatch
 	com.State = ComputationStateMismatched
 	com.Match = false
-	if err := matcher.storer.InsertComputation(com); err != nil {
+	if err := matcher.storer.PutComputation(com); err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
 	}
 

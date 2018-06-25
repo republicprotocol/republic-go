@@ -24,7 +24,8 @@ func NewComputationID(buy, sell order.ID) ComputationID {
 
 // String returns a human-readable representation of the ComputationID.
 func (id ComputationID) String() string {
-	return base64.StdEncoding.EncodeToString(id[:8])
+	runes := []rune(base64.StdEncoding.EncodeToString(id[:]))
+	return string(runes[:4])
 }
 
 // ComputationState is used to track the state of a Computation as it changes
@@ -67,14 +68,14 @@ type Computations []Computation
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
 	ID        ComputationID      `json:"id"`
-	State     ComputationState   `json:"state"`
+	Buy       order.ID           `json:"buy"`
+	Sell      order.ID           `json:"sell"`
+	EpochHash [32]byte           `json:"epochHash"`
 	Priority  orderbook.Priority `json:"priority"`
-	Match     bool               `json:"match"`
-	Timestamp time.Time          `json:"timestamp"`
 
-	Buy       order.ID `json:"buy"`
-	Sell      order.ID `json:"sell"`
-	EpochHash [32]byte `json:"epochHash"`
+	Match     bool             `json:"match"`
+	State     ComputationState `json:"state"`
+	Timestamp time.Time        `json:"timestamp"`
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a

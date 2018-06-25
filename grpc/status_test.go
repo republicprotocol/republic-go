@@ -49,7 +49,7 @@ var _ = Describe("Status", func() {
 			conn, err := Dial(context.Background(), serviceMultiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			client := NewStatusServiceClient(conn.ClientConn)
+			client := NewStatusServiceClient(conn)
 			status, err := client.Status(context.Background(), &StatusRequest{})
 			Expect(err).ShouldNot(HaveOccurred())
 

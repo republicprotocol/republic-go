@@ -1,4 +1,0 @@
-[submodule "blockchain/ethereum/bindings/republic-sol"]
-	path = blockchain/ethereum/bindings/republic-sol
-	url = https://github.com/republicprotocol/republic-sol.git
-

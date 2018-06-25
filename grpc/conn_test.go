@@ -2,19 +2,23 @@ package grpc_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"time"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
 
-	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
+	_ "github.com/republicprotocol/republic-go/identity" // initialise the protocol
 	"google.golang.org/grpc"
 )
 
-var _ = Describe("Client connections", func() {
+var _ = Describe("Connections", func() {
 
 	var server *grpc.Server
 
@@ -35,11 +39,12 @@ var _ = Describe("Client connections", func() {
 		server.Stop()
 	})
 
-	Context("Dial method", func() {
+	Context("when dialing", func() {
+		It("should return a connection for valid multiaddresses", func() {
 
-		It("should return a connection object if valid multiaddress is provided", func() {
-
-			multiAddr, err := createConnMultiAddress("127.0.0.1", "3000")
+			ecdsaKey, err := crypto.RandomEcdsaKey()
+			Expect(err).ShouldNot(HaveOccurred())
+			multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/127.0.0.1/tcp/3000/republic/%s", ecdsaKey.Address()))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			conn, err := Dial(context.Background(), multiAddr)
@@ -49,46 +54,43 @@ var _ = Describe("Client connections", func() {
 		})
 	})
 
-	Context("Clone method", func() {
+	Context("when backing off", func() {
+		It("should retry with a longer wait time until the operation succeeds", func() {
+			attempts := 0
 
-		It("should return a clone of the connection object", func() {
-			conn := createConn()
-			connUpdate := conn.Clone()
-			Expect(connUpdate).To(Equal(conn))
+			start := time.Now()
+			err := Backoff(context.Background(), func() error {
+				if attempts < 2 {
+					attempts++
+					return errors.New("error")
+				}
+				return nil
+			})
+			end := time.Now()
+
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(attempts).Should(Equal(2))
+			Expect(end.Sub(start).Seconds()).Should(BeNumerically(">=", 2.0))
+			Expect(end.Sub(start).Seconds()).Should(BeNumerically("<=", 4.0))
+		})
+
+		It("should timeout with an error after the context is done", func() {
+			attempts := 0
+
+			start := time.Now()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			err := Backoff(ctx, func() error {
+				attempts++
+				return errors.New("error")
+			})
+			end := time.Now()
+
+			Expect(err).Should(HaveOccurred())
+			Expect(attempts).Should(Equal(2))
+			Expect(end.Sub(start).Seconds()).Should(BeNumerically(">=", 2.0))
+			Expect(end.Sub(start).Seconds()).Should(BeNumerically("<=", 4.0))
 		})
 	})
 
-	Context("Close method", func() {
-
-		It("should shutdown connection object if all its references have been closed", func() {
-			conn := createConn()
-			err := conn.Close()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conn.ClientConn.GetState().String()).Should(Equal("SHUTDOWN"))
-		})
-
-		It("should not SHUTDOWN connection object if it has atleast one reference alive", func() {
-			conn := createConn()
-			conn = conn.Clone()
-			err := conn.Close()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conn.ClientConn.GetState().String()).ShouldNot((Equal("SHUTDOWN")))
-		})
-	})
 })
-
-func createConn() *Conn {
-	connMultiAddress, err := createConnMultiAddress("127.0.0.1", "3000")
-	Expect(err).ShouldNot(HaveOccurred())
-	conn, err := Dial(context.Background(), connMultiAddress)
-	Expect(err).ShouldNot(HaveOccurred())
-	return conn
-}
-
-func createConnMultiAddress(host, port string) (identity.MultiAddress, error) {
-	keystore, err := crypto.RandomKeystore()
-	if err != nil {
-		return identity.MultiAddress{}, err
-	}
-	return identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%s/tcp/%s/republic/%s", host, port, keystore.Address()))
-}

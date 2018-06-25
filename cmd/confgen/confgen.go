@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 )
 
 func main() {
-	host := flag.String("host", "0.0.0.0", "ip address of the node")
-	network := flag.String("network", "kovan", "ethereum network")
+	network := flag.String("network", "nightly", "Republic Protocol network")
 
 	flag.Parse()
 
@@ -24,17 +23,22 @@ func main() {
 		log.Fatalf("cannot create keystore: %v", err)
 	}
 
-	var ethereumConfig ethereum.Config
+	var ethereumConfig contract.Config
 
 	switch *network {
-	case "ropsten":
-		ethereumConfig = ethereum.Config{
-			Network: ethereum.NetworkRopsten,
-			URI:     "https://ropsten.infura.io",
+	case string(contract.NetworkTestnet):
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkTestnet,
+			URI:     "https://kovan.infura.io",
 		}
-	case "kovan":
-		ethereumConfig = ethereum.Config{
-			Network: ethereum.NetworkKovan,
+	case string(contract.NetworkFalcon):
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkFalcon,
+			URI:     "https://kovan.infura.io",
+		}
+	case string(contract.NetworkNightly):
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkNightly,
 			URI:     "https://kovan.infura.io",
 		}
 	default:
@@ -43,7 +47,7 @@ func main() {
 
 	conf := config.Config{
 		Keystore:                keystore,
-		Host:                    *host,
+		Host:                    "0.0.0.0",
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
 		BootstrapMultiAddresses: []identity.MultiAddress{},

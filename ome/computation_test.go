@@ -2,7 +2,6 @@ package ome_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -21,20 +20,32 @@ var _ = Describe("Computations", func() {
 		buy, sell = testutils.RandomBuyOrder(), testutils.RandomSellOrder()
 	})
 
-	Context("computations id ", func() {
-		It("should be able to compare two computation ID", func() {
+	Context("when checking for equality", func() {
+		It("should return true for equal computation IDs", func() {
 			computationID := NewComputationID(buy.ID, sell.ID)
 			expectedID := ComputationID{}
 			copy(expectedID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
 			Ω(bytes.Equal(computationID[:], expectedID[:]))
 		})
 
-		It("should implement the Stringer interface ", func() {
-			computationID := NewComputationID(buy.ID, sell.ID)
-			idInString := fmt.Sprintf("%v", computationID)
+		It("should return true for the same computations compared against itself", func() {
+			computation := NewComputation(buy.ID, sell.ID, [32]byte{})
+			Expect(computation.Equal(&computation)).Should(BeTrue())
+			Expect(computation.ID.String()).Should(Equal(computation.ID.String()))
+		})
 
-			expectedString := base64.StdEncoding.EncodeToString(computationID[:8])
-			Ω(idInString).Should(Equal(expectedString))
+		It("should return true for equal computations compared against each other", func() {
+			lhs := NewComputation(buy.ID, sell.ID, [32]byte{})
+			rhs := NewComputation(buy.ID, sell.ID, [32]byte{})
+			Expect(lhs.Equal(&rhs)).Should(BeTrue())
+			Expect(lhs.ID.String()).Should(Equal(rhs.ID.String()))
+		})
+
+		It("should return false for unequal computations compared against each other", func() {
+			lhs := NewComputation(buy.ID, sell.ID, [32]byte{})
+			rhs := NewComputation(sell.ID, buy.ID, [32]byte{})
+			Expect(lhs.Equal(&rhs)).Should(BeFalse())
+			Expect(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
 		})
 	})
 

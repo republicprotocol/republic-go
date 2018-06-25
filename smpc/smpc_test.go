@@ -55,7 +55,7 @@ var _ = Describe("Smpcer", func() {
 			By("bootstrapping")
 			dispatch.CoForAll(nodes, func(i int) {
 				defer GinkgoRecover()
-				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				if err := nodes[i].Swarmer.Bootstrap(ctx, bootstraps); err != nil {
 					log.Println(err)
@@ -131,7 +131,6 @@ type mockNode struct {
 
 	Swarmer      swarm.Swarmer
 	SwarmService grpc.SwarmService
-	StreamClient stream.Client
 	Streamer     stream.Streamer
 	Smpcer       Smpcer
 }
@@ -151,14 +150,13 @@ func generateMocknodes(n int) ([]*mockNode, []identity.Address, error) {
 	addresses := make([]identity.Address, n)
 
 	for i := range nodes {
-		nodes[i] = new(mockNode)
 		keystore, err := crypto.RandomKeystore()
 		if err != nil {
 			return nil, nil, err
 		}
 
 		addr := identity.Address(keystore.Address())
-		dht := dht.NewDHT(addr, n/2)
+		dht := dht.NewDHT(addr, n)
 		multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%v", 3000+i, addr))
 		if err != nil {
 			return nil, nil, err
@@ -170,15 +168,15 @@ func generateMocknodes(n int) ([]*mockNode, []identity.Address, error) {
 
 		swarmClient := grpc.NewSwarmClient(multiAddr)
 		swarmer := swarm.NewSwarmer(swarmClient, &dht)
-		swarmServices := grpc.NewSwarmService(swarm.NewServer(testutils.NewCrypter(), swarmClient, &dht))
+		swarmService := grpc.NewSwarmService(swarm.NewServer(testutils.NewCrypter(), swarmClient, &dht))
 
-		streamClient := grpc.NewStreamClient(testutils.NewCrypter(), addr)
-		streamService := grpc.NewStreamService(testutils.NewCrypter(), addr)
-		streamer := stream.NewStreamRecycler(stream.NewStreamer(addr, streamClient, &streamService))
+		streamer := grpc.NewStreamer(testutils.NewCrypter(), addr)
+		streamerService := grpc.NewStreamerService(testutils.NewCrypter(), streamer)
 
 		smpcer := NewSmpcer(swarmer, streamer)
 
 		addresses[i] = addr
+		nodes[i] = new(mockNode)
 		nodes[i].Address = addr
 		nodes[i].Multiaddress = multiAddr
 		nodes[i].Host = "127.0.0.1"
@@ -186,13 +184,12 @@ func generateMocknodes(n int) ([]*mockNode, []identity.Address, error) {
 		nodes[i].Listener = listener
 		nodes[i].Server = grpc.NewServer()
 		nodes[i].Swarmer = swarmer
-		nodes[i].SwarmService = swarmServices
-		nodes[i].StreamClient = streamClient
+		nodes[i].SwarmService = swarmService
 		nodes[i].Streamer = streamer
 		nodes[i].Smpcer = smpcer
 
-		swarmServices.Register(nodes[i].Server)
-		streamService.Register(nodes[i].Server)
+		swarmService.Register(nodes[i].Server)
+		streamerService.Register(nodes[i].Server)
 	}
 
 	return nodes, addresses, nil

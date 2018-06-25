@@ -2,46 +2,75 @@ package orderbook_test
 
 import (
 	"bytes"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/orderbook"
 
-	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var (
 	NumberOfOrderPairs = 40
-	RenLimit           = 10
+	Limit              = 10
 )
 
 var _ = Describe("Syncer", func() {
 	var (
-		renLedger   cal.RenLedger
-		storer      SyncStorer
+		contract    *orderbookBinder
+		storer      *leveldb.Store
 		syncer      Syncer
 		buys, sells []order.Order
 	)
 
-	Context("when syncing with the ledger", func() {
+	Context("when comparing changes", func() {
+		It("should return true when comparing a change against itself", func() {
+			buy := testutils.RandomBuyOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			Expect(change.Equal(&change)).Should(BeTrue())
+		})
+
+		It("should return true when comparing a change against another equal change", func() {
+			buy := testutils.RandomBuyOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			otherChange := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			Expect(change.Equal(&otherChange)).Should(BeTrue())
+		})
+
+		It("should return false when comparing a change against another different change", func() {
+			buy, sell := testutils.RandomBuyOrder(), testutils.RandomSellOrder()
+			change := NewChange(buy.ID, buy.Parity, order.Open, Priority(0), "buyer", 0)
+			otherChange := NewChange(sell.ID, sell.Parity, order.Open, Priority(0), "seller", 0)
+			Expect(change.Equal(&otherChange)).Should(BeFalse())
+		})
+	})
+
+	Context("when syncing", func() {
 
 		BeforeEach(func() {
-			renLedger = testutils.NewRenLedger()
-			storer = testutils.NewStorer()
+			var err error
+			contract = newOrderbookBinder()
+			storer, err = leveldb.NewStore("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
 			buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
-			syncer = NewSyncer(renLedger, RenLimit)
+			syncer = NewSyncer(storer, contract, Limit)
 			changeSet, err := syncer.Sync()
 			Ω(err).ShouldNot(HaveOccurred())
 			Ω(len(changeSet)).Should(Equal(0))
 		})
 
+		AfterEach(func() {
+			os.RemoveAll("./data.out")
+		})
+
 		It("should be able to sync new opened orders", func() {
 			priority := Priority(1)
 			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
+				err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
 				changeSet, err := syncer.Sync()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -51,7 +80,7 @@ var _ = Describe("Syncer", func() {
 				Ω(changeSet[0].OrderPriority).Should(Equal(priority))
 				Ω(changeSet[0].OrderStatus).Should(Equal(order.Open))
 
-				err = renLedger.OpenSellOrder([65]byte{}, sells[i].ID)
+				err = contract.OpenSellOrder([65]byte{}, sells[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
 				changeSet, err = syncer.Sync()
 				Ω(err).ShouldNot(HaveOccurred())
@@ -66,11 +95,11 @@ var _ = Describe("Syncer", func() {
 
 		It("should be able to sync confirming order events", func() {
 			// Open orders
-			openOrders(renLedger, syncer, buys, sells)
+			openOrders(contract, syncer, buys, sells)
 
 			// Confirm orders
 			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := renLedger.ConfirmOrder(buys[i].ID, sells[i].ID)
+				err := contract.ConfirmOrder(buys[i].ID, sells[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			changeSet, err := syncer.Sync()
@@ -83,13 +112,13 @@ var _ = Describe("Syncer", func() {
 
 		It("should be able to sync canceling order events", func() {
 			// Open orders
-			openOrders(renLedger, syncer, buys, sells)
+			openOrders(contract, syncer, buys, sells)
 
 			// Cancel orders
 			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := renLedger.CancelOrder([65]byte{}, buys[i].ID)
+				err := contract.CancelOrder([65]byte{}, buys[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
-				err = renLedger.CancelOrder([65]byte{}, sells[i].ID)
+				err = contract.CancelOrder([65]byte{}, sells[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			changeSet, err := syncer.Sync()
@@ -114,18 +143,18 @@ func generateOrderPairs(n int) ([]order.Order, []order.Order) {
 	return buyOrders, sellOrders
 }
 
-func openOrders(renLedger cal.RenLedger, syncer Syncer, buys, sells []order.Order) {
+func openOrders(contract *orderbookBinder, syncer Syncer, buys, sells []order.Order) {
 	for i := 0; i < NumberOfOrderPairs; i++ {
-		err := renLedger.OpenBuyOrder([65]byte{}, buys[i].ID)
+		err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
 		Ω(err).ShouldNot(HaveOccurred())
-		err = renLedger.OpenSellOrder([65]byte{}, sells[i].ID)
+		err = contract.OpenSellOrder([65]byte{}, sells[i].ID)
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 	// Test the renLimit
-	for i := 0; i < NumberOfOrderPairs/RenLimit; i++ {
+	for i := 0; i < NumberOfOrderPairs/Limit; i++ {
 		changeSet, err := syncer.Sync()
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(len(changeSet)).Should(Equal(RenLimit * 2))
+		Ω(len(changeSet)).Should(Equal(Limit * 2))
 		Ω(changeSet[i].OrderStatus).Should(Equal(order.Open))
 	}
 }

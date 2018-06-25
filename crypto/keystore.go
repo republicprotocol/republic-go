@@ -105,19 +105,23 @@ func (keystore *Keystore) DecryptFromJSON(data []byte, passphrase string) error 
 	if err := json.Unmarshal(data, &keystoreEncrypted); err != nil {
 		return err
 	}
-	ecdsaDecrypted, err := decryptEcdsaKeyV3(&keystoreEncrypted.EcdsaKey, passphrase)
-	if err != nil {
-		return err
+	if keystoreEncrypted.EcdsaKey != nil {
+		ecdsaDecrypted, err := decryptEcdsaKeyV3(keystoreEncrypted.EcdsaKey, passphrase)
+		if err != nil {
+			return err
+		}
+		keystore.EcdsaKey = ecdsaDecrypted
 	}
-	rsaDecrypted, err := decryptRsaKeyV3(&keystoreEncrypted.RsaKey, passphrase)
-	if err != nil {
-		return err
+	if keystoreEncrypted.RsaKey != nil {
+		rsaDecrypted, err := decryptRsaKeyV3(keystoreEncrypted.RsaKey, passphrase)
+		if err != nil {
+			return err
+		}
+		keystore.RsaKey = rsaDecrypted
 	}
 
 	keystore.ID = uuid.Parse(keystoreEncrypted.ID)
 	keystore.Version = "3"
-	keystore.EcdsaKey = ecdsaDecrypted
-	keystore.RsaKey = rsaDecrypted
 	return nil
 }
 
@@ -145,10 +149,10 @@ const (
 )
 
 type encryptedKeystoreJSONV3 struct {
-	ID       string             `json:"id"`
-	Version  string             `json:"version"`
-	EcdsaKey encryptedKeyJSONV3 `json:"ecdsa"`
-	RsaKey   encryptedKeyJSONV3 `json:"rsa"`
+	ID       string              `json:"id"`
+	Version  string              `json:"version"`
+	EcdsaKey *encryptedKeyJSONV3 `json:"ecdsa,omitempty"`
+	RsaKey   *encryptedKeyJSONV3 `json:"rsa,omitempty"`
 }
 
 // Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore

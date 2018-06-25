@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -15,9 +14,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
-	"github.com/republicprotocol/republic-go/blockchain/ethereum/dnr"
-	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/http"
 	"github.com/republicprotocol/republic-go/http/adapter"
@@ -25,7 +22,6 @@ import (
 )
 
 func main() {
-	relayParam := flag.String("relay", "https://kovan-renexchange.herokuapp.com", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
@@ -36,16 +32,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load keystore: %v", err)
 	}
-
 	config, err := loadConfig(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
-
-	_, darkpool, err := loadSmartContracts(config, keystore)
+	contractBindings, err := loadContractBinder(config, keystore)
 	if err != nil {
-		log.Fatalf("cannot load smart contracts: %v", err)
+		log.Fatalf("cannot load smart contract: %v", err)
 	}
+	ingressAPI := fmt.Sprintf("https://ingress-api-%v.herokuapp.com", config.Network)
+
 	onePrice := order.CoExp{
 		Co:  2,
 		Exp: 40,
@@ -73,9 +69,8 @@ func main() {
 			Signature:            base64.StdEncoding.EncodeToString(signature),
 			OrderFragmentMapping: map[string][]adapter.OrderFragment{},
 		}
-		log.Printf("order signature %v", request.Signature)
 
-		pods, err := darkpool.Pods()
+		pods, err := contractBindings.Pods()
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
@@ -93,7 +88,7 @@ func main() {
 					Index: int64(i + 1),
 				}
 
-				pubKey, err := darkpool.PublicKey(pod.Darknodes[i])
+				pubKey, err := contractBindings.PublicKey(pod.Darknodes[i])
 				if err != nil {
 					log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
 				}
@@ -129,7 +124,8 @@ func main() {
 		}
 		buf := bytes.NewBuffer(data)
 
-		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", *relayParam), "application/json", buf)
+		log.Printf("sending to %v", fmt.Sprintf("%v/orders", ingressAPI))
+		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", ingressAPI), "application/json", buf)
 		if err != nil {
 			log.Fatalf("cannot send request: %v", err)
 		}
@@ -170,31 +166,27 @@ func loadKeystore(keystoreFile, passphrase string) (crypto.Keystore, error) {
 	return keystore, nil
 }
 
-func loadConfig(configFile string) (ethereum.Config, error) {
+func loadConfig(configFile string) (contract.Config, error) {
 	file, err := os.Open(configFile)
 	if err != nil {
-		return ethereum.Config{}, err
+		return contract.Config{}, err
 	}
 	defer file.Close()
-	config := ethereum.Config{}
+	config := contract.Config{}
 	if err := json.NewDecoder(file).Decode(&config); err != nil {
-		return ethereum.Config{}, err
+		return contract.Config{}, err
 	}
 	return config, nil
 }
 
-func loadSmartContracts(ethereumConfig ethereum.Config, keystore crypto.Keystore) (*bind.TransactOpts, cal.Darkpool, error) {
-	conn, err := ethereum.Connect(ethereumConfig)
+func loadContractBinder(config contract.Config, keystore crypto.Keystore) (contract.Binder, error) {
+	conn, err := contract.Connect(config)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
-		return nil, nil, err
+		return contract.Binder{}, err
 	}
+
 	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
 
-	registry, err := dnr.NewDarknodeRegistry(context.Background(), conn, auth, &bind.CallOpts{})
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to darkpool: %v", err))
-		return auth, nil, err
-	}
-	return auth, &registry, nil
+	return contract.NewBinder(auth, conn)
 }

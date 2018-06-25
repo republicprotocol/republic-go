@@ -1,13 +1,14 @@
 package ome_test
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -15,14 +16,20 @@ var numberOfComputationsToTest = 100
 
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
-	var renLedger cal.RenLedger
-	var storer Storer
+	var contract *omeBinder
+	var storer *leveldb.Store
 
 	BeforeEach(func() {
+		var err error
 		depth, pollInterval := uint(0), time.Second
-		renLedger = testutils.NewRenLedger()
-		storer = testutils.NewStorer()
-		confirmer = NewConfirmer(storer, renLedger, pollInterval, depth)
+		contract = newOmeBinder()
+		storer, err = leveldb.NewStore("./data.out")
+		Expect(err).ShouldNot(HaveOccurred())
+		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
+	})
+
+	AfterEach(func() {
+		os.RemoveAll("./data.out")
 	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
@@ -36,14 +43,14 @@ var _ = Describe("Confirmer", func() {
 			computations[i] = testutils.RandomComputation()
 			orderIDs[computations[i].Buy] = struct{}{}
 			orderIDs[computations[i].Sell] = struct{}{}
-			storer.InsertComputation(computations[i])
+			storer.PutComputation(computations[i])
 		}
 
 		// Open all the orders
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			err := renLedger.OpenBuyOrder([65]byte{}, computations[i].Buy)
+			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = renLedger.OpenSellOrder([65]byte{}, computations[i].Sell)
+			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 

@@ -5,7 +5,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/republicprotocol/republic-go/blockchain/ethereum"
+	"github.com/republicprotocol/republic-go/contract"
+
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -114,13 +115,9 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 					},
 				},
 			},
-			Ethereum: ethereum.Config{
-				Network:                 ethereum.NetworkGanache,
-				URI:                     "http://localhost:8545",
-				RepublicTokenAddress:    ethereum.RepublicTokenAddressOnGanache.String(),
-				DarknodeRegistryAddress: ethereum.DarknodeRegistryAddressOnGanache.String(),
-				RenLedgerAddress:        ethereum.RenLedgerAddressOnGanache.String(),
-				RenExAccountsAddress:    ethereum.RenExAccountsAddressOnGanache.String(),
+			Ethereum: contract.Config{
+				Network: contract.NetworkLocal,
+				URI:     "http://localhost:8545",
 			},
 		})
 	}

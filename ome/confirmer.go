@@ -2,10 +2,11 @@ package ome
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/cal"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -29,9 +30,9 @@ type Confirmer interface {
 type confirmer struct {
 	storer Storer
 
-	renLedger             cal.RenLedger
-	renLedgerPollInterval time.Duration
-	renLedgerBlockDepth   uint
+	contract              ContractBinder
+	orderbookPollInterval time.Duration
+	orderbookBlockDepth   uint
 
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
@@ -39,17 +40,17 @@ type confirmer struct {
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
-// cal.RenLedger for confirmation. It polls the cal.RenLedger on an interval
+// Orderbook for confirmation. It polls the Orderbook on an interval
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(storer Storer, renLedger cal.RenLedger, renLedgerPollInterval time.Duration, renLedgerBlockDepth uint) Confirmer {
+func NewConfirmer(storer Storer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
 		storer: storer,
 
-		renLedger:             renLedger,
-		renLedgerPollInterval: renLedgerPollInterval,
-		renLedgerBlockDepth:   renLedgerBlockDepth,
+		contract:              contract,
+		orderbookPollInterval: orderbookPollInterval,
+		orderbookBlockDepth:   orderbookBlockDepth,
 
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
@@ -81,12 +82,11 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				// Confirm Computations on the blockchain and register them for
 				// observation (we need to wait for finality)
 				if err := confirmer.beginConfirmation(com); err != nil {
-					select {
-					case <-done:
-						return
-					case errs <- err:
-						continue
-					}
+					// An error in confirmation should not stop the
+					// Confirmer from monitoring the Computation for
+					// confirmation (another node might have succeeded), so
+					// we pass through
+					logger.Error(err.Error())
 				}
 
 				// Wait for the confirmation of these orders to pass the depth
@@ -99,12 +99,12 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 		}
 	}()
 
-	// Periodically poll the cal.RenLedger to observe the state of
+	// Periodically poll the orderbook to observe the state of
 	// confirmations that have passed the block depth limit
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(confirmer.renLedgerPollInterval)
+		ticker := time.NewTicker(confirmer.orderbookPollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -134,7 +134,10 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 }
 
 func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
-	return confirmer.renLedger.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
+	if err := confirmer.contract.ConfirmOrder(orderMatch.Buy, orderMatch.Sell); err != nil {
+		return fmt.Errorf("cannot confirm computation buy = %v, sell = %v: %v", orderMatch.Buy, orderMatch.Sell, err)
+	}
+	return nil
 }
 
 func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
@@ -167,7 +170,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				continue
 			}
 		}
-		if err := confirmer.storer.InsertComputation(com); err != nil {
+		if err := confirmer.storer.PutComputation(com); err != nil {
 			select {
 			case <-done:
 				return
@@ -187,20 +190,20 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orderParity order.Parity) (order.ID, error) {
 	// Ignore orders that are not pass the depth limit
-	depth, err := confirmer.renLedger.Depth(ord)
+	depth, err := confirmer.contract.Depth(ord)
 	if err != nil {
 		return order.ID{}, err
 	}
-	if depth < confirmer.renLedgerBlockDepth {
+	if depth < confirmer.orderbookBlockDepth {
 		return order.ID{}, ErrOrderNotConfirmed
 	}
 
 	// Purge orders that are not confirmed
-	status, err := confirmer.renLedger.Status(ord)
+	status, err := confirmer.contract.Status(ord)
 	if err != nil {
 		return order.ID{}, err
 	}
-	if status != cal.StatusConfirmed {
+	if status != StatusConfirmed {
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {
@@ -209,7 +212,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 		return order.ID{}, ErrOrderNotConfirmed
 	}
 
-	match, err := confirmer.renLedger.OrderMatch(ord)
+	match, err := confirmer.contract.OrderMatch(ord)
 	if err != nil {
 		return order.ID{}, err
 	}

@@ -1,10 +1,8 @@
 package ome
 
 import (
-	"encoding/base64"
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/cal"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -25,17 +23,17 @@ type Settler interface {
 type settler struct {
 	storer   Storer
 	smpcer   smpc.Smpcer
-	accounts cal.DarkpoolAccounts
+	contract ContractBinder
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(storer Storer, smpcer smpc.Smpcer, accounts cal.DarkpoolAccounts) Settler {
+func NewSettler(storer Storer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
 	return &settler{
 		storer:   storer,
 		smpcer:   smpcer,
-		accounts: accounts,
+		contract: contract,
 	}
 }
 
@@ -75,7 +73,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 	err := settler.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 16 {
-			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", base64.StdEncoding.EncodeToString(buyFragment.OrderID[:8]), base64.StdEncoding.EncodeToString(sellFragment.OrderID[:8]), len(values)))
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", buyFragment.OrderID, sellFragment.OrderID, len(values)))
 			return
 		}
 		buy := order.NewOrder(buyFragment.OrderType, buyFragment.OrderParity, buyFragment.OrderSettlement, buyFragment.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
@@ -85,19 +83,19 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 	})
 	if err != nil {
-		logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buyFragment.OrderID[:8]), base64.StdEncoding.EncodeToString(sellFragment.OrderID[:8]), err))
+		logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: %v", buyFragment.OrderID, sellFragment.OrderID, err))
 	}
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
-	if err := settler.accounts.Settle(buy, sell); err != nil {
-		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
+	if err := settler.contract.Settle(buy, sell); err != nil {
+		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
 		return
 	}
 
 	com.State = ComputationStateSettled
-	if err := settler.storer.InsertComputation(com); err != nil {
-		logger.Error(fmt.Sprintf("cannot insert settled computation buy = %v, sell = %v: %v", base64.StdEncoding.EncodeToString(buy.ID[:8]), base64.StdEncoding.EncodeToString(sell.ID[:8]), err))
+	if err := settler.storer.PutComputation(com); err != nil {
+		logger.Error(fmt.Sprintf("cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
 		return
 	}
 

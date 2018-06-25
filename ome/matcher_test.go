@@ -1,10 +1,12 @@
 package ome_test
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/testutils"
@@ -14,7 +16,11 @@ var _ = Describe("Matcher", func() {
 
 	Context("when using an smpc that matches all values", func() {
 		It("should trigger the callback with matched results", func() {
-			store := testutils.NewStorer()
+			store, err := leveldb.NewStore("./data.out")
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				os.RemoveAll("./data.out")
+			}()
 			smpcer := testutils.NewAlwaysMatchSmpc()
 			matcher := NewMatcher(store, smpcer)
 
@@ -41,7 +47,11 @@ var _ = Describe("Matcher", func() {
 
 	Context("when using an smpc that mismatches all values", func() {
 		It("should never trigger the callback with matched results", func() {
-			store := testutils.NewStorer()
+			store, err := leveldb.NewStore("./data.out")
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				os.RemoveAll("./data.out")
+			}()
 			smpcer := testutils.NewAlwaysMismatchSmpc()
 			matcher := NewMatcher(store, smpcer)
 
@@ -68,7 +78,11 @@ var _ = Describe("Matcher", func() {
 
 	Context("when using an smpc that randomly matches values", func() {
 		It("should randomly trigger the callback with matched results", func() {
-			store := testutils.NewStorer()
+			store, err := leveldb.NewStore("./data.out")
+			Expect(err).ShouldNot(HaveOccurred())
+			defer func() {
+				os.RemoveAll("./data.out")
+			}()
 			smpcer := testutils.NewSmpc()
 			matcher := NewMatcher(store, smpcer)
 
