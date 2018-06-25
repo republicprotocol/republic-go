@@ -106,7 +106,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 32), store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 1024), store)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
