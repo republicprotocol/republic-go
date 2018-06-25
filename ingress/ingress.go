@@ -210,7 +210,7 @@ func (ingress *ingress) ProcessRequests(done <-chan struct{}) <-chan error {
 
 	go func() {
 		defer wg.Done()
-		ingress.processRequests(done, errs)
+		ingress.processRequestQueue(done, errs)
 	}()
 
 	go func() {
@@ -241,30 +241,32 @@ func (ingress *ingress) syncFromEpoch(epoch registry.Epoch) error {
 	return nil
 }
 
-func (ingress *ingress) processRequests(done <-chan struct{}, errs chan<- error) {
-	for {
-		select {
-		case <-done:
-			return
-		case request, ok := <-ingress.queueRequests:
-			if !ok {
+func (ingress *ingress) processRequestQueue(done <-chan struct{}, errs chan<- error) {
+	dispatch.CoForAll(NumBackgroundWorkers, func(i int) {
+		for {
+			select {
+			case <-done:
 				return
-			}
+			case request, ok := <-ingress.queueRequests:
+				if !ok {
+					return
+				}
 
-			logger.Info(fmt.Sprintf("received request of type %T", request))
+				logger.Info(fmt.Sprintf("received request of type %T", request))
 
-			switch req := request.(type) {
-			case EpochRequest:
-				ingress.processEpochRequest(req, done, errs)
-			case OpenOrderRequest:
-				ingress.processOpenOrderRequest(req, done, errs)
-			case CancelOrderRequest:
-				ingress.processCancelOrderRequest(req, done, errs)
-			default:
-				logger.Error(fmt.Sprintf("unexpected request type %T", request))
+				switch req := request.(type) {
+				case EpochRequest:
+					ingress.processEpochRequest(req, done, errs)
+				case OpenOrderRequest:
+					ingress.processOpenOrderRequest(req, done, errs)
+				case CancelOrderRequest:
+					ingress.processCancelOrderRequest(req, done, errs)
+				default:
+					logger.Error(fmt.Sprintf("unexpected request type %T", request))
+				}
 			}
 		}
-	}
+	})
 }
 
 func (ingress *ingress) processEpochRequest(req EpochRequest, done <-chan struct{}, errs chan<- error) {
