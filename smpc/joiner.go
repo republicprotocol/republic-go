@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -180,6 +182,7 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 
 		// Insert this join, if it is needed, and set the callback
 		if len(join.Shares) != joinSet.ValuesLen {
+			logger.Error(fmt.Sprintf("%v: expected %v, got %v", ErrJoinLengthUnequal, joinSet.ValuesLen, len(join.Shares)))
 			return ErrJoinLengthUnequal
 		}
 		if !joinSet.ValuesOk {
