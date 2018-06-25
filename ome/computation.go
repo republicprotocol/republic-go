@@ -24,7 +24,8 @@ func NewComputationID(buy, sell order.ID) ComputationID {
 
 // String returns a human-readable representation of the ComputationID.
 func (id ComputationID) String() string {
-	return base64.StdEncoding.EncodeToString(id[:8])
+	runes := []rune(base64.StdEncoding.EncodeToString(id[:]))
+	return string(runes[:4])
 }
 
 // ComputationState is used to track the state of a Computation as it changes

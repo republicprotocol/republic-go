@@ -25,7 +25,8 @@ func (id ID) Equal(other ID) bool {
 
 // String returns a truncated base64 encoding of the ID.
 func (id ID) String() string {
-	return base64.StdEncoding.EncodeToString(id[:8])
+	runes := []rune(base64.StdEncoding.EncodeToString(id[:]))
+	return string(runes[:4])
 }
 
 // Token is a numerical representation of a token supported by Republic

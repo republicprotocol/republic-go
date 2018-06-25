@@ -2,6 +2,7 @@ package ome
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -133,7 +134,10 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 }
 
 func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
-	return confirmer.contract.ConfirmOrder(orderMatch.Buy, orderMatch.Sell)
+	if err := confirmer.contract.ConfirmOrder(orderMatch.Buy, orderMatch.Sell); err != nil {
+		return fmt.Errorf("cannot confirm computation buy = %v, sell = %v: %v", orderMatch.Buy, orderMatch.Sell, err)
+	}
+	return nil
 }
 
 func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
