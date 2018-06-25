@@ -3,7 +3,6 @@ package ome
 import (
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -69,7 +68,8 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			sellFragment.Nonce,
 		},
 	}
-	copy(join.ID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
+	copy(join.ID[:], com.ID[:])
+	join.ID[32] = byte(ResolveStageSettlement)
 
 	err := settler.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
 		if len(values) != 16 {

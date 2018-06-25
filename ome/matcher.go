@@ -29,6 +29,7 @@ const (
 	ResolveStageSellVolumeExp
 	ResolveStageSellVolumeCo
 	ResolveStageTokens
+	ResolveStageSettlement
 )
 
 // String returns the human-readable representation of a ResolveStage.
@@ -208,11 +209,11 @@ func buildJoin(com Computation, buyFragment, sellFragment order.Fragment, stage 
 		return smpc.Join{}, ErrUnexpectedResolveStage
 	}
 	join := smpc.Join{
-		ID:     smpc.JoinID(com.ID),
 		Index:  smpc.JoinIndex(share.Index),
 		Shares: shamir.Shares{share},
 	}
-	join.ID[31] = byte(stage)
+	copy(join.ID[:], com.ID[:])
+	join.ID[32] = byte(stage)
 	return join, nil
 }
 

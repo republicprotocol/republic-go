@@ -204,10 +204,10 @@ func generateJoins(n, k int64) (order.Order, []Join) {
 			fragments[i].Tokens,
 		}
 		joins[i] = Join{
-			ID:     JoinID(ord.ID),
 			Index:  JoinIndex(i + 1),
 			Shares: shares,
 		}
+		copy(joins[i].ID[:], ord.ID[:])
 	}
 
 	return ord, joins

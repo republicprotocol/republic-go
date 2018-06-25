@@ -27,7 +27,7 @@ var ErrJoinLengthExceedsMax = errors.New("join length exceeds max")
 // A JoinID is used to identify an SMPC join over a network of SMPC nodes. For
 // a value to be joined, all SMPC nodes must use the same JoinID for that
 // value.
-type JoinID [32]byte
+type JoinID [33]byte
 
 // A Join is used to join a set of shamir.Shares. The shamir.Shares within a
 // Join are all associated with different shared values. All shamir.Shares must
