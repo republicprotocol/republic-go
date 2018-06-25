@@ -102,18 +102,21 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
 				buyErr = err
+				buyPointer++
 				continue
 			}
 			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
 				buyErr = err
+				buyPointer++
 				continue
 			}
 			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
 				buyErr = err
+				buyPointer++
 				continue
 			}
 
@@ -142,18 +145,21 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
 				sellErr = err
+				sellPointer++
 				continue
 			}
 			blockNumber, err := syncer.contract.BlockNumber(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
 				sellErr = err
+				sellPointer++
 				continue
 			}
 			trader, err := syncer.contract.Trader(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
 				sellErr = err
+				sellPointer++
 				continue
 			}
 
