@@ -80,7 +80,7 @@ func Connect(config Config) (Conn, error) {
 	if config.RewardVaultAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.RewardVaultAddress = "0x2b82a678faB97CB3eF311680D39a2445fFd579D5"
+			config.RewardVaultAddress = "0x98e32f470978915aE0C2a11B2f696A125AB7fB5b"
 		case NetworkFalcon:
 			config.RewardVaultAddress = "0xdd0b6eae1bee54bac330886c5a8c93a661d5a43a"
 		case NetworkNightly:
