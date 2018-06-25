@@ -22,11 +22,9 @@ import (
 )
 
 func main() {
-	networkParam := flag.String("network", "nightly", "Binding and port of the relay")
 	keystoreParam := flag.String("keystore", "", "Optionally encrypted keystore file")
 	configParam := flag.String("config", "", "Ethereum configuration file")
 	passphraseParam := flag.String("passphrase", "", "Optional passphrase to decrypt the keystore file")
-	relayParam := fmt.Sprintf("https://ingress-api-%v.herokuapp.com", *networkParam)
 
 	flag.Parse()
 
@@ -34,11 +32,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load keystore: %v", err)
 	}
-
-	contractBindings, err := loadContractBinder(*configParam, keystore)
+	config, err := loadConfig(*configParam)
+	if err != nil {
+		log.Fatalf("cannot load config: %v", err)
+	}
+	contractBindings, err := loadContractBinder(config, keystore)
 	if err != nil {
 		log.Fatalf("cannot load smart contract: %v", err)
 	}
+	ingressAPI := fmt.Sprintf("https://ingress-api-%v.herokuapp.com", config.Network)
+
 	onePrice := order.CoExp{
 		Co:  2,
 		Exp: 40,
@@ -66,7 +69,6 @@ func main() {
 			Signature:            base64.StdEncoding.EncodeToString(signature),
 			OrderFragmentMapping: map[string][]adapter.OrderFragment{},
 		}
-		log.Printf("order signature %v", request.Signature)
 
 		pods, err := contractBindings.Pods()
 		if err != nil {
@@ -122,8 +124,8 @@ func main() {
 		}
 		buf := bytes.NewBuffer(data)
 
-		log.Printf("sending to %v", fmt.Sprintf("%v/orders", relayParam))
-		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", relayParam), "application/json", buf)
+		log.Printf("sending to %v", fmt.Sprintf("%v/orders", ingressAPI))
+		res, err := netHttp.DefaultClient.Post(fmt.Sprintf("%v/orders", ingressAPI), "application/json", buf)
 		if err != nil {
 			log.Fatalf("cannot send request: %v", err)
 		}
@@ -177,13 +179,7 @@ func loadConfig(configFile string) (contract.Config, error) {
 	return config, nil
 }
 
-func loadContractBinder(configFile string, keystore crypto.Keystore) (contract.Binder, error) {
-	config, err := loadConfig(configFile)
-	if err != nil {
-		fmt.Println(fmt.Errorf("cannot load config: %v", err))
-		return contract.Binder{}, err
-	}
-
+func loadContractBinder(config contract.Config, keystore crypto.Keystore) (contract.Binder, error) {
 	conn, err := contract.Connect(config)
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot connect to ethereum: %v", err))
