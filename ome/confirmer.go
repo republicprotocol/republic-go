@@ -85,7 +85,10 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					case <-done:
 						return
 					case errs <- err:
-						continue
+						// An error in confirmation should not stop the
+						// Confirmer from monitoring the Computation for
+						// confirmation (another node might have succeeded), so
+						// we pass through
 					}
 				}
 
