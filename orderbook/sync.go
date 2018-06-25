@@ -93,6 +93,11 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	buyOrderIDs, buyErr := syncer.contract.BuyOrders(int(buyPointer), syncer.limit)
 	if buyErr == nil {
 		for _, ord := range buyOrderIDs {
+			depth, err := syncer.contract.Depth(ord)
+			if err == nil && depth > 6000 {
+				buyPointer++
+				continue
+			}
 			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
@@ -128,7 +133,11 @@ func (syncer *syncer) Sync() (ChangeSet, error) {
 	sellOrderIDs, sellErr := syncer.contract.SellOrders(int(sellPointer), syncer.limit)
 	if sellErr == nil {
 		for _, ord := range sellOrderIDs {
-
+			depth, err := syncer.contract.Depth(ord)
+			if err == nil && depth > 6000 {
+				sellPointer++
+				continue
+			}
 			status, err := syncer.contract.Status(ord)
 			if err != nil {
 				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))

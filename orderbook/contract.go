@@ -25,4 +25,6 @@ type ContractBinder interface {
 	Trader(orderID order.ID) (string, error)
 
 	Priority(orderID order.ID) (uint64, error)
+
+	Depth(orderID order.ID) (uint64, error)
 }
