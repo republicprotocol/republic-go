@@ -201,6 +201,11 @@ func (binder *orderbookBinder) BlockNumber(orderID order.ID) (uint, error) {
 	return 100, nil
 }
 
+// Depth returns the depth of an order.
+func (binder *orderbookBinder) Depth(orderID order.ID) (uint, error) {
+	return 10, nil
+}
+
 // OpenBuyOrder in the mock orderbookBinder.
 func (binder *orderbookBinder) OpenBuyOrder(signature [65]byte, orderID order.ID) error {
 	binder.ordersMu.Lock()
