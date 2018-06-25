@@ -26,5 +26,5 @@ type ContractBinder interface {
 
 	Priority(orderID order.ID) (uint64, error)
 
-	Depth(orderID order.ID) (uint64, error)
+	Depth(orderID order.ID) (uint, error)
 }
