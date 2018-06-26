@@ -312,7 +312,8 @@ func deployRenExBalances(ctx context.Context, conn contract.Conn, auth *bind.Tra
 }
 
 func deployRenExSettlement(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, orderbookAddress, tokenAddress, balancesAddress common.Address) (*bindings.RenExSettlement, common.Address, error) {
-	address, tx, accounts, err := bindings.DeployRenExSettlement(auth, conn.Client, orderbookAddress, tokenAddress, balancesAddress)
+	GWEI := 1000000000
+	address, tx, accounts, err := bindings.DeployRenExSettlement(auth, conn.Client, orderbookAddress, tokenAddress, balancesAddress, big.NewInt(int64(100*GWEI)))
 	if err != nil {
 		return nil, common.Address{}, fmt.Errorf("cannot deploy RenExSettlements: %v", err)
 	}
