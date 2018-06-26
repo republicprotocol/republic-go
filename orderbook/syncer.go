@@ -56,7 +56,7 @@ type Syncer interface {
 	// Sync orders and order states from the Orderbook to this local
 	// Orderbooker. Returns a list of changes that were made to this local
 	// Orderbooker during the synchronization.
-	Sync() (ChangeSet, error)
+	Sync(done <-chan struct{}) (<-chan Notification, <-chan error)
 }
 
 type syncer struct {

@@ -6,6 +6,10 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+// ErrOrderNotFound is returned when attempting to read an order that cannot be
+// found.
+var ErrOrderNotFound = errors.New("order not found")
+
 // ErrOrderFragmentNotFound is returned when attempting to read an order that
 // cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
@@ -39,6 +43,33 @@ type ChangeIterator interface {
 
 	// Collect all Changes in the iterator into a slice.
 	Collect() ([]Change, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
+}
+
+// OrderStorer for the order.Orders that are synchronised from the Ethereum
+// blockchain.
+type OrderStorer interface {
+	PutOrder(id order.ID, status order.Status) error
+	DeleteOrder(id order.ID)
+	Order(id order.ID) (order.Status, error)
+	Orders() (OrderIterator, error)
+}
+
+// OrderIterator is used to iterate over an order.Order collection.
+type OrderIterator interface {
+
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the order.Order collection, otherwise false.
+	Next() bool
+
+	// Cursor returns the order.Order at the current cursor location.
+	// Returns an error if the cursor is out of range.
+	Cursor() (order.ID, order.Status, error)
+
+	// Collect all order.IDs and order.Statuses in the iterator into slices.
+	Collect() ([]order.ID, []order.Status, error)
 
 	// Release the resources allocated by the iterator.
 	Release()

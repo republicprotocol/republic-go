@@ -1,14 +1,8 @@
 package orderbook
 
 import (
-	"errors"
-
 	"github.com/republicprotocol/republic-go/order"
 )
-
-// ErrOrderNotFound is return when attempting to load an order that cannot be
-// found.
-var ErrOrderNotFound = errors.New("order not found")
 
 // ContractBinder will define all methods that the orderbook will
 // require to communicate with smart contracts. All the methods will
