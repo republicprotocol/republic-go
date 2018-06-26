@@ -294,10 +294,12 @@ func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Co
 	}
 
 	// Retry each of the Computations in the buffer
-	logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying %v computations", bufferN))
-	for i := 0; i < bufferN; i++ {
-		if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
-			ome.computationBacklog[buffer[i].ID] = buffer[i]
+	if bufferN > 0 {
+		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying %v computations", bufferN))
+		for i := 0; i < bufferN; i++ {
+			if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
+				ome.computationBacklog[buffer[i].ID] = buffer[i]
+			}
 		}
 	}
 }
