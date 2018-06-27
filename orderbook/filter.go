@@ -1,8 +1,6 @@
 package orderbook
 
 import (
-	"sync"
-
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -13,11 +11,9 @@ type Filter interface {
 }
 
 type mergeFilter struct {
-	orderMu            *sync.Mutex
 	orderStore         OrderStorer
 	orderFragmentStore OrderFragmentStorer
-
-	buffer int
+	buffer             int
 }
 
 // NewMergeFilter returns a Filter that captures NotificationSyncOrders and
@@ -31,11 +27,9 @@ type mergeFilter struct {
 // further.
 func NewMergeFilter(orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, buffer int) Filter {
 	return &mergeFilter{
-		orderMu:            new(sync.Mutex),
 		orderStore:         orderStore,
 		orderFragmentStore: orderFragmentStore,
-
-		buffer: buffer,
+		buffer:             buffer,
 	}
 }
 
@@ -56,7 +50,7 @@ func (filter *mergeFilter) Filter(done <-chan struct{}, in <-chan Notification) 
 				if !ok {
 					return
 				}
-				filter.handleInternalNotification(notification, done, out, errs)
+				filter.handleNotification(notification, done, out, errs)
 			}
 		}
 	}()
@@ -64,7 +58,7 @@ func (filter *mergeFilter) Filter(done <-chan struct{}, in <-chan Notification) 
 	return out, errs
 }
 
-func (filter *mergeFilter) handleInternalNotification(notification Notification, done <-chan struct{}, out chan<- Notification, errs chan<- error) {
+func (filter *mergeFilter) handleNotification(notification Notification, done <-chan struct{}, out chan<- Notification, errs chan<- error) {
 	if notification == nil {
 		return
 	}
@@ -79,7 +73,7 @@ func (filter *mergeFilter) handleInternalNotification(notification Notification,
 		select {
 		case <-done:
 			return
-		case errs <- ErrUnexpectedNotificationType:
+		case out <- notification:
 		}
 	}
 }
@@ -128,7 +122,6 @@ func (filter *mergeFilter) handleNotificationSyncOrder(notification Notification
 }
 
 func (filter *mergeFilter) handleNotificationSyncOrderFragment(notification NotificationSyncOrderFragment, done <-chan struct{}, out chan<- Notification, errs chan<- error) {
-
 	// Store the order.Fragment
 	if err := filter.orderFragmentStore.PutOrderFragment(notification.OrderFragment); err != nil {
 		select {
@@ -162,5 +155,4 @@ func (filter *mergeFilter) handleNotificationSyncOrderFragment(notification Noti
 	case <-done:
 	case out <- notificationOut:
 	}
-
 }
