@@ -204,7 +204,7 @@ func main() {
 				}
 
 				// Check whether or not ξ has changed
-				if epoch.Equal(&nextEpoch) {
+				if nextEpoch.Equal(&epoch) || nextEpoch.Equal([32]byte{}) {
 					continue
 				}
 				epoch = nextEpoch
