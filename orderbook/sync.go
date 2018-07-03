@@ -81,11 +81,11 @@ func NewSyncer(storer SyncStorer, contract ContractBinder, limit int) Syncer {
 func (syncer *syncer) Sync() (ChangeSet, error) {
 	changeset := syncer.purge()
 
-	buyPointer, err := Pointer(0), error(nil) // syncer.storer.BuyPointer()
+	buyPointer, err := syncer.storer.BuyPointer()
 	if err != nil {
 		return changeset, err
 	}
-	sellPointer, err := Pointer(0), error(nil) // syncer.storer.SellPointer()
+	sellPointer, err := syncer.storer.SellPointer()
 	if err != nil {
 		return changeset, err
 	}
