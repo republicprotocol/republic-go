@@ -43,9 +43,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.RepublicTokenAddress = "0x6f429121a3bd3e6c1c17edbc676eec44cf117faf"
 		case NetworkFalcon:
-			config.RepublicTokenAddress = "0x5e8148ab05ae724af7e6c2cbacdc65cca53ab3aa"
+			config.RepublicTokenAddress = "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
 		case NetworkNightly:
-			config.RepublicTokenAddress = "0xf1da6f4a594553335edea6b1203a4b590c752e32"
+			config.RepublicTokenAddress = "0x15f692d6b9ba8cec643c7d16909e8acdec431bf6"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -56,9 +56,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRegistryAddress = "0x5d09eb34ce084bece690651f147dbd8ff41007bf"
 		case NetworkFalcon:
-			config.DarknodeRegistryAddress = "0x3aa3a8c5b2a4a2b0ee631650d88e9dc24f4c9254"
+			config.DarknodeRegistryAddress = "0x7352e7244899b7cb5d803cc02741c8910d3b75de"
 		case NetworkNightly:
-			config.DarknodeRegistryAddress = "0x5e3c8b0f7229f1f1873267b6811465fef73d53ca"
+			config.DarknodeRegistryAddress = "0xc735241f93f87d4dbea499ee6e1d41ec50e3d8ce"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -69,9 +69,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.OrderbookAddress = "0xB01219Cf49e92ffcd48fecC96241dBd1372B8Bb1"
 		case NetworkFalcon:
-			config.OrderbookAddress = "0x3DC8f53e3311750b4003BC535bea9a0bDAc172De"
+			config.OrderbookAddress = "0x20949251119d77471a40f456a8a9d39b1847db8d"
 		case NetworkNightly:
-			config.OrderbookAddress = "0x5E976b687D902f13F6af33a5CB097440DDCB149e"
+			config.OrderbookAddress = "0x42c72b4090ed0627c85ed878f699b2db254beeca"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -82,9 +82,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.RewardVaultAddress = "0x5d62ccc1086f38286dc152962a4f3e337eec1ec1"
 		case NetworkFalcon:
-			config.RewardVaultAddress = "0xdd0b6eae1bee54bac330886c5a8c93a661d5a43a"
+			config.RewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
 		case NetworkNightly:
-			config.RewardVaultAddress = "0x880ad65dc5b3f33123382416351eef98b4aad7f1"
+			config.RewardVaultAddress = "0x65129f15fc0bfd901ce99c71147a93256fa094e6"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -95,9 +95,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.RenExBalancesAddress = "0xc5b98949AB0dfa0A7d4c07Bb29B002D6d6DA3e25"
 		case NetworkFalcon:
-			config.RenExBalancesAddress = "0x3E430B39D91F892FDFAc7D562D637183D53b5130"
+			config.RenExBalancesAddress = "0x3083e5ba36c6b42ca93c22c803013a4539eedc7f"
 		case NetworkNightly:
-			config.RenExBalancesAddress = "0xD5B5b26521665Cb37623DCA0E49c553b41dbF076"
+			config.RenExBalancesAddress = "0x6268002a734edcde6c2111ae339e0d92b1ed2bfa"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -108,9 +108,9 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.RenExSettlementAddress = "0xc53abbc5713e606a86533088707e80fcae33eff8"
 		case NetworkFalcon:
-			config.RenExSettlementAddress = "0x20b3cd8d1b9c7854f0efab0e774b9517e149a63b"
+			config.RenExSettlementAddress = "0x038b63c120a7e60946d6ebaa6dcfc3a475108cc9"
 		case NetworkNightly:
-			config.RenExSettlementAddress = "0xef685d1d44ea983927d9f8d67f77894faec92fcf"
+			config.RenExSettlementAddress = "0xd42f9dd5e66627aa836b206edd76025b26a89dea"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)

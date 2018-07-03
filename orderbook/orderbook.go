@@ -9,14 +9,18 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
-// ErrOrderbookIsAlreadySyncing is returned when Orderbook.Sync is called while
-// the Orderbook is already syncing. A call to Orderbook.Sync should only ever
-// happen once.
-var ErrOrderbookIsAlreadySyncing = errors.New("orderbook is already syncing")
+// ErrServerIsRunning is returned when a Server that has already been started
+// is started again.
+var ErrServerIsRunning = errors.New("server is running")
 
-// Client for invoking RPCs on a remote Server.
+// ErrServerIsNotRunning is returned when a Server receives the shutdown signal
+// while handling an RPC, or when a Server handles an RPC before being started.
+var ErrServerIsNotRunning = errors.New("server is not running")
+
+// Client for invoking the Server.OpenOrder ROC on a remote Server.
 type Client interface {
 
 	// OpenOrder by sending an order.EncryptedFragment to an
@@ -25,135 +29,73 @@ type Client interface {
 	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
 }
 
-// Server for opening order.EncryptedFragments. This RPC should only be called
-// after the respective order.Order has been opened on the Ethereum blockchain
-// otherwise it will be ignored by the Server.
+// A Server expose RPCs for opening orders with a Darknode by sending it an
+// order.EncryptedFragment.
 type Server interface {
+
+	// OpenOrder is the RPC invoked by a Client. It accepts an
+	// order.EncryptedFragment and decrypts it. Until this RPC is invoked, the
+	// Server cannot participate in the respective secure multi-party
+	// computation.
 	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
-// An Orderbook is responsible for receiving orders. It should read order.Order
-// statuses from a Syncer, and order.EncryptedFragemnts from a Server. It
-// outputs Notifications that should be consumed by the user to understand the
-// changing state of the Orderbook. During boot, the Orderbook should output
-// initialising Notifications for the current state of the Orderbook.
+// An Orderbook combines the Server interface with synchronising order.IDs from
+// Ethereum. Once a synchronised order.ID reaches the order.Open status, and
+// the respective order.EncryptedFragment is received, the decrypted
+// order.Fragment is produced for computation.
 type Orderbook interface {
+	Server
 
-	// Sync the Orderbook with the Ethereum blockchain until the done channel
-	// is closed.
-	Sync(dont <-chan struct{}) (<-chan Notification, <-chan error)
+	// Sync order.ID statuses from Ethereum and merge them with
+	// order.EncryptedFragments received by the Server interface. When a merge
+	// happens the respective decrypted order.Fragment is produced.
+	Sync(done <-chan struct{}) (<-chan order.Fragment, <-chan error)
+
+	// OnChangeEpoch should be called whenever a change to the registry.Epoch
+	// is detected.
+	OnChangeEpoch(epoch registry.Epoch)
 }
 
 type orderbook struct {
-	doneMu *sync.Mutex
-	done   <-chan struct{}
+	rsaKey             crypto.RsaKey
+	orderFragmentStore OrderFragmentStorer
+	orderFragments     chan order.Fragment
 
-	rsaKey crypto.RsaKey
+	syncerMu        *sync.Mutex
+	syncerCurrEpoch Syncer
+	syncerPrevEpoch Syncer
 
-	syncer              Syncer
-	filter              Filter
-	filterNotifications chan Notification
+	doneMu *sync.RWMutex
+	done   chan struct{}
 }
 
-// NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt
-// sensitive data. It implements the Server interface to receive
-// order.EncryptedFragments. It uses a Syncer to create Notifications about
-// updates to the Orderbook, and a Filter to filter these Notifications.
-func NewOrderbook(rsaKey crypto.RsaKey, syncer Syncer, filter Filter) Orderbook {
+// NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
+// order.EncryptedFragments that it receives, and stores them in a Storer.
+func NewOrderbook(rsaKey crypto.RsaKey, orderFragmentStore OrderFragmentStorer) Orderbook {
 	return &orderbook{
-		doneMu: new(sync.Mutex),
+		rsaKey:             rsaKey,
+		orderFragmentStore: orderFragmentStore,
+		orderFragments:     make(chan order.Fragment),
+
+		syncerMu:        new(sync.Mutex),
+		syncerCurrEpoch: nil,
+		syncerPrevEpoch: nil,
+
+		doneMu: new(sync.RWMutex),
 		done:   nil,
-
-		rsaKey: rsaKey,
-
-		syncer:              syncer,
-		filter:              filter,
-		filterNotifications: make(chan Notification),
 	}
-}
-
-// Sync implements the Syncer interface.
-func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification)
-	errs := make(chan error)
-
-	// Set the done channel
-	orderbook.doneMu.Lock()
-	defer orderbook.doneMu.Unlock()
-	if orderbook.done != nil {
-		errs <- ErrOrderbookIsAlreadySyncing
-		close(notifications)
-		close(errs)
-		return notifications, errs
-	}
-	orderbook.done = done
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	syncNotifications, syncErrs := orderbook.syncer.Sync(orderbook.done)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-orderbook.done:
-			case notification, ok := <-syncNotifications:
-				if !ok {
-					return
-				}
-				select {
-				case <-orderbook.done:
-				case orderbook.filterNotifications <- notification:
-				}
-			case err, ok := <-syncErrs:
-				if !ok {
-					return
-				}
-				select {
-				case <-orderbook.done:
-				case errs <- err:
-				}
-			}
-		}
-	}()
-
-	filterNotifications, filterErrs := orderbook.filter.Filter(orderbook.done, orderbook.filterNotifications)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-orderbook.done:
-			case notification, ok := <-filterNotifications:
-				if !ok {
-					return
-				}
-				select {
-				case <-orderbook.done:
-				case notifications <- notification:
-				}
-			case err, ok := <-filterErrs:
-				if !ok {
-					return
-				}
-				select {
-				case <-orderbook.done:
-				case errs <- err:
-				}
-			}
-		}
-	}()
-
-	go func() {
-		defer close(notifications)
-		defer close(errs)
-		wg.Wait()
-	}()
-
-	return notifications, errs
 }
 
 // OpenOrder implements the Server interface.
 func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragment order.EncryptedFragment) error {
+	orderbook.doneMu.RLock()
+	defer orderbook.doneMu.RUnlock()
+
+	if orderbook.done == nil {
+		return ErrServerIsNotRunning
+	}
+
 	orderFragment, err := encryptedOrderFragment.Decrypt(*orderbook.rsaKey.PrivateKey)
 	if err != nil {
 		return err
@@ -164,12 +106,50 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
 	}
 
-	notification := NotificationSyncOrderFragment{
-		OrderFragment: orderFragment,
-	}
 	select {
+	case <-ctx.Done():
+		return nil
 	case <-orderbook.done:
-	case orderbook.filterNotifications <- notification:
+		return ErrServerIsNotRunning
+	case orderbook.orderFragments <- orderFragment:
+		return nil
 	}
-	return nil
+}
+
+// Sync implements the Orderbook interface.
+func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan order.Fragment, <-chan error) {
+	orderFragments := make(chan order.Fragment)
+	errs := make(chan error, 1)
+
+	// Check whether the Server has already been started
+	orderbook.doneMu.RLock()
+	serverIsRunning := orderbook.done != nil
+	orderbook.doneMu.RUnlock()
+	if serverIsRunning {
+		errs <- ErrServerIsRunning
+		close(orderFragments)
+		close(errs)
+		return orderFragments, errs
+	}
+
+	// Open a new done channel that signals the Server has started
+	orderbook.doneMu.Lock()
+	orderbook.done = make(chan struct{})
+	orderbook.doneMu.Unlock()
+
+	// Wait for the shutdown signal and then stop the Server
+	go func() {
+		<-done
+
+		close(orderbook.done)
+		orderbook.doneMu.Lock()
+		orderbook.done = nil
+		orderbook.doneMu.Unlock()
+	}()
+
+	return orderFragments, errs
+}
+
+// OnChangeEpoch implements the Orderbook interface.
+func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 }

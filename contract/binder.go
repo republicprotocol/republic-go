@@ -362,7 +362,7 @@ func (binder *Binder) getOwner(darknodeID []byte) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, err
 	}
-	return binder.darknodeRegistry.GetOwner(binder.callOpts, darknodeIDByte)
+	return binder.darknodeRegistry.GetDarknodeOwner(binder.callOpts, darknodeIDByte)
 }
 
 // PublicKey returns the RSA public key of the Darknode registered with the
@@ -444,7 +444,7 @@ func (binder *Binder) MinimumPodSize() (stackint.Int1024, error) {
 }
 
 func (binder *Binder) minimumPodSize() (stackint.Int1024, error) {
-	interval, err := binder.darknodeRegistry.MinimumDarkPoolSize(binder.callOpts)
+	interval, err := binder.darknodeRegistry.MinimumPodSize(binder.callOpts)
 	if err != nil {
 		return stackint.Int1024{}, err
 	}
