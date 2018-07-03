@@ -19,4 +19,8 @@ type ContractBinder interface {
 
 	// Status of an order.ID.
 	Status(orderID order.ID) (order.Status, error)
+
+	// MinimumEpochInterval returns the minimum number of blocks between
+	// epochs.
+	MinimumEpochInterval() (*big.Int, error)
 }

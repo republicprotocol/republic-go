@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync/atomic"
+	"time"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
@@ -45,9 +46,29 @@ func newSyncer(contract ContractBinder, blockNumberOffset, blockNumberLimit *big
 // sync orders and order.Status changes until the done channel is closed.
 // All changes are produced as Notifications. Notifications of the
 // NotificationOpenOrder type will not have an associated order.Fragment.
-func (syncer *syncer) sync(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	syncer.syncConfirmsAndCancels(done, notifications, errs)
-	syncer.syncOpens(done, notifications, errs)
+func (syncer *syncer) sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
+	notifications := make(chan Notification)
+	errs := make(chan error)
+
+	go func() {
+		defer close(notifications)
+		defer close(errs)
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				syncer.syncConfirmsAndCancels(done, notifications, errs)
+				syncer.syncOpens(done, notifications, errs)
+			}
+		}
+	}()
+
+	return notifications, errs
 }
 
 func (syncer *syncer) syncConfirmsAndCancels(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {

@@ -3,8 +3,9 @@ package orderbook
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math/big"
 	"sync"
-	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -61,32 +62,40 @@ type Orderbook interface {
 }
 
 type orderbook struct {
-	rsaKey             crypto.RsaKey
-	orderFragmentStore OrderFragmentStorer
-	orderFragments     chan order.Fragment
-
-	syncerMu        *sync.Mutex
-	syncerCurrEpoch *syncer
-	syncerPrevEpoch *syncer
-
 	doneMu *sync.RWMutex
 	done   chan struct{}
+
+	rsaKey             crypto.RsaKey
+	contractBinder     ContractBinder
+	orderFragmentStore OrderFragmentStorer
+
+	syncerMu       *sync.Mutex
+	syncerCurrDone chan struct{}
+	syncerPrevDone chan struct{}
+
+	orderFragments  chan order.Fragment
+	notificationChs chan (<-chan Notification)
+	errChs          chan (<-chan error)
 }
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
 // order.EncryptedFragments that it receives, and stores them in a Storer.
-func NewOrderbook(rsaKey crypto.RsaKey, orderFragmentStore OrderFragmentStorer) Orderbook {
+func NewOrderbook(rsaKey crypto.RsaKey, contractBinder ContractBinder, orderFragmentStore OrderFragmentStorer) Orderbook {
 	return &orderbook{
-		rsaKey:             rsaKey,
-		orderFragmentStore: orderFragmentStore,
-		orderFragments:     make(chan order.Fragment),
-
-		syncerMu:        new(sync.Mutex),
-		syncerCurrEpoch: nil,
-		syncerPrevEpoch: nil,
-
 		doneMu: new(sync.RWMutex),
 		done:   nil,
+
+		rsaKey:             rsaKey,
+		contractBinder:     contractBinder,
+		orderFragmentStore: orderFragmentStore,
+
+		syncerMu:       new(sync.Mutex),
+		syncerCurrDone: nil,
+		syncerPrevDone: nil,
+
+		orderFragments:  make(chan order.Fragment),
+		notificationChs: make(chan (<-chan Notification)),
+		errChs:          make(chan (<-chan error)),
 	}
 }
 
@@ -151,32 +160,16 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	}()
 
 	go func() {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+		defer close(notifications)
+		orderbook.mergeNotifications(done, notifications)
+	}()
 
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				orderbook.sync(done, notifications, errs)
-			}
-		}
+	go func() {
+		defer close(errs)
+		orderbook.mergeErrors(done, errs)
 	}()
 
 	return notifications, errs
-}
-
-func (orderbook *orderbook) sync(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	orderbook.syncerMu.Lock()
-	defer orderbook.syncerMu.Unlock()
-
-	if orderbook.syncerPrevEpoch != nil {
-		orderbook.syncerPrevEpoch.sync(done, notifications, errs)
-	}
-	if orderbook.syncerCurrEpoch != nil {
-		orderbook.syncerCurrEpoch.sync(done, notifications, errs)
-	}
 }
 
 // OnChangeEpoch implements the Orderbook interface.
@@ -184,5 +177,90 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	orderbook.syncerMu.Lock()
 	defer orderbook.syncerMu.Unlock()
 
-	// FIXME: Set the syncers
+	if orderbook.syncerPrevDone == nil {
+		close(orderbook.syncerPrevDone)
+	}
+	orderbook.syncerPrevDone = orderbook.syncerCurrDone
+	orderbook.syncerCurrDone = make(chan struct{})
+
+	minimumEpochInterval, err := orderbook.contractBinder.MinimumEpochInterval()
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot get minimum epoch interval: %v", err))
+		return
+	}
+	notifications, errs := newSyncer(
+		orderbook.contractBinder,
+		big.NewInt(0).SetUint64(uint64(epoch.BlockNumber)), // Block offset
+		minimumEpochInterval,                               // Block limit
+		0,                                                  // Order synchronising offset
+		1024,                                               // Order synchronising limit
+	).sync(orderbook.syncerCurrDone)
+
+	select {
+	case <-orderbook.done:
+	case orderbook.notificationChs <- notifications:
+	}
+
+	select {
+	case <-orderbook.done:
+	case orderbook.errChs <- errs:
+	}
+}
+
+func (orderbook *orderbook) mergeNotifications(done <-chan struct{}, notifications chan<- Notification) {
+	for {
+		select {
+		case <-done:
+			return
+		case notificationCh, ok := <-orderbook.notificationChs:
+			if !ok {
+				return
+			}
+			go func() {
+				for {
+					select {
+					case <-done:
+						return
+					case notification, ok := <-notificationCh:
+						if !ok {
+							return
+						}
+						select {
+						case <-done:
+						case notifications <- notification:
+						}
+					}
+				}
+			}()
+		}
+	}
+}
+
+func (orderbook *orderbook) mergeErrors(done <-chan struct{}, errs chan<- error) {
+	for {
+		select {
+		case <-done:
+			return
+		case errCh, ok := <-orderbook.errChs:
+			if !ok {
+				return
+			}
+			go func() {
+				for {
+					select {
+					case <-done:
+						return
+					case err, ok := <-errCh:
+						if !ok {
+							return
+						}
+						select {
+						case <-done:
+						case errs <- err:
+						}
+					}
+				}
+			}()
+		}
+	}
 }

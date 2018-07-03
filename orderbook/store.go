@@ -47,10 +47,10 @@ type OrderIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutOrderFragment(orderFragment order.Fragment) error
-	DeleteOrderFragment(id order.ID) error
-	OrderFragment(id order.ID) (order.Fragment, error)
-	OrderFragments() (OrderFragmentIterator, error)
+	PutOrderFragment(epoch [32]byte, orderFragment order.Fragment) error
+	DeleteOrderFragment(epoch [32]byte, id order.ID) error
+	OrderFragment(epoch [32]byte, id order.ID) (order.Fragment, error)
+	OrderFragments(epoch [32]byte) (OrderFragmentIterator, error)
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.
