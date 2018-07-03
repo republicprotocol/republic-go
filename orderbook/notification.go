@@ -21,34 +21,33 @@ type Notification interface {
 	IsNotification()
 }
 
-// NotificationSyncOrderFragment is used to signal the synchronisation
-// of an order.Fragment from an external user, or from another Darknode.
-type NotificationSyncOrderFragment struct {
-	OrderFragment order.Fragment
-}
-
-// IsNotification implements the Notification interface.
-func (notification NotificationSyncOrderFragment) IsNotification() {}
-
-// NotificationSyncOrder is used to signal the synchronisation of an
-// order.Order from the Ethereum blockchain. This happens multiple times during
-// the lifetime of an order.Order as the order.Status is updated.
-type NotificationSyncOrder struct {
-	OrderID     order.ID
-	OrderStatus order.Status
-}
-
-// IsNotification implements the Notification interface.
-func (notification NotificationSyncOrder) IsNotification() {}
-
 // NotificationOpenOrder is used to signal the opening of an order.Order. This
-// happens once the order.Fragment has been synchronised and the order.Order
-// has been synchronised to the order.Open status.
+// happens when a rader opens an order.Order and the order.Fragment has been
+// received.
 type NotificationOpenOrder struct {
-	OrderFragment order.Fragment
 	OrderID       order.ID
-	OrderStatus   order.Status
+	OrderFragment order.Fragment
 }
 
 // IsNotification implements the Notification interface.
 func (notification NotificationOpenOrder) IsNotification() {}
+
+// NotificationConfirmOrder is used to signal the confirmation of an
+// order.ID. This happens when an order.Order has been matched with another
+// order.Order, and consensus has been reached for the match.
+type NotificationConfirmOrder struct {
+	OrderID order.ID
+}
+
+// IsNotification implements the Notification interface.
+func (notification NotificationConfirmOrder) IsNotification() {}
+
+// NotificationCancelOrder is used to signal the cancelation of an order.ID.
+// This happens when a trader cancels an order.Order before it has been
+// confirmed.
+type NotificationCancelOrder struct {
+	OrderID order.ID
+}
+
+// IsNotification implements the Notification interface.
+func (notification NotificationCancelOrder) IsNotification() {}

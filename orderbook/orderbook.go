@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
@@ -43,14 +44,16 @@ type Server interface {
 // An Orderbook combines the Server interface with synchronising order.IDs from
 // Ethereum. Once a synchronised order.ID reaches the order.Open status, and
 // the respective order.EncryptedFragment is received, the decrypted
-// order.Fragment is produced for computation.
+// order.Fragment stored inside a Notification and produced. For all other
+// changes, a Notification is produced directly from the change.
 type Orderbook interface {
 	Server
 
-	// Sync order.ID statuses from Ethereum and merge them with
-	// order.EncryptedFragments received by the Server interface. When a merge
-	// happens the respective decrypted order.Fragment is produced.
-	Sync(done <-chan struct{}) (<-chan order.Fragment, <-chan error)
+	// Sync status changes from Ethereum, receive order.EncryptedFragments from
+	// traders, and produce Notifications. Stop once the done channel is
+	// closed. An error is returned when a call to Orderbook.Sync happens
+	// before the previous call has stopped its done channel.
+	Sync(done <-chan struct{}) (<-chan Notification, <-chan error)
 
 	// OnChangeEpoch should be called whenever a change to the registry.Epoch
 	// is detected.
@@ -63,8 +66,8 @@ type orderbook struct {
 	orderFragments     chan order.Fragment
 
 	syncerMu        *sync.Mutex
-	syncerCurrEpoch Syncer
-	syncerPrevEpoch Syncer
+	syncerCurrEpoch *syncer
+	syncerPrevEpoch *syncer
 
 	doneMu *sync.RWMutex
 	done   chan struct{}
@@ -117,8 +120,8 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 }
 
 // Sync implements the Orderbook interface.
-func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan order.Fragment, <-chan error) {
-	orderFragments := make(chan order.Fragment)
+func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
+	notifications := make(chan Notification)
 	errs := make(chan error, 1)
 
 	// Check whether the Server has already been started
@@ -127,9 +130,9 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan order.Fragment, <
 	orderbook.doneMu.RUnlock()
 	if serverIsRunning {
 		errs <- ErrServerIsRunning
-		close(orderFragments)
+		close(notifications)
 		close(errs)
-		return orderFragments, errs
+		return notifications, errs
 	}
 
 	// Open a new done channel that signals the Server has started
@@ -147,9 +150,39 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan order.Fragment, <
 		orderbook.doneMu.Unlock()
 	}()
 
-	return orderFragments, errs
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				orderbook.sync(done, notifications, errs)
+			}
+		}
+	}()
+
+	return notifications, errs
+}
+
+func (orderbook *orderbook) sync(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+	orderbook.syncerMu.Lock()
+	defer orderbook.syncerMu.Unlock()
+
+	if orderbook.syncerPrevEpoch != nil {
+		orderbook.syncerPrevEpoch.sync(done, notifications, errs)
+	}
+	if orderbook.syncerCurrEpoch != nil {
+		orderbook.syncerCurrEpoch.sync(done, notifications, errs)
+	}
 }
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
+	orderbook.syncerMu.Lock()
+	defer orderbook.syncerMu.Unlock()
+
+	// FIXME: Set the syncers
 }

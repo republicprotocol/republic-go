@@ -1,24 +1,22 @@
 package orderbook
 
 import (
+	"math/big"
+
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// ContractBinder will define all methods that the orderbook will
-// require to communicate with smart contracts. All the methods will
-// be implemented in contract.Binder
+// ContractBinder for interacting with Ethereum contracts.
 type ContractBinder interface {
-	BuyOrders(offset, limit int) ([]order.ID, error)
 
-	SellOrders(offset, limit int) ([]order.ID, error)
+	// Orders returns order.IDs that have been opened. The offset and limit
+	// defines the range of order.IDs that can be returned, based on their
+	// logical time ordering.
+	Orders(offset, limit int) ([]order.ID, error)
 
+	// BlockNumber when the order.ID was opened.
+	BlockNumber(orderID order.ID) (*big.Int, error)
+
+	// Status of an order.ID.
 	Status(orderID order.ID) (order.Status, error)
-
-	BlockNumber(orderID order.ID) (uint, error)
-
-	Trader(orderID order.ID) (string, error)
-
-	Priority(orderID order.ID) (uint64, error)
-
-	Depth(orderID order.ID) (uint, error)
 }
