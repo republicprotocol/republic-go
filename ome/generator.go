@@ -3,6 +3,8 @@ package ome
 import (
 	"sync"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -23,8 +25,24 @@ type computationGenerator struct {
 	matPrevDone          chan struct{}
 	matPrevNotifications chan orderbook.Notification
 
-	computationMerger chan (<-chan Computation)
-	errMerger         chan (<-chan error)
+	broadcastComputations chan (<-chan Computation)
+	broadcastErrs         chan (<-chan error)
+}
+
+func NewComputationGenerator() ComputationGenerator {
+	return &computationGenerator{
+		doneMu: new(sync.Mutex),
+		done:   nil,
+
+		matMu:                new(sync.Mutex),
+		matCurrDone:          nil,
+		matCurrNotifications: nil,
+		matPrevDone:          nil,
+		matPrevNotifications: nil,
+
+		broadcastComputations: make(chan (<-chan Computation)),
+		broadcastErrs:         make(chan (<-chan error)),
+	}
 }
 
 func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
@@ -34,7 +52,6 @@ func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-
 	// Handle all incoming notifications by mapping them to the appropriate
 	// computation matrix
 	go func() {
-		defer close(errs)
 		for {
 			select {
 			case <-done:
@@ -43,19 +60,20 @@ func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-
 				if !ok {
 					return
 				}
-				gen.handleNotification(notification, done)
+				gen.routeNotification(notification, done)
 			}
 		}
 	}()
 
-	// Merge all outputs from the computation matrices
+	// Merge all of the channels on the broadcast channel into the output
+	// channel
 	go func() {
 		defer close(computations)
-		gen.mergeComputations(done, computations)
+		dispatch.Merge(done, gen.broadcastComputations, computations)
 	}()
 	go func() {
 		defer close(errs)
-		gen.mergeErrors(done, errs)
+		dispatch.Merge(done, gen.broadcastErrs, errs)
 	}()
 
 	return computations, errs
@@ -66,122 +84,81 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matMu.Lock()
 	defer gen.matMu.Unlock()
 
-	// Close the previous epoch
+	// Transition the current epoch into the previous epoch and setup a new
+	// current epoch
 	if gen.matPrevDone == nil {
 		close(gen.matPrevDone)
 		close(gen.matPrevNotifications)
 	}
-	// Transition the current epoch to be the previous epoch and create a new
-	// epoch setup
 	gen.matPrevDone = gen.matCurrDone
 	gen.matPrevNotifications = gen.matCurrNotifications
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	// Start the mat for this epoch
 	mat := newComputationMatrix(epoch)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
-	// Signal that the outputs of this mat should be accepted by the merger
 	select {
 	case <-gen.done:
-	case gen.computationMerger <- computations:
+	case gen.broadcastComputations <- computations:
 	}
+
 	select {
 	case <-gen.done:
-	case gen.errMerger <- errs:
+	case gen.broadcastErrs <- errs:
 	}
 }
 
-func (gen *computationGenerator) handleNotification(notification orderbook.Notification, done <-chan struct{}) {
+func (gen *computationGenerator) routeNotification(notification orderbook.Notification, done <-chan struct{}) {
 	switch notification := notification.(type) {
+
+	// Notifications that open orders need to be routed to the appropriate
+	// computation matrix
 	case orderbook.NotificationOpenOrder:
-		gen.handleNotificationOpenOrder(notification, done)
+		gen.routeNotificationOpenOrder(notification, done)
+
+	// All computation matrices receive all other notifications
 	default:
-		select {
-		case <-done:
-			return
-		case gen.matCurrNotifications <- notification:
+		gen.matMu.Lock()
+		defer gen.matMu.Unlock()
+
+		if gen.matCurrNotifications != nil {
+			select {
+			case <-done:
+				return
+			case gen.matCurrNotifications <- notification:
+			}
 		}
-		select {
-		case <-done:
-			return
-		case gen.matPrevNotifications <- notification:
+		if gen.matPrevNotifications != nil {
+			select {
+			case <-done:
+				return
+			case gen.matPrevNotifications <- notification:
+			}
 		}
 	}
 }
 
-func (gen *computationGenerator) handleNotificationOpenOrder(notification orderbook.NotificationOpenOrder, done <-chan struct{}) {
+func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbook.NotificationOpenOrder, done <-chan struct{}) {
+	gen.matMu.Lock()
+	defer gen.matMu.Unlock()
+
 	switch notification.OrderFragment.Depth {
 	case 0:
-		select {
-		case <-done:
-			return
-		case gen.matCurrNotifications <- notification:
+		if gen.matCurrNotifications != nil {
+			select {
+			case <-done:
+				return
+			case gen.matCurrNotifications <- notification:
+			}
 		}
 	case 1:
-		select {
-		case <-done:
-			return
-		case gen.matPrevNotifications <- notification:
-		}
-	}
-}
-
-func (gen *computationGenerator) mergeComputations(done <-chan struct{}, computations chan<- Computation) {
-	for {
-		select {
-		case <-done:
-			return
-		case ch, ok := <-gen.computationMerger:
-			if !ok {
+		if gen.matPrevNotifications != nil {
+			select {
+			case <-done:
 				return
+			case gen.matPrevNotifications <- notification:
 			}
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case computation, ok := <-ch:
-						if !ok {
-							return
-						}
-						select {
-						case <-done:
-						case computations <- computation:
-						}
-					}
-				}
-			}()
-		}
-	}
-}
-
-func (gen *computationGenerator) mergeErrors(done <-chan struct{}, errs chan<- error) {
-	for {
-		select {
-		case <-done:
-			return
-		case ch, ok := <-gen.errMerger:
-			if !ok {
-				return
-			}
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case err, ok := <-ch:
-						if !ok {
-							return
-						}
-						select {
-						case <-done:
-						case errs <- err:
-						}
-					}
-				}
-			}()
 		}
 	}
 }
@@ -226,12 +203,17 @@ func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-cha
 
 func (mat *computationMatrix) handleNotification(notification orderbook.Notification, done <-chan struct{}, computations chan<- Computation, errs chan<- error) {
 	switch notification := notification.(type) {
+	// Notifications that open orders result in the insertion of that order
+	// into the matrix
 	case orderbook.NotificationOpenOrder:
-		mat.handleNotificationOpenOrder(notification, done, computations, errs)
+		mat.insertOrderFragment(notification, done, computations, errs)
+
+	// Notifications that close an order result in the removal of that order
+	// from storage
 	case orderbook.NotificationConfirmOrder:
-		mat.handleNotificationConfirmOrder(notification)
+		mat.removeOrderFragment(notification.OrderID)
 	case orderbook.NotificationCancelOrder:
-		mat.handleNotificationCancelOrder(notification)
+		mat.removeOrderFragment(notification.OrderID)
 	default:
 		select {
 		case <-done:
@@ -240,7 +222,7 @@ func (mat *computationMatrix) handleNotification(notification orderbook.Notifica
 	}
 }
 
-func (mat *computationMatrix) handleNotificationOpenOrder(notification orderbook.NotificationOpenOrder, done <-chan struct{}, computations chan<- Computation, errs chan<- error) {
+func (mat *computationMatrix) insertOrderFragment(notification orderbook.NotificationOpenOrder, done <-chan struct{}, computations chan<- Computation, errs chan<- error) {
 
 	// Store the order.Fragment and get the opposing list so that computations
 	// can be generated
@@ -255,9 +237,14 @@ func (mat *computationMatrix) handleNotificationOpenOrder(notification orderbook
 
 	// Iterate through the opposing list and generate computations
 	for i := range cmpOrderFragments {
-		// TODO: Only compute a subset of the computations generated to
-		// increase system-wide parallelism
-		// TODO: Check that a trader is not matching against themselves
+
+		// TODO: Order fragments are opened on a hierarchical path through the
+		// Darknode pods. Pods should prioritise computations for which they
+		// are the first pod along that path (this is how pods break ties for
+		// computations that otherwise have the same priority).
+
+		// FIXME: Order fragments from the same trader should not be matched
+		// against each other.
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
@@ -272,14 +259,6 @@ func (mat *computationMatrix) handleNotificationOpenOrder(notification orderbook
 		case computations <- computation:
 		}
 	}
-}
-
-func (mat *computationMatrix) handleNotificationConfirmOrder(notification orderbook.NotificationConfirmOrder) {
-	mat.removeOrderFragment(notification.OrderID)
-}
-
-func (mat *computationMatrix) handleNotificationCancelOrder(notification orderbook.NotificationCancelOrder) {
-	mat.removeOrderFragment(notification.OrderID)
 }
 
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {

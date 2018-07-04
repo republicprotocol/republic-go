@@ -3,6 +3,7 @@ package orderbook
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -111,14 +112,7 @@ func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore O
 
 // OpenOrder implements the Server interface.
 func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragment order.EncryptedFragment) error {
-	orderbook.doneMu.RLock()
-	defer orderbook.doneMu.RUnlock()
-
-	if orderbook.done == nil {
-		return ErrServerIsNotRunning
-	}
-
-	orderFragment, err := encryptedOrderFragment.Decrypt(*orderbook.rsaKey.PrivateKey)
+	orderFragment, err := encryptedOrderFragment.Decrypt(orderbook.rsaKey.PrivateKey)
 	if err != nil {
 		return err
 	}
@@ -128,37 +122,7 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
 	}
 
-	orderbook.syncerMu.RLock()
-	defer orderbook.syncerMu.RUnlock()
-
-	switch orderFragment.Depth {
-	case 0:
-		if orderbook.syncerCurrOrderFragments == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-orderbook.done:
-			return ErrServerIsNotRunning
-		case orderbook.syncerCurrOrderFragments <- orderFragment:
-			return nil
-		}
-	case 1:
-		if orderbook.syncerPrevOrderFragments == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-orderbook.done:
-			return ErrServerIsNotRunning
-		case orderbook.syncerPrevOrderFragments <- orderFragment:
-			return nil
-		}
-	default:
-		return nil
-	}
+	return orderbook.routeOrderFragment(ctx, orderFragment)
 }
 
 // Sync implements the Orderbook interface.
@@ -166,7 +130,7 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	notifications := make(chan Notification)
 	errs := make(chan error, 1)
 
-	// Check whether the Server has already been started
+	// Check whether the server has already been started
 	orderbook.doneMu.RLock()
 	serverIsRunning := orderbook.done != nil
 	orderbook.doneMu.RUnlock()
@@ -177,22 +141,21 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 		return notifications, errs
 	}
 
-	// Open a new done channel that signals the Server has started
+	// Open a new done channel that will be used from now on to signal the
+	// closure of the server
 	orderbook.doneMu.Lock()
 	orderbook.done = make(chan struct{})
 	orderbook.doneMu.Unlock()
-
-	// Wait for the shutdown signal and then stop the Server
 	go func() {
 		<-done
-
 		close(orderbook.done)
 		orderbook.doneMu.Lock()
 		orderbook.done = nil
 		orderbook.doneMu.Unlock()
 	}()
 
-	// Merge all outputs from the syncers
+	// Merge all of the channels on the broadcast channel into the output
+	// channel
 	go func() {
 		defer close(notifications)
 		dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
@@ -207,16 +170,17 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
+	orderbook.doneMu.RLock()
 	orderbook.syncerMu.Lock()
+	defer orderbook.doneMu.RUnlock()
 	defer orderbook.syncerMu.Unlock()
 
-	// Close the previous epoch
+	// Transition the current epoch into the previous epoch and setup a new
+	// current epoch
 	if orderbook.syncerPrevDone == nil {
 		close(orderbook.syncerPrevDone)
 		close(orderbook.syncerPrevOrderFragments)
 	}
-	// Transition the current epoch to be the previous epoch and create a new
-	// epoch setup
 	orderbook.syncerPrevDone = orderbook.syncerCurrDone
 	orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
 	orderbook.syncerCurrDone = make(chan struct{})
@@ -225,28 +189,60 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	// Clone a new PointerStorer for the new syncer
 	pointerStore, err := orderbook.pointerStore.Clone()
 	if err != nil {
-
+		logger.Error(fmt.Sprintf("cannot clone pointer store: %v", err))
+		return
 	}
 
-	// Start the syncer for this epoch
-	syncer := newSyncer(
-		epoch,
-		pointerStore,
-		orderbook.orderStore,
-		orderbook.orderFragmentStore,
-		orderbook.contractBinder,
-		orderbook.interval,
-		orderbook.limit,
-	)
+	syncer := newSyncer(epoch, pointerStore, orderbook.orderStore, orderbook.orderFragmentStore, orderbook.contractBinder, orderbook.interval, orderbook.limit)
 	notifications, errs := syncer.sync(orderbook.syncerCurrDone, orderbook.syncerCurrOrderFragments)
 
-	// Signal that the outputs of this syncer should be accepted by the merger
 	select {
 	case <-orderbook.done:
 	case orderbook.broadcastNotifications <- notifications:
 	}
+
 	select {
 	case <-orderbook.done:
 	case orderbook.broadcastErrs <- errs:
+	}
+}
+
+func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragment order.Fragment) error {
+	orderbook.doneMu.RLock()
+	orderbook.syncerMu.RLock()
+	defer orderbook.doneMu.RUnlock()
+	defer orderbook.syncerMu.RUnlock()
+
+	if orderbook.done == nil {
+		return ErrServerIsNotRunning
+	}
+
+	switch orderFragment.Depth {
+	case 0:
+		if orderbook.syncerCurrOrderFragments == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-orderbook.done:
+			return ErrServerIsNotRunning
+		case orderbook.syncerCurrOrderFragments <- orderFragment:
+			return nil
+		}
+	case 1:
+		if orderbook.syncerPrevOrderFragments == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-orderbook.done:
+			return ErrServerIsNotRunning
+		case orderbook.syncerPrevOrderFragments <- orderFragment:
+			return nil
+		}
+	default:
+		return nil
 	}
 }
