@@ -251,17 +251,8 @@ func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Co
 }
 
 func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, matches chan<- Computation) error {
-	buyFragment, err := ome.storer.OrderFragment(com.Buy)
-	if err != nil {
-		return err
-	}
-	sellFragment, err := ome.storer.OrderFragment(com.Sell)
-	if err != nil {
-		return err
-	}
-
 	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy, com.Sell, base64.StdEncoding.EncodeToString(com.Epoch[:8])))
-	ome.matcher.Resolve(com, buyFragment, sellFragment, func(com Computation) {
+	ome.matcher.Resolve(com, func(com Computation) {
 		if !com.Match {
 			return
 		}

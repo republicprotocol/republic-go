@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 )
@@ -66,7 +65,7 @@ type Matcher interface {
 	// are a match. The epoch hash of the Computation and is used to
 	// differentiate between the various networks required for SMPC. The
 	// MatchCallback is called when a result has be determined.
-	Resolve(com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback)
+	Resolve(com Computation, callback MatchCallback)
 }
 
 type matcher struct {
@@ -86,8 +85,8 @@ func NewMatcher(storer Storer, smpcer smpc.Smpcer) Matcher {
 }
 
 // Resolve implements the Matcher interface.
-func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback) {
-	if buyFragment.OrderSettlement != sellFragment.OrderSettlement {
+func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
+	if com.Buy.OrderSettlement != com.Sell.OrderSettlement {
 		// Store the computation as a mismatch
 		com.State = ComputationStateMismatched
 		com.Match = false
@@ -100,11 +99,11 @@ func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order
 		return
 	}
 
-	matcher.resolve(smpc.NetworkID(com.Epoch), com, buyFragment, sellFragment, callback, ResolveStagePriceExp)
+	matcher.resolve(smpc.NetworkID(com.Epoch), com, callback, ResolveStagePriceExp)
 }
 
-func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
-	if isExpired(com, buyFragment, sellFragment) {
+func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callback MatchCallback, stage ResolveStage) {
+	if isExpired(com) {
 		com.State = ComputationStateRejected
 		if err := matcher.storer.PutComputation(com); err != nil {
 			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
@@ -112,20 +111,20 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFr
 		return
 	}
 
-	join, err := buildJoin(com, buyFragment, sellFragment, stage)
+	join, err := buildJoin(com, stage)
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
 		return
 	}
 	err = matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
-		matcher.resolveValues(values, networkID, com, buyFragment, sellFragment, callback, stage)
+		matcher.resolveValues(values, networkID, com, callback, stage)
 	})
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: cannot join computation = %v: %v", stage, com.ID, err))
 	}
 }
 
-func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
+func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID, com Computation, callback MatchCallback, stage ResolveStage) {
 	if len(values) != 1 {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: unexpected number of values: %v", stage, len(values)))
 		return
@@ -135,19 +134,19 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	case ResolveStagePriceExp, ResolveStageBuyVolumeExp, ResolveStageSellVolumeExp:
 		if isGreaterThanZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-			matcher.resolve(networkID, com, buyFragment, sellFragment, callback, stage+2)
+			matcher.resolve(networkID, com, callback, stage+2)
 			return
 		}
 		if isEqualToZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-			matcher.resolve(networkID, com, buyFragment, sellFragment, callback, stage+1)
+			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
 
 	case ResolveStagePriceCo, ResolveStageBuyVolumeCo, ResolveStageSellVolumeCo:
 		if isGreaterThanOrEqualToZero(values[0]) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
-			matcher.resolve(networkID, com, buyFragment, sellFragment, callback, stage+1)
+			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
 
@@ -182,29 +181,29 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	callback(com)
 }
 
-func buildJoin(com Computation, buyFragment, sellFragment order.Fragment, stage ResolveStage) (smpc.Join, error) {
+func buildJoin(com Computation, stage ResolveStage) (smpc.Join, error) {
 	var share shamir.Share
 	switch stage {
 	case ResolveStagePriceExp:
-		share = buyFragment.Price.Exp.Sub(&sellFragment.Price.Exp)
+		share = com.Buy.Price.Exp.Sub(&com.Sell.Price.Exp)
 
 	case ResolveStagePriceCo:
-		share = buyFragment.Price.Co.Sub(&sellFragment.Price.Co)
+		share = com.Buy.Price.Co.Sub(&com.Sell.Price.Co)
 
 	case ResolveStageBuyVolumeExp:
-		share = buyFragment.Volume.Exp.Sub(&sellFragment.MinimumVolume.Exp)
+		share = com.Buy.Volume.Exp.Sub(&com.Sell.MinimumVolume.Exp)
 
 	case ResolveStageBuyVolumeCo:
-		share = buyFragment.Volume.Co.Sub(&sellFragment.MinimumVolume.Co)
+		share = com.Buy.Volume.Co.Sub(&com.Sell.MinimumVolume.Co)
 
 	case ResolveStageSellVolumeExp:
-		share = sellFragment.Volume.Exp.Sub(&buyFragment.MinimumVolume.Exp)
+		share = com.Sell.Volume.Exp.Sub(&com.Buy.MinimumVolume.Exp)
 
 	case ResolveStageSellVolumeCo:
-		share = sellFragment.Volume.Co.Sub(&buyFragment.MinimumVolume.Co)
+		share = com.Sell.Volume.Co.Sub(&com.Buy.MinimumVolume.Co)
 
 	case ResolveStageTokens:
-		share = buyFragment.Tokens.Sub(&sellFragment.Tokens)
+		share = com.Buy.Tokens.Sub(&com.Sell.Tokens)
 	default:
 		return smpc.Join{}, ErrUnexpectedResolveStage
 	}
@@ -229,9 +228,9 @@ func isEqualToZero(value uint64) bool {
 	return value == 0 || value == shamir.Prime
 }
 
-func isExpired(com Computation, buyFragment, sellFragment order.Fragment) bool {
-	if time.Now().After(buyFragment.OrderExpiry) || time.Now().After(sellFragment.OrderExpiry) {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired => buy = %v, sell = %v", com.Buy, com.Sell))
+func isExpired(com Computation) bool {
+	if time.Now().After(com.Buy.OrderExpiry) || time.Now().After(com.Sell.OrderExpiry) {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired => buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 		return true
 	}
 	return false

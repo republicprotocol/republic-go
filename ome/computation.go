@@ -66,11 +66,11 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	Epoch     [32]byte      `json:"epoch"`
-	Timestamp time.Time     `json:"timestamp"`
-	ID        ComputationID `json:"id"`
-	Buy       order.ID      `json:"buy"`
-	Sell      order.ID      `json:"sell"`
+	Epoch     [32]byte       `json:"epoch"`
+	Timestamp time.Time      `json:"timestamp"`
+	ID        ComputationID  `json:"id"`
+	Buy       order.Fragment `json:"buy"`
+	Sell      order.Fragment `json:"sell"`
 
 	State ComputationState `json:"state"`
 	Match bool             `json:"match"`
@@ -79,7 +79,7 @@ type Computation struct {
 // NewComputation returns a pending Computation between a buy order.Order and a
 // sell order.Order. It initialized the ComputationID to the Keccak256 hash of
 // the buy order.ID and the sell order.ID.
-func NewComputation(epoch [32]byte, buy, sell order.ID, state ComputationState, match bool) Computation {
+func NewComputation(epoch [32]byte, buy, sell order.Fragment, state ComputationState, match bool) Computation {
 	com := Computation{
 		Epoch: epoch,
 		Buy:   buy,
@@ -88,7 +88,7 @@ func NewComputation(epoch [32]byte, buy, sell order.ID, state ComputationState, 
 		Match: match,
 	}
 	com.Timestamp = time.Now()
-	com.ID = NewComputationID(buy, sell)
+	com.ID = NewComputationID(buy.OrderID, sell.OrderID)
 	return com
 }
 
@@ -97,8 +97,8 @@ func NewComputation(epoch [32]byte, buy, sell order.ID, state ComputationState, 
 func (com *Computation) Equal(arg *Computation) bool {
 	return com.Timestamp.Equal(arg.Timestamp) &&
 		bytes.Equal(com.ID[:], arg.ID[:]) &&
-		com.Buy.Equal(arg.Buy) &&
-		com.Sell.Equal(arg.Sell) &&
+		com.Buy.Equal(&arg.Buy) &&
+		com.Sell.Equal(&arg.Sell) &&
 		com.State == arg.State &&
 		com.Match == arg.Match
 }

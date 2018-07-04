@@ -248,9 +248,9 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
-			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment.OrderID, cmpOrderFragments[i].OrderID, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, cmpOrderFragments[i], ComputationStateNil, false)
 		} else {
-			computation = NewComputation(mat.epoch.Hash, cmpOrderFragments[i].OrderID, notification.OrderFragment.OrderID, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, cmpOrderFragments[i], notification.OrderFragment, ComputationStateNil, false)
 		}
 
 		select {
