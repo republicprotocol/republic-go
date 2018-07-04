@@ -2,6 +2,7 @@ package registry
 
 import (
 	"bytes"
+	"math/big"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -10,10 +11,12 @@ import (
 // epoch hash, an ordered list of Pods for the epoch, and all Darknode
 // identity.Addresses that are registered for the epoch.
 type Epoch struct {
-	Hash        [32]byte
-	Pods        []Pod
-	Darknodes   []identity.Address
-	BlockNumber uint
+	Hash      [32]byte
+	Pods      []Pod
+	Darknodes []identity.Address
+
+	BlockNumber   *big.Int
+	BlockInterval *big.Int
 }
 
 // Equal returns true if the hash of two Epochs is equal. Otherwise it returns
