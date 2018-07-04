@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrOrderNotFound is returned when attempting to read an order that cannot be
@@ -22,7 +23,7 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // blockchain.
 type OrderStorer interface {
 	PutOrder(id order.ID, status order.Status) error
-	DeleteOrder(id order.ID)
+	DeleteOrder(id order.ID) error
 	Order(id order.ID) (order.Status, error)
 	Orders() (OrderIterator, error)
 }
@@ -47,10 +48,10 @@ type OrderIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutOrderFragment(epoch [32]byte, orderFragment order.Fragment) error
-	DeleteOrderFragment(epoch [32]byte, id order.ID) error
-	OrderFragment(epoch [32]byte, id order.ID) (order.Fragment, error)
-	OrderFragments(epoch [32]byte) (OrderFragmentIterator, error)
+	PutOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error
+	DeleteOrderFragment(epoch registry.Epoch, id order.ID) error
+	OrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error)
+	OrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.
@@ -70,3 +71,14 @@ type OrderFragmentIterator interface {
 	// Release the resources allocated by the iterator.
 	Release()
 }
+
+// PointerStorer for the synchronisation pointers used to track the progress
+// of synchronisation. This prevents needing to re-sync at every reboot.
+type PointerStorer interface {
+	PutPointer(pointer Pointer) error
+	Pointer() (Pointer, error)
+	Clone() (PointerStorer, error)
+}
+
+// Pointer points to the last order.Order that was successfully synchronised.
+type Pointer int

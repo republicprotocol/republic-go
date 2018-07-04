@@ -3,12 +3,11 @@ package orderbook
 import (
 	"context"
 	"errors"
-	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -67,11 +66,14 @@ type orderbook struct {
 	done   chan struct{}
 
 	rsaKey             crypto.RsaKey
+	pointerStore       PointerStorer
 	orderStore         OrderStorer
 	orderFragmentStore OrderFragmentStorer
 	contractBinder     ContractBinder
+	interval           time.Duration
+	limit              int
 
-	syncerMu                 *sync.Mutex
+	syncerMu                 *sync.RWMutex
 	syncerCurrDone           chan struct{}
 	syncerCurrOrderFragments chan order.Fragment
 	syncerPrevDone           chan struct{}
@@ -83,17 +85,20 @@ type orderbook struct {
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
 // order.EncryptedFragments that it receives, and stores them in a Storer.
-func NewOrderbook(rsaKey crypto.RsaKey, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder) Orderbook {
+func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
 	return &orderbook{
 		doneMu: new(sync.RWMutex),
 		done:   nil,
 
 		rsaKey:             rsaKey,
+		pointerStore:       pointerStore,
 		orderStore:         orderStore,
 		orderFragmentStore: orderFragmentStore,
 		contractBinder:     contractBinder,
+		interval:           interval,
+		limit:              limit,
 
-		syncerMu:                 new(sync.Mutex),
+		syncerMu:                 new(sync.RWMutex),
 		syncerCurrDone:           nil,
 		syncerCurrOrderFragments: nil,
 		syncerPrevDone:           nil,
@@ -123,8 +128,14 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
 	}
 
+	orderbook.syncerMu.RLock()
+	defer orderbook.syncerMu.RUnlock()
+
 	switch orderFragment.Depth {
 	case 0:
+		if orderbook.syncerCurrOrderFragments == nil {
+			return nil
+		}
 		select {
 		case <-ctx.Done():
 			return nil
@@ -134,6 +145,9 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 			return nil
 		}
 	case 1:
+		if orderbook.syncerPrevOrderFragments == nil {
+			return nil
+		}
 		select {
 		case <-ctx.Done():
 			return nil
@@ -181,11 +195,11 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	// Merge all outputs from the syncers
 	go func() {
 		defer close(notifications)
-		orderbook.mergeNotifications(done, notifications)
+		dispatch.Merge(done, notifications, orderbook.notificationMerger)
 	}()
 	go func() {
 		defer close(errs)
-		orderbook.mergeErrors(done, errs)
+		dispatch.Merge(done, errs, orderbook.errMerger)
 	}()
 
 	return notifications, errs
@@ -208,31 +222,21 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	orderbook.syncerCurrDone = make(chan struct{})
 	orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
 
-	// Get the minimum epoch interval and retry several times on failure
-	var minimumEpochInterval *big.Int
-	var err error
-	for i := 0; i < 3; i++ {
-		minimumEpochInterval, err = orderbook.contractBinder.MinimumEpochInterval()
-		if err != nil {
-			time.Sleep(time.Second)
-			continue
-		}
-	}
+	// Clone a new PointerStorer for the new syncer
+	pointerStore, err := orderbook.pointerStore.Clone()
 	if err != nil {
-		logger.Error(fmt.Sprintf("cannot get minimum epoch interval: %v, defaulting to: 10_000", err))
-		minimumEpochInterval = big.NewInt(10000)
+
 	}
 
 	// Start the syncer for this epoch
 	syncer := newSyncer(
+		epoch,
+		pointerStore,
 		orderbook.orderStore,
 		orderbook.orderFragmentStore,
 		orderbook.contractBinder,
-		big.NewInt(0).SetUint64(uint64(epoch.BlockNumber)), // Block offset
-		minimumEpochInterval,                               // Block limit
-		0,                                                  // Order synchronising offset
-		1024,                                               // Order synchronising limit
-		epoch,                                              // Epoch
+		orderbook.interval,
+		orderbook.limit,
 	)
 	notifications, errs := syncer.sync(orderbook.syncerCurrDone, orderbook.syncerCurrOrderFragments)
 
@@ -244,63 +248,5 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	select {
 	case <-orderbook.done:
 	case orderbook.errMerger <- errs:
-	}
-}
-
-func (orderbook *orderbook) mergeNotifications(done <-chan struct{}, notifications chan<- Notification) {
-	for {
-		select {
-		case <-done:
-			return
-		case ch, ok := <-orderbook.notificationMerger:
-			if !ok {
-				return
-			}
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case notification, ok := <-ch:
-						if !ok {
-							return
-						}
-						select {
-						case <-done:
-						case notifications <- notification:
-						}
-					}
-				}
-			}()
-		}
-	}
-}
-
-func (orderbook *orderbook) mergeErrors(done <-chan struct{}, errs chan<- error) {
-	for {
-		select {
-		case <-done:
-			return
-		case ch, ok := <-orderbook.errMerger:
-			if !ok {
-				return
-			}
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case err, ok := <-ch:
-						if !ok {
-							return
-						}
-						select {
-						case <-done:
-						case errs <- err:
-						}
-					}
-				}
-			}()
-		}
 	}
 }

@@ -3,50 +3,42 @@ package orderbook
 import (
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
 
 type syncer struct {
-	orderStore         OrderStorer
-	orderFragmentStore OrderFragmentStorer
-	contractBinder     ContractBinder
-	blockNumberOffset  *big.Int
-	blockNumberLimit   *big.Int
-
-	limit int
+	// Epoch at the beginning of the syncer range
 	epoch registry.Epoch
 
-	purgeOffset int
-	purgeCache  []int
+	// Stores for storing and loading data
+	pointerStore       PointerStorer
+	orderStore         OrderStorer
+	orderFragmentStore OrderFragmentStorer
 
-	ordersOffset int
-	orders       []order.ID
+	// ContractBinder exposes methods to pull changes from Ethereum and the
+	// control parameters for customising when to pull changes
+	contractBinder ContractBinder
+	interval       time.Duration
+	limit          int
 }
 
-// newSyncer returns a new Syncer that will synchronise a bounded number of
-// changes from a ContractBinder. The Syncer will only considered order.IDs
-// that were opened in a specific block number range.
-func newSyncer(orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, blockNumberOffset, blockNumberLimit *big.Int, offset, limit int, epoch registry.Epoch) *syncer {
+// newSyncer returns a new Syncer that will synchronise changes from a
+// ContractBinder for a specific registry.Epoch. At each time interval, the
+// Syncer will synchronise all changes up to some maximum limit.
+func newSyncer(epoch registry.Epoch, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) *syncer {
 	return &syncer{
-		orderStore:         orderStore,
-		orderFragmentStore: orderFragmentStore,
-		contractBinder:     contractBinder,
-		blockNumberOffset:  blockNumberOffset,
-		blockNumberLimit:   blockNumberLimit,
-
-		limit: limit,
 		epoch: epoch,
 
-		purgeOffset: 0,
-		purgeCache:  make([]int, limit),
+		pointerStore:       pointerStore,
+		orderStore:         orderStore,
+		orderFragmentStore: orderFragmentStore,
 
-		ordersOffset: offset,
-		orders:       make([]order.ID, limit),
+		contractBinder: contractBinder,
+		interval:       interval,
+		limit:          limit,
 	}
 }
 
@@ -69,7 +61,7 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 			case <-done:
 				return
 			case <-ticker.C:
-				syncer.syncConfirmsAndCancels(done, notifications, errs)
+				syncer.syncClosures(done, notifications, errs)
 				syncer.syncOpens(done, notifications, errs)
 			case orderFragment, ok := <-orderFragments:
 				if !ok {
@@ -83,77 +75,99 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 	return notifications, errs
 }
 
-func (syncer *syncer) syncConfirmsAndCancels(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	if len(syncer.orders) == 0 {
-		return
-	}
-
-	// Compute the bounds of the orders that will be inspected for purging
-	offset := syncer.purgeOffset % len(syncer.orders)
-	limit := offset + syncer.limit
-	if limit > len(syncer.orders) {
-		limit = len(syncer.orders)
-	}
-
-	// j indexes into the syncer.purgeCache so that we can store indices that
-	// need to be purged without using a heavy mutex, or runtime allocation
-	j := int64(0)
-
-	// Iterate over the bounded window concurrently and inspect each order.ID
-	// to see if it needs to be purged
-	dispatch.ForAll(syncer.orders[offset:limit], func(i int) {
-		orderID := syncer.orders[i]
-
-		// Produce notifications for changes in status
-		notification := Notification(nil)
-		status, err := syncer.contractBinder.Status(orderID)
-		if err != nil {
-			select {
-			case <-done:
-			case errs <- fmt.Errorf("cannot sync order block status: %v", err):
-			}
-			return
-		}
-		switch status {
-		case order.Confirmed:
-			notification = NotificationConfirmOrder{OrderID: orderID}
-		case order.Canceled:
-			notification = NotificationCancelOrder{OrderID: orderID}
-		default:
-			return
-		}
-		select {
-		case <-done:
-			return
-		case notifications <- notification:
-		}
-
-		// Store the index of the current order.ID so that it can be purged
-		j := atomic.AddInt64(&j, 1)
-		syncer.purgeCache[j-1] = offset + i
-	})
-
-	// Purge all stored indices by removing them from the syncer.orders slice
-	for i := int64(0); i < j; i++ {
-		purge := syncer.purgeCache[i]
-		syncer.orders = append(syncer.orders[:purge], syncer.orders[purge+1:]...)
-	}
-	syncer.purgeOffset += syncer.limit
-}
-
-func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-
-	orderIDs, err := syncer.contractBinder.Orders(syncer.ordersOffset, syncer.limit)
+// syncClosures iterates through all orders and deletes those that are no
+// longer open.
+func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+	orderIter, err := syncer.orderStore.Orders()
 	if err != nil {
 		select {
 		case <-done:
-		case errs <- err:
+		case errs <- fmt.Errorf("cannot load order iterator: %v", err):
 		}
 		return
 	}
-	syncer.ordersOffset += len(orderIDs)
+	defer orderIter.Release()
 
-	// Produce a notification for each order that has been synchronised
+	// Function for deleting order IDs from storage
+	deleteOrder := func(orderID order.ID) {
+		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- fmt.Errorf("cannot delete order: %v", err):
+			}
+		}
+	}
+
+	for orderIter.Next() {
+		// Get the next order, and its status, and mark it for deltion if it is
+		// not open
+		orderID, orderStatus, err := orderIter.Cursor()
+		if err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- fmt.Errorf("cannot load order iterator cursor: %v", err):
+				continue
+			}
+		}
+		if orderStatus != order.Open {
+			deleteOrder(orderID)
+			continue
+		}
+
+		// Refresh the status and mark it for deltion if it is not open
+		orderStatus, err = syncer.contractBinder.Status(orderID)
+		if err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- fmt.Errorf("cannot sync order status: %v", err):
+				continue
+			}
+		}
+		if orderStatus != order.Open {
+			deleteOrder(orderID)
+			continue
+		}
+	}
+}
+
+// syncOpens attempts to synchronise all new orders since the last time a
+// synchronisation happened. Usually, these orders will be open, but if the
+// interval between synchronisations is large enough then it is possible that
+// they are already closed.
+func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+
+	// Load the current pointer
+	pointer, err := syncer.pointerStore.Pointer()
+	if err != nil {
+		select {
+		case <-done:
+		case errs <- fmt.Errorf("cannot load pointer: %v", err):
+		}
+		return
+	}
+
+	// Synchronise new orders from the ContractBinder
+	orderIDs, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
+	if err != nil {
+		select {
+		case <-done:
+		case errs <- fmt.Errorf("cannot sync orders: %v", err):
+		}
+		return
+	}
+
+	// Store the resulting pointer so that we do not re-sync orders next time
+	if err := syncer.pointerStore.PutPointer(pointer + Pointer(len(orderIDs))); err != nil {
+		select {
+		case <-done:
+		case errs <- fmt.Errorf("cannot store pointer: %v", err):
+		}
+	}
+
+	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for _, orderID := range orderIDs {
 
 		// Ignore orders that are outside the considered block range
@@ -166,26 +180,33 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 				continue
 			}
 		}
-		if blockNumber.Cmp(syncer.blockNumberOffset) == -1 {
+		if blockNumber.Cmp(syncer.epoch.BlockNumber) == -1 {
 			continue
 		}
-		if blockNumber.Sub(blockNumber, syncer.blockNumberLimit).Cmp(syncer.blockNumberOffset) == 1 {
+		if blockNumber.Sub(blockNumber, blockInterval).Cmp(syncer.epoch.BlockNumber) == 1 {
 			continue
 		}
 
-		// Create and produce the notification
+		// Synchronise the status of this order and generate the appropriate
+		// notification
 		status, err := syncer.contractBinder.Status(orderID)
 		if err != nil {
 			select {
 			case <-done:
 				return
-			case errs <- fmt.Errorf("cannot sync order block status: %v", err):
+			case errs <- fmt.Errorf("cannot sync order status: %v", err):
 				continue
 			}
 		}
+
 		switch status {
+
+		// Open orders need to check for the respective order fragment before a
+		// notification can be generated
 		case order.Open:
 			syncer.insertOrder(orderID, done, notifications, errs)
+
+		// Other statuses can generate notifications immediately
 		case order.Confirmed:
 			notification := NotificationConfirmOrder{OrderID: orderID}
 			select {
@@ -200,30 +221,27 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 				return
 			case notifications <- notification:
 			}
-		default:
-			continue
 		}
 	}
 }
 
 func (syncer *syncer) insertOrder(orderID order.ID, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	syncer.orders = append(syncer.orders, orderID)
 
-	// Store the order.Order with the order.Open status
+	// Store the order
 	if err := syncer.orderStore.PutOrder(orderID, order.Open); err != nil {
 		select {
 		case <-done:
-		case errs <- err:
+			return
+		case errs <- fmt.Errorf("cannot store order: %v", err):
+			// Continue even if there was an error storing the order
 		}
-		// Continue handling the notification
 	}
 
-	// Check for a respective order.Fragment
-	orderFragment, err := syncer.orderFragmentStore.OrderFragment(syncer.epoch.Hash, orderID)
+	// Check for the respective order fragment
+	orderFragment, err := syncer.orderFragmentStore.OrderFragment(syncer.epoch, orderID)
 	if err != nil {
 		if err == ErrOrderFragmentNotFound {
-			// If there is no respective order.Fragment, do nothing and
-			// return
+			// No order fragment received yet
 			return
 		}
 		select {
@@ -244,20 +262,21 @@ func (syncer *syncer) insertOrder(orderID order.ID, done <-chan struct{}, notifi
 }
 
 func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	// Store the order.Fragment
-	if err := syncer.orderFragmentStore.PutOrderFragment(syncer.epoch.Hash, orderFragment); err != nil {
+	// Store the order fragment
+	if err := syncer.orderFragmentStore.PutOrderFragment(syncer.epoch, orderFragment); err != nil {
 		select {
 		case <-done:
-		case errs <- err:
+			return
+		case errs <- fmt.Errorf("cannot store order fragment: %v", err):
+			// Continue even if there was an error storing the order fragment
 		}
-		// Continue handling the notification
 	}
 
-	// Check for a respective order.Status
+	// Check for the respective order
 	orderStatus, err := syncer.orderStore.Order(orderFragment.OrderID)
 	if err != nil {
 		if err == ErrOrderNotFound {
-			// If there is no respective order.Order, do nothing and return
+			// No order synchronised yet
 			return
 		}
 		select {
@@ -267,10 +286,10 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 		return
 	}
 	if orderStatus != order.Open {
+		// Order is synchronised but it is not open
 		return
 	}
 
-	// Emit a notification for this order.Order and order.Fragment
 	notification := NotificationOpenOrder{
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
