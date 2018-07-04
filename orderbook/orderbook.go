@@ -79,8 +79,8 @@ type orderbook struct {
 	syncerPrevDone           chan struct{}
 	syncerPrevOrderFragments chan order.Fragment
 
-	notificationMerger chan (<-chan Notification)
-	errMerger          chan (<-chan error)
+	broadcastNotifications chan (<-chan Notification)
+	broadcastErrs          chan (<-chan error)
 }
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
@@ -104,8 +104,8 @@ func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore O
 		syncerPrevDone:           nil,
 		syncerPrevOrderFragments: nil,
 
-		notificationMerger: make(chan (<-chan Notification)),
-		errMerger:          make(chan (<-chan error)),
+		broadcastNotifications: make(chan (<-chan Notification)),
+		broadcastErrs:          make(chan (<-chan error)),
 	}
 }
 
@@ -195,11 +195,11 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	// Merge all outputs from the syncers
 	go func() {
 		defer close(notifications)
-		dispatch.Merge(done, notifications, orderbook.notificationMerger)
+		dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
 	}()
 	go func() {
 		defer close(errs)
-		dispatch.Merge(done, errs, orderbook.errMerger)
+		dispatch.Merge(done, orderbook.broadcastErrs, errs)
 	}()
 
 	return notifications, errs
@@ -243,10 +243,10 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	// Signal that the outputs of this syncer should be accepted by the merger
 	select {
 	case <-orderbook.done:
-	case orderbook.notificationMerger <- notifications:
+	case orderbook.broadcastNotifications <- notifications:
 	}
 	select {
 	case <-orderbook.done:
-	case orderbook.errMerger <- errs:
+	case orderbook.broadcastErrs <- errs:
 	}
 }
