@@ -20,19 +20,19 @@ type Settler interface {
 }
 
 type settler struct {
-	storer   Storer
-	smpcer   smpc.Smpcer
-	contract ContractBinder
+	computationStore ComputationStorer
+	smpcer           smpc.Smpcer
+	contract         ContractBinder
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(storer Storer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
+func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
 	return &settler{
-		storer:   storer,
-		smpcer:   smpcer,
-		contract: contract,
+		computationStore: computationStore,
+		smpcer:           smpcer,
+		contract:         contract,
 	}
 }
 
@@ -85,7 +85,7 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	}
 
 	com.State = ComputationStateSettled
-	if err := settler.storer.PutComputation(com); err != nil {
+	if err := settler.computationStore.PutComputation(com); err != nil {
 		logger.Error(fmt.Sprintf("cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
 		return
 	}

@@ -33,14 +33,14 @@ type Ome interface {
 }
 
 type ome struct {
-	addr      identity.Address
-	gen       ComputationGenerator
-	matcher   Matcher
-	confirmer Confirmer
-	settler   Settler
-	storer    Storer
-	orderbook orderbook.Orderbook
-	smpcer    smpc.Smpcer
+	addr             identity.Address
+	gen              ComputationGenerator
+	matcher          Matcher
+	confirmer        Confirmer
+	settler          Settler
+	computationStore ComputationStorer
+	orderbook        orderbook.Orderbook
+	smpcer           smpc.Smpcer
 
 	computationBacklogMu *sync.RWMutex
 	computationBacklog   map[ComputationID]Computation
@@ -53,16 +53,16 @@ type ome struct {
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
 // from the Ethereum blockchain, and an smpc.Smpcer to run the secure
 // multi-party computations necessary for the secure order matching engine.
-func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, confirmer Confirmer, settler Settler, storer Storer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch registry.Epoch) Ome {
+func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, confirmer Confirmer, settler Settler, computationStore ComputationStorer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch registry.Epoch) Ome {
 	ome := &ome{
-		addr:      addr,
-		gen:       gen,
-		matcher:   matcher,
-		confirmer: confirmer,
-		settler:   settler,
-		storer:    storer,
-		orderbook: orderbook,
-		smpcer:    smpcer,
+		addr:             addr,
+		gen:              gen,
+		matcher:          matcher,
+		confirmer:        confirmer,
+		settler:          settler,
+		computationStore: computationStore,
+		orderbook:        orderbook,
+		smpcer:           smpcer,
 
 		computationBacklogMu: new(sync.RWMutex),
 		computationBacklog:   map[ComputationID]Computation{},
@@ -227,7 +227,7 @@ func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Co
 		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired backlog computation buy = %v, sell = %v", com.Buy, com.Sell))
 			com.State = ComputationStateRejected
-			if err := ome.storer.PutComputation(com); err != nil {
+			if err := ome.computationStore.PutComputation(com); err != nil {
 				logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
 			}
 			continue

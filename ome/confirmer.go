@@ -28,7 +28,7 @@ type Confirmer interface {
 }
 
 type confirmer struct {
-	storer Storer
+	computationStore ComputationStorer
 
 	contract              ContractBinder
 	orderbookPollInterval time.Duration
@@ -44,9 +44,9 @@ type confirmer struct {
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(storer Storer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
+func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
-		storer: storer,
+		computationStore: computationStore,
 
 		contract:              contract,
 		orderbookPollInterval: orderbookPollInterval,
@@ -177,7 +177,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				continue
 			}
 		}
-		if err := confirmer.storer.PutComputation(com); err != nil {
+		if err := confirmer.computationStore.PutComputation(com); err != nil {
 			select {
 			case <-done:
 				return
@@ -233,7 +233,7 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 	} else {
 		comID = NewComputationID(ordMatch, ord)
 	}
-	com, err := confirmer.storer.Computation(comID)
+	com, err := confirmer.computationStore.Computation(comID)
 	if err != nil {
 		return com, err
 	}
