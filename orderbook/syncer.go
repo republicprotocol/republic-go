@@ -266,6 +266,9 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 		}
 		return
 	}
+	if orderStatus != order.Open {
+		return
+	}
 
 	// Emit a notification for this order.Order and order.Fragment
 	notification := NotificationOpenOrder{
