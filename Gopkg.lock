@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
-  revision = "06cfa1db77dae2425e143980408e642f7a9d5b09"
+  revision = "2c5933638c5ef1bc320b01486100788c81d57b99"
 
 [[projects]]
   branch = "master"
@@ -25,8 +25,17 @@
     "common/hexutil",
     "common/math",
     "common/mclock",
+    "consensus",
+    "consensus/misc",
+    "core",
+    "core/rawdb",
+    "core/state",
     "core/types",
+    "core/vm",
     "crypto",
+    "crypto/bn256",
+    "crypto/bn256/cloudflare",
+    "crypto/bn256/google",
     "crypto/randentropy",
     "crypto/secp256k1",
     "crypto/sha3",
@@ -85,6 +94,15 @@
   name = "github.com/gxed/hashland"
   packages = ["keccakpg"]
   revision = "d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+  packages = [
+    ".",
+    "simplelru"
+  ]
+  revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
 
 [[projects]]
   name = "github.com/jbenet/go-base58"
@@ -179,10 +197,10 @@
   revision = "0dccf0d7d287e828155a3ea16f7b968fa9662020"
 
 [[projects]]
-  branch = "master"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
-  revision = "d152f3ce359a5464dc41e84a8919fc67e55bbbf0"
+  revision = "52ae50d8490436622a8941bd70c3dbe0acdd4bbf"
+  version = "v0.9.0"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -227,6 +245,7 @@
   packages = [
     "blake2s",
     "pbkdf2",
+    "ripemd160",
     "scrypt",
     "sha3"
   ]
@@ -248,7 +267,7 @@
     "trace",
     "websocket"
   ]
-  revision = "afe8f62b1d6bbd81f31868121a50b06d8188e1f9"
+  revision = "ed29d75add3d7c4bf7ca65aac0c6df3d1420216f"
 
 [[projects]]
   branch = "master"
@@ -257,7 +276,7 @@
     "cpu",
     "unix"
   ]
-  revision = "63fc586f45fe72d95d5240a5d5eb95e6503907d3"
+  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -300,13 +319,13 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "25b95b48224cce18163c7d49dcfb89a2d5ecd209"
+  revision = "75d2ffb453d53bed20f95f0d563ee000dc4c0c83"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "80063a038e333bbe006c878e4c5ce4c74d055498"
+  revision = "ff3583edef7de132f219f0efc00e097cabcc0ec0"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -367,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "75537b2182b26aa1bfab8ac1eadec2c7d7fe6f4cf93f4f33c8855af9c8c358c3"
+  inputs-digest = "b9ff818f4743aa9f9d66267d56c08f4271a0326e72a48b413daf723fdb872ed5"
   solver-name = "gps-cdcl"
   solver-version = 1
