@@ -184,7 +184,7 @@ type EncryptedFragment struct {
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
-func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, error) {
+func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, error) {
 	var err error
 	decryptedFragment := Fragment{
 		OrderID:         fragment.OrderID,
