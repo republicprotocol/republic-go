@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -82,43 +83,22 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	var wg sync.WaitGroup
 
 	notifications, orderbookErrs := ome.orderbook.Sync(done)
+	wg.Add(1)
 	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case err, ok := <-orderbookErrs:
-				if !ok {
-					return
-				}
-				select {
-				case <-done:
-					return
-				case errs <- err:
-				}
-			}
-		}
-	}()
-	computations, genErrs := ome.gen.Generate(done, notifications)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case err, ok := <-genErrs:
-				if !ok {
-					return
-				}
-				select {
-				case <-done:
-					return
-				case errs <- err:
-				}
-			}
-		}
+		defer wg.Done()
+		dispatch.Forward(done, orderbookErrs, errs)
 	}()
 
+	computations, genErrs := ome.gen.Generate(done, notifications)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		dispatch.Forward(done, genErrs, errs)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-done:
