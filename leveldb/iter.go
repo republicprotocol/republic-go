@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/republicprotocol/republic-go/ome"
-
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
