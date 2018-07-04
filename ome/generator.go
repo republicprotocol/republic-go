@@ -9,15 +9,22 @@ import (
 )
 
 type ComputationGenerator interface {
+	Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error)
 	OnChangeEpoch(epoch registry.Epoch)
 }
 
 type computationGenerator struct {
+	doneMu *sync.Mutex
+	done   chan struct{}
+
 	matMu                *sync.Mutex
 	matCurrDone          chan struct{}
 	matCurrNotifications chan orderbook.Notification
 	matPrevDone          chan struct{}
 	matPrevNotifications chan orderbook.Notification
+
+	computationMerger chan (<-chan Computation)
+	errMerger         chan (<-chan error)
 }
 
 func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
@@ -36,7 +43,7 @@ func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-
 				if !ok {
 					return
 				}
-				gen.handleNotification(notification, done, errs)
+				gen.handleNotification(notification, done)
 			}
 		}
 	}()
@@ -72,13 +79,13 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
 	// Start the mat for this epoch
-	mat := newComputationMatrix()
+	mat := newComputationMatrix(epoch)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	// Signal that the outputs of this mat should be accepted by the merger
 	select {
 	case <-gen.done:
-	case gen.computationsMerger <- computations:
+	case gen.computationMerger <- computations:
 	}
 	select {
 	case <-gen.done:
@@ -89,7 +96,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 func (gen *computationGenerator) handleNotification(notification orderbook.Notification, done <-chan struct{}) {
 	switch notification := notification.(type) {
 	case orderbook.NotificationOpenOrder:
-		gen.handleNotificationOpenOrder(notification, done, errs)
+		gen.handleNotificationOpenOrder(notification, done)
 	default:
 		select {
 		case <-done:
@@ -180,8 +187,17 @@ func (gen *computationGenerator) mergeErrors(done <-chan struct{}, errs chan<- e
 }
 
 type computationMatrix struct {
+	epoch              registry.Epoch
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
+}
+
+func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
+	return &computationMatrix{
+		epoch:              epoch,
+		buyOrderFragments:  []order.Fragment{},
+		sellOrderFragments: []order.Fragment{},
+	}
 }
 
 func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
@@ -245,9 +261,9 @@ func (mat *computationMatrix) handleNotificationOpenOrder(notification orderbook
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
-			computation = NewComputation(notification.OrderFragment.OrderID, cmpOrderFragments[i].OrderID, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment.OrderID, cmpOrderFragments[i].OrderID, ComputationStateNil, false)
 		} else {
-			computation = NewComputation(cmpOrderFragments[i].OrderID, notification.OrderFragment.OrderID, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, cmpOrderFragments[i].OrderID, notification.OrderFragment.OrderID, ComputationStateNil, false)
 		}
 
 		select {
@@ -269,13 +285,13 @@ func (mat *computationMatrix) handleNotificationCancelOrder(notification orderbo
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
 	for i := range mat.buyOrderFragments {
 		if mat.buyOrderFragments[i].OrderID == orderID {
-			mat.buyOrderFragments = append(mat.buyOrderFragments[:i], mat.buyOrderFragments[i+1:])
+			mat.buyOrderFragments = append(mat.buyOrderFragments[:i], mat.buyOrderFragments[i+1:]...)
 			return
 		}
 	}
 	for i := range mat.sellOrderFragments {
 		if mat.sellOrderFragments[i].OrderID == orderID {
-			mat.sellOrderFragments = append(mat.sellOrderFragments[:i], mat.sellOrderFragments[i+1:])
+			mat.sellOrderFragments = append(mat.sellOrderFragments[:i], mat.sellOrderFragments[i+1:]...)
 			return
 		}
 	}

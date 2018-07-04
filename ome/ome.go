@@ -81,50 +81,60 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 
 	var wg sync.WaitGroup
 
-	// Sync the orderbook.Orderbook to the Ranker
-	wg.Add(1)
+	notifications, orderbookErrs := ome.orderbook.Sync(done)
 	go func() {
-		defer wg.Done()
 		for {
 			select {
 			case <-done:
 				return
-			default:
+			case err, ok := <-orderbookErrs:
+				if !ok {
+					return
+				}
+				select {
+				case <-done:
+					return
+				case errs <- err:
+				}
 			}
-			timeBeginSync := time.Now()
-
-			ome.syncOrderbookToRanker(done, errs)
-
-			timeNextSync := timeBeginSync.Add(14 * time.Second)
-			if time.Now().After(timeNextSync) {
-				continue
+		}
+	}()
+	computations, genErrs := ome.gen.Generate(done, notifications)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case err, ok := <-genErrs:
+				if !ok {
+					return
+				}
+				select {
+				case <-done:
+					return
+				case errs <- err:
+				}
 			}
-			time.Sleep(timeNextSync.Sub(time.Now()))
 		}
 	}()
 
-	// Sync the Ranker
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
 		for {
 			select {
 			case <-done:
 				return
-			default:
+			case computation, ok := <-computations:
+				if !ok {
+					return
+				}
+				if err := ome.sendComputationToMatcher(computation, done, matches); err != nil {
+					select {
+					case <-done:
+						return
+					case errs <- err:
+					}
+				}
 			}
-			timeBeginSync := time.Now()
-
-			if wait := ome.syncRanker(done, matches, errs); !wait {
-				continue
-			}
-
-			timeNextSync := timeBeginSync.Add(14 * time.Second)
-			if time.Now().After(timeNextSync) {
-				continue
-			}
-			time.Sleep(timeNextSync.Sub(time.Now()))
 		}
 	}()
 
@@ -183,8 +193,8 @@ func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
 		}
 		ome.smpcer.Connect(epoch.Hash, pod.Darknodes)
 
-		// Notify the Ranker
-		ome.ranker.OnChangeEpoch(epoch)
+		ome.orderbook.OnChangeEpoch(epoch)
+		ome.gen.OnChangeEpoch(epoch)
 
 		// Wait for some time to allow for the connections to begin
 		time.Sleep(14 * time.Second)
@@ -196,50 +206,6 @@ func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
 		ome.epochPrev = ome.epochCurr
 		ome.epochCurr = &epoch
 	}()
-}
-
-func (ome *ome) syncOrderbookToRanker(done <-chan struct{}, errs chan<- error) {
-	changeset, err := ome.orderbook.Sync()
-	if err != nil {
-		select {
-		case <-done:
-			return
-		case errs <- fmt.Errorf("cannot sync orderbook: %v", err):
-			return
-		}
-	}
-	logger.Network(logger.LevelDebug, fmt.Sprintf("sync orderbook: %v changes in changeset", len(changeset)))
-
-	for _, change := range changeset {
-		ome.ranker.InsertChange(change)
-	}
-}
-
-func (ome *ome) syncRanker(done <-chan struct{}, matches chan<- Computation, errs chan<- error) bool {
-	buffer := [OmeBufferLimit]Computation{}
-	n := ome.ranker.Computations(buffer[:])
-
-	for i := 0; i < n; i++ {
-		switch buffer[i].State {
-		case ComputationStateNil:
-			if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
-				ome.computationBacklogMu.Lock()
-				ome.computationBacklog[buffer[i].ID] = buffer[i]
-				ome.computationBacklogMu.Unlock()
-			}
-
-		case ComputationStateMatched:
-			ome.sendComputationToConfirmer(buffer[i], done, matches)
-
-		case ComputationStateAccepted:
-			ome.sendComputationToSettler(buffer[i])
-
-		default:
-			logger.Error(fmt.Sprintf("unexpected state for computation buy = %v, sell = %v: %v", buffer[i].Buy, buffer[i].Sell, buffer[i].State))
-		}
-
-	}
-	return n != OmeBufferLimit
 }
 
 func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Computation, errs chan<- error) {
@@ -314,7 +280,7 @@ func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, 
 		return err
 	}
 
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy, com.Sell, base64.StdEncoding.EncodeToString(com.EpochHash[:8])))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy, com.Sell, base64.StdEncoding.EncodeToString(com.Epoch[:8])))
 	ome.matcher.Resolve(com, buyFragment, sellFragment, func(com Computation) {
 		if !com.Match {
 			return

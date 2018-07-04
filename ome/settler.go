@@ -47,7 +47,7 @@ func (settler *settler) Settle(com Computation) error {
 		return err
 	}
 
-	networkID := smpc.NetworkID(com.EpochHash)
+	networkID := smpc.NetworkID(com.Epoch)
 	settler.joinOrderMatch(networkID, com, buyFragment, sellFragment)
 	return nil
 }

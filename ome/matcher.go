@@ -100,7 +100,7 @@ func (matcher *matcher) Resolve(com Computation, buyFragment, sellFragment order
 		return
 	}
 
-	matcher.resolve(smpc.NetworkID(com.EpochHash), com, buyFragment, sellFragment, callback, ResolveStagePriceExp)
+	matcher.resolve(smpc.NetworkID(com.Epoch), com, buyFragment, sellFragment, callback, ResolveStagePriceExp)
 }
 
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, buyFragment, sellFragment order.Fragment, callback MatchCallback, stage ResolveStage) {
