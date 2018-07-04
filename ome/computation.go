@@ -7,7 +7,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 // ComputationID is used to distinguish between different combinations of
@@ -67,26 +66,26 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID        ComputationID      `json:"id"`
-	Buy       order.ID           `json:"buy"`
-	Sell      order.ID           `json:"sell"`
-	EpochHash [32]byte           `json:"epochHash"`
-	Priority  orderbook.Priority `json:"priority"`
+	Timestamp time.Time     `json:"timestamp"`
+	ID        ComputationID `json:"id"`
+	Buy       order.ID      `json:"buy"`
+	Sell      order.ID      `json:"sell"`
 
-	Match     bool             `json:"match"`
-	State     ComputationState `json:"state"`
-	Timestamp time.Time        `json:"timestamp"`
+	State ComputationState `json:"state"`
+	Match bool             `json:"match"`
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a
 // sell order.Order. It initialized the ComputationID to the Keccak256 hash of
 // the buy order.ID and the sell order.ID.
-func NewComputation(buy, sell order.ID, epochHash [32]byte) Computation {
+func NewComputation(buy, sell order.ID, state ComputationState, match bool) Computation {
 	com := Computation{
-		Buy:       buy,
-		Sell:      sell,
-		EpochHash: epochHash,
+		Buy:   buy,
+		Sell:  sell,
+		State: state,
+		Match: match,
 	}
+	com.Timestamp = time.Now()
 	com.ID = NewComputationID(buy, sell)
 	return com
 }
