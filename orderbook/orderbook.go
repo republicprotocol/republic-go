@@ -170,21 +170,23 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
-	orderbook.doneMu.RLock()
-	orderbook.syncerMu.Lock()
-	defer orderbook.doneMu.RUnlock()
-	defer orderbook.syncerMu.Unlock()
+	func() {
+		orderbook.doneMu.RLock()
+		orderbook.syncerMu.Lock()
+		defer orderbook.doneMu.RUnlock()
+		defer orderbook.syncerMu.Unlock()
 
-	// Transition the current epoch into the previous epoch and setup a new
-	// current epoch
-	if orderbook.syncerPrevDone != nil {
-		close(orderbook.syncerPrevDone)
-		close(orderbook.syncerPrevOrderFragments)
-	}
-	orderbook.syncerPrevDone = orderbook.syncerCurrDone
-	orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
-	orderbook.syncerCurrDone = make(chan struct{})
-	orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
+		// Transition the current epoch into the previous epoch and setup a new
+		// current epoch
+		if orderbook.syncerPrevDone != nil {
+			close(orderbook.syncerPrevDone)
+			close(orderbook.syncerPrevOrderFragments)
+		}
+		orderbook.syncerPrevDone = orderbook.syncerCurrDone
+		orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
+		orderbook.syncerCurrDone = make(chan struct{})
+		orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
+	}()
 
 	// Clone a new PointerStorer for the new syncer
 	pointerStore, err := orderbook.pointerStore.Clone()
@@ -209,13 +211,14 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 
 func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragment order.Fragment) error {
 	orderbook.doneMu.RLock()
-	orderbook.syncerMu.RLock()
-	defer orderbook.doneMu.RUnlock()
-	defer orderbook.syncerMu.RUnlock()
-
-	if orderbook.done == nil {
+	serverIsRunning := orderbook.done != nil
+	orderbook.doneMu.RUnlock()
+	if !serverIsRunning {
 		return ErrServerIsNotRunning
 	}
+
+	orderbook.syncerMu.RLock()
+	defer orderbook.syncerMu.RUnlock()
 
 	switch orderFragment.Depth {
 	case 0:

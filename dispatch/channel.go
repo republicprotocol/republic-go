@@ -98,11 +98,11 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 				// case <-done:
 				// case out <- val:
 				// }
-				chosen, val, ok = reflect.Select([]reflect.SelectCase{
+				chosen, val, _ = reflect.Select([]reflect.SelectCase{
 					reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
 					reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(out), Send: val},
 				})
-				if chosen == 0 || !ok {
+				if chosen == 0 {
 					return
 				}
 			}
