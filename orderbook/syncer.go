@@ -1,9 +1,12 @@
 package orderbook
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/republicprotocol/republic-go/logger"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
@@ -53,7 +56,7 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 		defer close(notifications)
 		defer close(errs)
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(syncer.interval)
 		defer ticker.Stop()
 
 		for {
@@ -61,12 +64,14 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 			case <-done:
 				return
 			case <-ticker.C:
+				logger.Network(logger.LevelDebug, fmt.Sprintf("synchronising orderbook in epoch %v", base64.StdEncoding.EncodeToString(syncer.epoch.Hash[:8])))
 				syncer.syncClosures(done, notifications, errs)
 				syncer.syncOpens(done, notifications, errs)
 			case orderFragment, ok := <-orderFragments:
 				if !ok {
 					return
 				}
+				logger.Network(logger.LevelDebug, fmt.Sprintf("synchronising order fragment in epoch %v", base64.StdEncoding.EncodeToString(syncer.epoch.Hash[:8])))
 				syncer.insertOrderFragment(orderFragment, done, notifications, errs)
 			}
 		}
