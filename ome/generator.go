@@ -167,6 +167,7 @@ type computationMatrix struct {
 	epoch              registry.Epoch
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
+	traders            map[order.ID]string
 }
 
 func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
@@ -174,6 +175,7 @@ func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
 		epoch:              epoch,
 		buyOrderFragments:  []order.Fragment{},
 		sellOrderFragments: []order.Fragment{},
+		traders:            map[order.ID]string{},
 	}
 }
 
@@ -234,23 +236,25 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		mat.sellOrderFragments = append(mat.sellOrderFragments, notification.OrderFragment)
 		cmpOrderFragments = mat.buyOrderFragments
 	}
+	mat.traders[notification.OrderID] = notification.Trader
 
 	// Iterate through the opposing list and generate computations
-	for i := range cmpOrderFragments {
+	for _, cmpOrderFragment := range cmpOrderFragments {
 
 		// TODO: Order fragments are opened on a hierarchical path through the
 		// Darknode pods. Pods should prioritise computations for which they
 		// are the first pod along that path (this is how pods break ties for
 		// computations that otherwise have the same priority).
 
-		// FIXME: Order fragments from the same trader should not be matched
-		// against each other.
+		if mat.traders[cmpOrderFragment.OrderID] == notification.Trader {
+			continue
+		}
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
-			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, cmpOrderFragments[i], ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, cmpOrderFragment, ComputationStateNil, false)
 		} else {
-			computation = NewComputation(mat.epoch.Hash, cmpOrderFragments[i], notification.OrderFragment, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, cmpOrderFragment, notification.OrderFragment, ComputationStateNil, false)
 		}
 
 		select {

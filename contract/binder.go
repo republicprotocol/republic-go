@@ -527,16 +527,13 @@ func (binder *Binder) epoch() (registry.Epoch, error) {
 	if err != nil {
 		return registry.Epoch{}, err
 	}
-
-	epochBlocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
+	blockInterval, err := binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Epochhash.Bytes() {
-		blockhash[i] = b
-	}
+	copy(blockhash[:], epoch.Epochhash.Bytes())
 
 	pods, err := binder.pods()
 	if err != nil {
@@ -548,16 +545,12 @@ func (binder *Binder) epoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	blocknumber, err := epochBlocknumber.ToUint()
-	if err != nil {
-		return registry.Epoch{}, err
-	}
-
 	return registry.Epoch{
-		Hash:        blockhash,
-		Pods:        pods,
-		Darknodes:   darknodes,
-		BlockNumber: blocknumber,
+		Hash:          blockhash,
+		Pods:          pods,
+		Darknodes:     darknodes,
+		BlockNumber:   epoch.Blocknumber,
+		BlockInterval: blockInterval,
 	}, nil
 }
 
@@ -751,29 +744,36 @@ func (binder *Binder) orderMatch(id order.ID) (order.ID, error) {
 	return orderIDs[0], nil
 }
 
-// BuyOrders in the Orderbook starting at an offset and returning limited
-// numbers of buy orders.
-func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
+// Orders in the Orderbook starting at an offset and returning limited
+// numbers of orders.
+func (binder *Binder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.buyOrders(offset, limit)
+	return binder.orders(offset, limit)
 }
 
-func (binder *Binder) buyOrders(offset, limit int) ([]order.ID, error) {
-	orders := make([]order.ID, 0, limit)
-	for i := 0; i < limit; i++ {
-		ordID, ok, err := binder.orderbook.BuyOrder(binder.callOpts, big.NewInt(int64(offset+i)))
-		if !ok {
-			return orders, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		orders = append(orders, ordID)
+func (binder *Binder) orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	orderIDsBytes, tradersAddrs, orderStatusesUInt8, err := binder.orderbook.GetOrders(binder.callOpts, big.NewInt(int64(offset)), big.NewInt(int64(limit)))
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return orders, nil
+
+	orderIDs := make([]order.ID, len(orderIDsBytes))
+	orderStatuses := make([]order.Status, len(orderStatusesUInt8))
+	traders := make([]string, len(tradersAddrs))
+
+	for i := range orderIDs {
+		orderIDs[i] = orderIDsBytes[i]
+	}
+	for i := range orderStatuses {
+		orderStatuses[i] = order.Status(orderStatusesUInt8[i])
+	}
+	for i := range traders {
+		traders[i] = tradersAddrs[i].String()
+	}
+
+	return orderIDs, orderStatuses, traders, nil
 }
 
 // SellOrders in the Orderbook starting at an offset and returning limited
@@ -884,20 +884,15 @@ func (binder *Binder) depth(orderID order.ID) (uint, error) {
 
 // BlockNumber will return the block number when the order status
 // last mode modified
-func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
+func (binder *Binder) BlockNumber(orderID order.ID) (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
 	return binder.blockNumber(orderID)
 }
 
-func (binder *Binder) blockNumber(orderID order.ID) (uint, error) {
-	blockNumber, err := binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
-	if err != nil {
-		return 0, err
-	}
-
-	return uint(blockNumber.Uint64()), nil
+func (binder *Binder) blockNumber(orderID order.ID) (*big.Int, error) {
+	return binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
 }
 
 // OrderCounts returns the total number of orders in the orderbook

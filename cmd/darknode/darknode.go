@@ -92,6 +92,13 @@ func main() {
 	}
 	defer store.Close()
 
+	orderbookPointerStore := leveldb.NewOrderbookPointerStore()
+	orderbookStore, err := leveldb.NewOrderbookStore("db")
+	if err != nil {
+		log.Fatalf("cannot open orderbook store: %v", err)
+	}
+	defer orderbookStore.Close()
+
 	// New DHT
 	dht := dht.NewDHT(config.Address, 64)
 
@@ -106,7 +113,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 1024), store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbookPointerStore, orderbookStore, orderbookStore, &contractBinder, time.Second*4, 1024)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -175,14 +182,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
-		ranker, err := ome.NewRanker(done, config.Address, store, store, epoch)
-		if err != nil {
-			log.Fatalf("cannot create new ranker: %v", err)
-		}
+		gen := ome.NewComputationGenerator()
 		matcher := ome.NewMatcher(store, smpcer)
 		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
 		settler := ome.NewSettler(store, smpcer, &contractBinder)
-		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
+		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
@@ -204,7 +208,7 @@ func main() {
 				}
 
 				// Check whether or not ξ has changed
-				if nextEpoch.Equal(&epoch) || nextEpoch.Equal([32]byte{}) {
+				if nextEpoch.Equal(&epoch) {
 					continue
 				}
 				epoch = nextEpoch

@@ -150,7 +150,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 
 	// Synchronise new orders from the ContractBinder
-	orderIDs, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
+	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		select {
 		case <-done:
@@ -168,7 +168,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 
 	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
-	for _, orderID := range orderIDs {
+	for i, orderID := range orderIDs {
 
 		// Ignore orders that are outside the considered block range
 		blockNumber, err := syncer.contractBinder.BlockNumber(orderID)
@@ -189,22 +189,12 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 
 		// Synchronise the status of this order and generate the appropriate
 		// notification
-		status, err := syncer.contractBinder.Status(orderID)
-		if err != nil {
-			select {
-			case <-done:
-				return
-			case errs <- fmt.Errorf("cannot sync order status: %v", err):
-				continue
-			}
-		}
-
-		switch status {
+		switch orderStatuses[i] {
 
 		// Open orders need to check for the respective order fragment before a
 		// notification can be generated
 		case order.Open:
-			syncer.insertOrder(orderID, done, notifications, errs)
+			syncer.insertOrder(orderID, orderStatuses[i], traders[i], done, notifications, errs)
 
 		// Other statuses can generate notifications immediately
 		case order.Confirmed:
@@ -225,10 +215,10 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 }
 
-func (syncer *syncer) insertOrder(orderID order.ID, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
 
 	// Store the order
-	if err := syncer.orderStore.PutOrder(orderID, order.Open); err != nil {
+	if err := syncer.orderStore.PutOrder(orderID, orderStatus); err != nil {
 		select {
 		case <-done:
 			return
@@ -254,6 +244,7 @@ func (syncer *syncer) insertOrder(orderID order.ID, done <-chan struct{}, notifi
 	notification := NotificationOpenOrder{
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
+		Trader:        trader,
 	}
 	select {
 	case <-done:
