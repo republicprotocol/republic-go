@@ -103,6 +103,13 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	}, nil
 }
 
+// From returns the common.Address used to submit transactions.
+func (binder *Binder) From() common.Address {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+	return binder.transactOpts.From
+}
+
 // SendTx locks binder resources to execute function f (handling nonces explicitly)
 // and will wait until the block has been mined on the blockchain. This will allow
 // parallel requests to the blockchain since the binder will be unlocked before

@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
-	contractBindings, err := loadContractBinder(config, keystore)
+	contractBinder, err := loadContractBinder(config, keystore)
 	if err != nil {
 		log.Fatalf("cannot load smart contract: %v", err)
 	}
@@ -55,11 +55,11 @@ func main() {
 	ords := []order.Order{buy, sell}
 
 	for _, ord := range ords {
-		data := append([]byte("Republic Protocol: open: "), ord.ID[:]...)
-		signatureData := crypto.Keccak256([]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(data))), data)
+		message := append([]byte("Republic Protocol: open: "), ord.ID[:]...)
+		signatureData := crypto.Keccak256([]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(message))), message)
 		signature, err := keystore.Sign(signatureData)
 
-		log.Printf("id = %v; sig = %v", base64.StdEncoding.EncodeToString(ord.ID[:]), base64.StdEncoding.EncodeToString(signature))
+		log.Printf("order = %v, from = %v", ord.ID, contractBinder.From().String())
 
 		if err != nil {
 			log.Fatalf("cannot sign order: %v", err)
@@ -70,7 +70,7 @@ func main() {
 			OrderFragmentMapping: map[string][]adapter.OrderFragment{},
 		}
 
-		pods, err := contractBindings.Pods()
+		pods, err := contractBinder.Pods()
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
@@ -88,7 +88,7 @@ func main() {
 					Index: int64(i + 1),
 				}
 
-				pubKey, err := contractBindings.PublicKey(pod.Darknodes[i])
+				pubKey, err := contractBinder.PublicKey(pod.Darknodes[i])
 				if err != nil {
 					log.Fatalf("cannot get public key of %v: %v", pod.Darknodes[i], err)
 				}
