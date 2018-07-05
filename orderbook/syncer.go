@@ -216,10 +216,10 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 			}
 		}
 		if blockNumber.Cmp(syncer.epoch.BlockNumber) == -1 {
-			continue
+			// continue
 		}
 		if blockNumber.Sub(blockNumber, blockInterval).Cmp(syncer.epoch.BlockNumber) == 1 {
-			continue
+			// continue
 		}
 
 		// Synchronise the status of this order and generate the appropriate
