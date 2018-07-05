@@ -3,6 +3,7 @@ package orderbook
 import (
 	"encoding/base64"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -282,6 +283,7 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 		}
 		return
 	}
+	log.Println("order status:", orderStatus)
 	if orderStatus != order.Open {
 		// Order is synchronised but it is not open
 		return
