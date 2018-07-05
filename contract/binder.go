@@ -124,7 +124,7 @@ func (binder *Binder) SendTx(f func() (*types.Transaction, error)) (*types.Trans
 
 func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Transaction, error) {
 	tx, err := f()
-	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced {
+	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced || strings.Contains(err.Error(), "nonce is too low") {
 		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return binder.sendTx(f)
 	}
@@ -140,9 +140,9 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 	// If any other type of nonce error occurs, we do not know if it is because
 	// the nonce is too low or too high
 	if strings.Contains(err.Error(), "nonce") {
-		// So we sleep for several seconds and refresh the nonce proper and try
-		// again
-		time.Sleep(4 * time.Second)
+		// So we sleep for approximate one block and refresh the nonce proper
+		// and try again
+		time.Sleep(15 * time.Second)
 		nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
 		if err != nil {
 			return tx, err
