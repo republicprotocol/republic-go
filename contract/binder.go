@@ -137,19 +137,22 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 		return tx, nil
 	}
 
-	// If any other type of nonce error occurs, we do not know if it is because
-	// the nonce is too low or too high
-	if strings.Contains(err.Error(), "nonce") {
-		// So we sleep for approximate one block and refresh the nonce proper
-		// and try again
-		time.Sleep(15 * time.Second)
-		nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
+	// If any other type of nonce error occurs we will refresh the nonce and
+	// try again for up to 1 minute
+	var nonce uint64
+	for try := 0; try < 12 && strings.Contains(err.Error(), "nonce"); try++ {
+		time.Sleep(5 * time.Second)
+		nonce, err = binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
 		if err != nil {
-			return tx, err
+			continue
 		}
 		binder.transactOpts.Nonce = big.NewInt(int64(nonce))
-		return binder.sendTx(f)
+		if tx, err = f(); err == nil {
+			binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
+			return tx, nil
+		}
 	}
+
 	return tx, err
 }
 
