@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,14 +136,20 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return tx, nil
 	}
-	// if strings.Contains(err.Error(), "nonce") {
-	// 	nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
-	// 	if err != nil {
-	// 		return tx, err
-	// 	}
-	// 	binder.transactOpts.Nonce = big.NewInt(int64(nonce))
-	// 	return binder.sendTx(f)
-	// }
+
+	// If any other type of nonce error occurs, we do not know if it is because
+	// the nonce is too low or too high
+	if strings.Contains(err.Error(), "nonce") {
+		// So we sleep for several seconds and refresh the nonce proper and try
+		// again
+		time.Sleep(4 * time.Second)
+		nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
+		if err != nil {
+			return tx, err
+		}
+		binder.transactOpts.Nonce = big.NewInt(int64(nonce))
+		return binder.sendTx(f)
+	}
 	return tx, err
 }
 
