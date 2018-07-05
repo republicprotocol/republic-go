@@ -222,6 +222,8 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 		if orderbook.syncerCurrOrderFragments == nil {
 			return nil
 		}
+
+		logger.Network(logger.LevelDebug, fmt.Sprintf("routing order %v to current epoch", orderFragment.OrderID))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -234,6 +236,8 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 		if orderbook.syncerPrevOrderFragments == nil {
 			return nil
 		}
+
+		logger.Network(logger.LevelDebug, fmt.Sprintf("routing order %v to previous epoch", orderFragment.OrderID))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
