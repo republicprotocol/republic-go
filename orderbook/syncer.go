@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
@@ -64,14 +63,12 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 			case <-done:
 				return
 			case <-ticker.C:
-				logger.Network(logger.LevelDebug, fmt.Sprintf("synchronising orderbook in epoch %v", base64.StdEncoding.EncodeToString(syncer.epoch.Hash[:8])))
 				syncer.syncClosures(done, notifications, errs)
 				syncer.syncOpens(done, notifications, errs)
 			case orderFragment, ok := <-orderFragments:
 				if !ok {
 					return
 				}
-				logger.Network(logger.LevelDebug, fmt.Sprintf("synchronising order fragment in epoch %v", base64.StdEncoding.EncodeToString(syncer.epoch.Hash[:8])))
 				syncer.insertOrderFragment(orderFragment, done, notifications, errs)
 			}
 		}
@@ -163,6 +160,9 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 		return
 	}
+	if len(orderIDs) > 0 {
+		logger.Network(logger.LevelDebug, fmt.Sprintf("synchronising %v changes in epoch %v", len(orderIDs), base64.StdEncoding.EncodeToString(syncer.epoch.Hash[:8])))
+	}
 
 	// Store the resulting pointer so that we do not re-sync orders next time
 	if err := syncer.pointerStore.PutPointer(pointer + Pointer(len(orderIDs))); err != nil {
@@ -246,6 +246,7 @@ func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, tr
 		return
 	}
 
+	logger.Network(logger.LevelDebug, fmt.Sprintf("emitted notification for order = %v", orderFragment.OrderID))
 	notification := NotificationOpenOrder{
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
@@ -286,6 +287,7 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 		return
 	}
 
+	logger.Network(logger.LevelDebug, fmt.Sprintf("emitted notification for order = %v", orderFragment.OrderID))
 	notification := NotificationOpenOrder{
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
