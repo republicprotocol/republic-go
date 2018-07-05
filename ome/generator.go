@@ -261,7 +261,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			computation = NewComputation(mat.epoch.Hash, cmpOrderFragment, notification.OrderFragment, ComputationStateNil, false)
 		}
 
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("generator created computation buy = %v, sell = %v", computation.Buy, computation.Sell))
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("generator created computation buy = %v, sell = %v", computation.Buy.OrderID, computation.Sell.OrderID))
 		select {
 		case <-done:
 			return
