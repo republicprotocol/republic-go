@@ -91,8 +91,17 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 	}
 	defer orderIter.Release()
 
+	// Logging data
+	numClosedOrders := 0
+	defer func() {
+		if numClosedOrders > 0 {
+			logger.Debug(fmt.Sprintf("synchronised %v closed orders", numClosedOrders))
+		}
+	}()
+
 	// Function for deleting order IDs from storage
 	deleteOrder := func(orderID order.ID) {
+		numClosedOrders++
 		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
 			select {
 			case <-done:
@@ -173,6 +182,26 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 	}
 
+	// Logging data
+	numOpenOrders := 0
+	numConfirmedOrders := 0
+	numCanceledOrders := 0
+	numUnknownOrders := 0
+	defer func() {
+		if numOpenOrders > 0 {
+			logger.Debug(fmt.Sprintf("synchronised %v new open orders", numOpenOrders))
+		}
+		if numConfirmedOrders > 0 {
+			logger.Debug(fmt.Sprintf("synchronised %v new confirmed orders", numConfirmedOrders))
+		}
+		if numCanceledOrders > 0 {
+			logger.Debug(fmt.Sprintf("synchronised %v new canceled orders", numCanceledOrders))
+		}
+		if numUnknownOrders > 0 {
+			logger.Debug(fmt.Sprintf("synchronised %v new unknown orders", numUnknownOrders))
+		}
+	}()
+
 	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for i, orderID := range orderIDs {
 
@@ -200,10 +229,12 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		// Open orders need to check for the respective order fragment before a
 		// notification can be generated
 		case order.Open:
+			numOpenOrders++
 			syncer.insertOrder(orderID, orderStatuses[i], traders[i], done, notifications, errs)
 
 		// Other statuses can generate notifications immediately
 		case order.Confirmed:
+			numConfirmedOrders++
 			notification := NotificationConfirmOrder{OrderID: orderID}
 			select {
 			case <-done:
@@ -211,12 +242,15 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 			case notifications <- notification:
 			}
 		case order.Canceled:
+			numCanceledOrders++
 			notification := NotificationCancelOrder{OrderID: orderID}
 			select {
 			case <-done:
 				return
 			case notifications <- notification:
 			}
+		default:
+			numUnknownOrders++
 		}
 	}
 }
