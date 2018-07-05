@@ -225,10 +225,10 @@ func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Co
 		delete(ome.computationBacklog, com.ID)
 		// Check for expiry of the Computation
 		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired backlog computation buy = %v, sell = %v", com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired backlog computation buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 			com.State = ComputationStateRejected
 			if err := ome.computationStore.PutComputation(com); err != nil {
-				logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
+				logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
 			}
 			continue
 		}
@@ -251,7 +251,7 @@ func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Co
 }
 
 func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, matches chan<- Computation) error {
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy, com.Sell, base64.StdEncoding.EncodeToString(com.Epoch[:8])))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v at epoch = %v", com.Buy.OrderID, com.Sell.OrderID, base64.StdEncoding.EncodeToString(com.Epoch[:8])))
 	ome.matcher.Resolve(com, func(com Computation) {
 		if !com.Match {
 			return
@@ -269,7 +269,7 @@ func (ome *ome) sendComputationToConfirmer(com Computation, done <-chan struct{}
 }
 
 func (ome *ome) sendComputationToSettler(com Computation) {
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy, com.Sell))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 	if err := ome.settler.Settle(com); err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
 	}

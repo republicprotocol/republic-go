@@ -91,10 +91,10 @@ func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
 		com.State = ComputationStateMismatched
 		com.Match = false
 		if err := matcher.computationStore.PutComputation(com); err != nil {
-			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+			logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 		}
 		// Trigger the callback with a mismatch
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ settlement => buy = %v, sell = %v", com.Buy, com.Sell))
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ settlement => buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 		callback(com)
 		return
 	}
@@ -106,7 +106,7 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callb
 	if isExpired(com) {
 		com.State = ComputationStateRejected
 		if err := matcher.computationStore.PutComputation(com); err != nil {
-			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy, com.Sell, err))
+			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
 		}
 		return
 	}
@@ -133,19 +133,19 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	switch stage {
 	case ResolveStagePriceExp, ResolveStageBuyVolumeExp, ResolveStageSellVolumeExp:
 		if isGreaterThanZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+2)
 			return
 		}
 		if isEqualToZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
 
 	case ResolveStagePriceCo, ResolveStageBuyVolumeCo, ResolveStageSellVolumeCo:
 		if isGreaterThanOrEqualToZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
@@ -156,11 +156,11 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 			com.State = ComputationStateMatched
 			com.Match = true
 			if err := matcher.computationStore.PutComputation(com); err != nil {
-				logger.Compute(logger.LevelError, fmt.Sprintf("cannot store matched computation buy = %v, sell = %v", com.Buy, com.Sell))
+				logger.Compute(logger.LevelError, fmt.Sprintf("cannot store matched computation buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 			}
 
 			// Trigger the callback with a match
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			callback(com)
 			return
 		}
@@ -173,11 +173,11 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	com.State = ComputationStateMismatched
 	com.Match = false
 	if err := matcher.computationStore.PutComputation(com); err != nil {
-		logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy, com.Sell))
+		logger.Compute(logger.LevelError, fmt.Sprintf("cannot store mismatched computation buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
 	}
 
 	// Trigger the callback with a mismatch
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ %v => buy = %v, sell = %v", stage, com.Buy, com.Sell))
+	logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 	callback(com)
 }
 

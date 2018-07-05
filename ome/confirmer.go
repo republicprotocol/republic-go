@@ -135,7 +135,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 
 func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
 	if err := confirmer.contract.ConfirmOrder(orderMatch.Buy.OrderID, orderMatch.Sell.OrderID); err != nil {
-		return fmt.Errorf("cannot confirm computation buy = %v, sell = %v: %v", orderMatch.Buy, orderMatch.Sell, err)
+		return fmt.Errorf("cannot confirm computation buy = %v, sell = %v: %v", orderMatch.Buy.OrderID, orderMatch.Sell.OrderID, err)
 	}
 	return nil
 }
