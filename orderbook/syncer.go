@@ -3,7 +3,6 @@ package orderbook
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -258,7 +257,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
 
 	// Store the order
-	if err := syncer.orderStore.PutOrder(orderID, orderStatus); err != nil {
+	if err := syncer.orderStore.PutOrder(orderID, orderStatus, trader); err != nil {
 		select {
 		case <-done:
 			return
@@ -305,7 +304,7 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 	}
 
 	// Check for the respective order
-	orderStatus, err := syncer.orderStore.Order(orderFragment.OrderID)
+	orderStatus, trader, err := syncer.orderStore.Order(orderFragment.OrderID)
 	if err != nil {
 		if err == ErrOrderNotFound {
 			// No order synchronised yet
@@ -317,7 +316,6 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 		}
 		return
 	}
-	log.Println("order status:", orderStatus)
 	if orderStatus != order.Open {
 		// Order is synchronised but it is not open
 		return
@@ -327,6 +325,7 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 	notification := NotificationOpenOrder{
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
+		Trader:        trader,
 	}
 	select {
 	case <-done:

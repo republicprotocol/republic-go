@@ -22,9 +22,9 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // OrderStorer for the order.Orders that are synchronised from the Ethereum
 // blockchain.
 type OrderStorer interface {
-	PutOrder(id order.ID, status order.Status) error
+	PutOrder(id order.ID, status order.Status, trader string) error
 	DeleteOrder(id order.ID) error
-	Order(id order.ID) (order.Status, error)
+	Order(id order.ID) (order.Status, string, error)
 	Orders() (OrderIterator, error)
 }
 

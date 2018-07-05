@@ -47,10 +47,15 @@ func (store *OrderbookStore) Close() error {
 }
 
 // PutOrder implements the orderbook.OrderStorer interface.
-func (store *OrderbookStore) PutOrder(id order.ID, status order.Status) error {
-	data := [4]byte{}
-	binary.PutUvarint(data[:], uint64(status))
-	return store.db.Put(append(TableOrderbookOrdersBegin, id[:]...), data[:], nil)
+func (store *OrderbookStore) PutOrder(id order.ID, status order.Status, trader string) error {
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, status); err != nil {
+		return err
+	}
+	if err := binary.Write(buf, binary.BigEndian, []byte(trader)); err != nil {
+		return err
+	}
+	return store.db.Put(append(TableOrderbookOrdersBegin, id[:]...), buf.Bytes(), nil)
 }
 
 // DeleteOrder implements the orderbook.OrderStorer interface.
@@ -59,25 +64,28 @@ func (store *OrderbookStore) DeleteOrder(id order.ID) error {
 }
 
 // Order implements the orderbook.OrderStorer interface.
-func (store *OrderbookStore) Order(id order.ID) (order.Status, error) {
+func (store *OrderbookStore) Order(id order.ID) (order.Status, string, error) {
 	data, err := store.db.Get(append(TableOrderbookOrdersBegin, id[:]...), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
 		}
-		return order.Nil, err
+		return order.Nil, "", err
 	}
-	orderStatus, err := binary.ReadUvarint(bytes.NewBuffer(data[:]))
-	if err != nil {
-		return order.Nil, err
+	buf := bytes.NewBuffer(data)
+
+	orderStatus := order.Nil
+	if err := binary.Read(buf, binary.BigEndian, &orderStatus); err != nil {
+		return order.Nil, "", err
 	}
+	trader := string(buf.Bytes())
 
 	// TODO: Casting the orderStatus to a uint8 from a uint64 can cause an
 	// overflow error. The value of orderStatus should be checked before the
 	// cast, and an appropriate error should be returned in the case of
 	// erroneous values.
 
-	return order.Status(orderStatus), nil
+	return orderStatus, trader, nil
 }
 
 // Orders implements the orderbook.OrderStorer interface.
