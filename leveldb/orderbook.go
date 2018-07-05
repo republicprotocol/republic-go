@@ -103,7 +103,7 @@ func (store *OrderbookStore) DeleteOrderFragment(epoch registry.Epoch, id order.
 // OrderFragment implements the orderbook.OrderFragmentStorer interface.
 func (store *OrderbookStore) OrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error) {
 	orderFragment := order.Fragment{}
-	data, err := store.db.Get(append(TableOrderbookOrderFragmentsBegin, id[:]...), nil)
+	data, err := store.db.Get(append(append(TableOrderbookOrderFragmentsBegin, epoch.Hash[:]...), id[:]...), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderFragmentNotFound
