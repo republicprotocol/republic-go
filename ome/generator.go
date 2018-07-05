@@ -86,7 +86,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 
 	// Transition the current epoch into the previous epoch and setup a new
 	// current epoch
-	if gen.matPrevDone == nil {
+	if gen.matPrevDone != nil {
 		close(gen.matPrevDone)
 		close(gen.matPrevNotifications)
 	}

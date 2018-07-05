@@ -177,7 +177,7 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 
 	// Transition the current epoch into the previous epoch and setup a new
 	// current epoch
-	if orderbook.syncerPrevDone == nil {
+	if orderbook.syncerPrevDone != nil {
 		close(orderbook.syncerPrevDone)
 		close(orderbook.syncerPrevOrderFragments)
 	}
