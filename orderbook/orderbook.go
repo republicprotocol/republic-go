@@ -220,14 +220,21 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 	orderbook.syncerMu.RLock()
 	defer orderbook.syncerMu.RUnlock()
 
-	switch orderFragment.Depth {
+	// TODO: Using the block number of the order, the orderbook should infer
+	// which epoch the order fragment is destined for. If the epoch is unknown
+	// then the orderbook should sleep here (this is safe given that this
+	// function is generally called in a background goroutine) and try again.
+	// Failing a second time should see the order fragment dropped. This helps
+	// with robust acceptance of order fragments at the turn of an epoch where
+	// the Darknode and the trader might briefly have different ideas about the
+	// "current" epoch.
+
+	switch orderFragment.EpochDepth {
 	case 0:
 		if orderbook.syncerCurrOrderFragments == nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to current epoch", orderFragment.OrderID))
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 			return nil
 		}
-
-		logger.Network(logger.LevelDebug, fmt.Sprintf("routing order %v to current epoch", orderFragment.OrderID))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -238,11 +245,9 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 		}
 	case 1:
 		if orderbook.syncerPrevOrderFragments == nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to previous epoch", orderFragment.OrderID))
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 			return nil
 		}
-
-		logger.Network(logger.LevelDebug, fmt.Sprintf("routing order %v to previous epoch", orderFragment.OrderID))
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -252,7 +257,7 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 			return nil
 		}
 	default:
-		logger.Network(logger.LevelWarn, fmt.Sprintf("cannot routing order %v to depth = %v", orderFragment.OrderID, orderFragment.Depth))
+		logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		return nil
 	}
 }

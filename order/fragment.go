@@ -24,20 +24,20 @@ func (id FragmentID) String() string {
 	return base64.StdEncoding.EncodeToString(id[:8])
 }
 
-// FragmentDepth is the epoch depth of a Fragment. Zero represents the current
-// epoch, and any other value represents the number of epoch in the past.
-type FragmentDepth uint32
+// FragmentEpochDepth is the number of epochs in the passed for which a
+// Fragment has been built.
+type FragmentEpochDepth uint32
 
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	OrderID         ID            `json:"orderID"`
-	OrderType       Type          `json:"orderType"`
-	OrderParity     Parity        `json:"orderParity"`
-	OrderSettlement Settlement    `json:"orderSettlement"`
-	OrderExpiry     time.Time     `json:"orderExpiry"`
-	ID              FragmentID    `json:"id"`
-	Depth           FragmentDepth `json:"depth"`
+	OrderID         ID                 `json:"orderID"`
+	OrderType       Type               `json:"orderType"`
+	OrderParity     Parity             `json:"orderParity"`
+	OrderSettlement Settlement         `json:"orderSettlement"`
+	OrderExpiry     time.Time          `json:"orderExpiry"`
+	ID              FragmentID         `json:"id"`
+	EpochDepth      FragmentEpochDepth `json:"epochDepth"`
 
 	Tokens        shamir.Share `json:"tokens"`
 	Price         CoExpShare   `json:"price"`

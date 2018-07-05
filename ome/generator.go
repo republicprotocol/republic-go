@@ -145,9 +145,7 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 	gen.matMu.Lock()
 	defer gen.matMu.Unlock()
 
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("generator received open order = %v from = %v", notification.OrderID, notification.Trader))
-
-	switch notification.OrderFragment.Depth {
+	switch notification.OrderFragment.EpochDepth {
 	case 0:
 		if gen.matCurrNotifications != nil {
 			select {
