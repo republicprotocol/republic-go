@@ -249,6 +249,7 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 			return nil
 		}
 	default:
+		logger.Network(logger.LevelWarn, fmt.Sprintf("cannot routing order %v to depth = %v", orderFragment.OrderID, orderFragment.Depth))
 		return nil
 	}
 }
