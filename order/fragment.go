@@ -143,6 +143,7 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 		OrderSettlement: fragment.OrderSettlement,
 		OrderExpiry:     fragment.OrderExpiry,
 		ID:              fragment.ID,
+		EpochDepth:      fragment.EpochDepth,
 	}
 	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
 	if err != nil {
@@ -176,6 +177,7 @@ type EncryptedFragment struct {
 	OrderSettlement Settlement          `json:"orderSettlement"`
 	OrderExpiry     time.Time           `json:"orderExpiry"`
 	ID              FragmentID          `json:"id"`
+	EpochDepth      FragmentEpochDepth  `json:"epochDepth"`
 	Tokens          []byte              `json:"tokens"`
 	Price           EncryptedCoExpShare `json:"price"`
 	Volume          EncryptedCoExpShare `json:"volume"`
@@ -193,6 +195,7 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 		OrderSettlement: fragment.OrderSettlement,
 		OrderExpiry:     fragment.OrderExpiry,
 		ID:              fragment.ID,
+		EpochDepth:      fragment.EpochDepth,
 	}
 	if err := decryptedFragment.Tokens.Decrypt(privKey, fragment.Tokens); err != nil {
 		return decryptedFragment, err
