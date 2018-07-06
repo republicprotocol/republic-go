@@ -231,6 +231,7 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 
 	switch orderFragment.EpochDepth {
 	case 0:
+		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		if orderbook.syncerCurrOrderFragments == nil {
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 			return nil
@@ -244,6 +245,7 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 			return nil
 		}
 	case 1:
+		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		if orderbook.syncerPrevOrderFragments == nil {
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 			return nil
