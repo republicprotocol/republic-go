@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -13,6 +14,10 @@ import (
 // ErrInvalidSignatureLength is returned when a signature does not have the
 // required length of 65 bytes.
 var ErrInvalidSignatureLength = errors.New("invalid signature length")
+
+// ErrInvalidOrderID is returned when an order ID is not consistent across
+// OrderFragmentMappings in the same request.
+var ErrInvalidOrderID = errors.New("invalid order id")
 
 // ErrInvalidOrderIDLength is returned when an order ID does not have the
 // required length of 32 bytes.
@@ -249,5 +254,25 @@ func UnmarshalOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) 
 }
 
 func UnmarshalOrderFragmentMappings(orderFragmentMappingsIn OrderFragmentMappings) (order.ID, ingress.OrderFragmentMappings, error) {
+	if len(orderFragmentMappingsIn) == 0 {
+		return order.ID{}, ingress.OrderFragmentMappings{}, ErrEmptyOrderFragmentMapping
+	}
 
+	orderFragmentMappings := ingress.OrderFragmentMappings{}
+
+	var orderID *order.ID
+	for _, orderFragmentMappingIn := range orderFragmentMappingsIn {
+		ordID, orderFragmentMapping, err := UnmarshalOrderFragmentMapping(orderFragmentMappingIn)
+		if err != nil {
+			return order.ID{}, ingress.OrderFragmentMappings{}, err
+		}
+		if orderID == nil {
+			orderID = &ordID
+		} else if !bytes.Equal(ordID[:], (*orderID)[:]) {
+			return order.ID{}, ingress.OrderFragmentMappings{}, ErrInvalidOrderID
+		}
+		orderFragmentMappings = append(orderFragmentMappings, orderFragmentMapping)
+	}
+
+	return *orderID, orderFragmentMappings, nil
 }
