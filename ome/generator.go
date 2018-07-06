@@ -172,6 +172,7 @@ type computationMatrix struct {
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
 	traders            map[order.ID]string
+	blockNumbers       map[order.ID]int64
 }
 
 func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
@@ -180,6 +181,7 @@ func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
 		buyOrderFragments:  []order.Fragment{},
 		sellOrderFragments: []order.Fragment{},
 		traders:            map[order.ID]string{},
+		blockNumbers:       map[order.ID]int64{},
 	}
 }
 
@@ -241,6 +243,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		cmpOrderFragments = mat.buyOrderFragments
 	}
 	mat.traders[notification.OrderID] = notification.Trader
+	mat.blockNumbers[notification.OrderID] = notification.BlockNumber
 
 	// Iterate through the opposing list and generate computations
 	for _, cmpOrderFragment := range cmpOrderFragments {
@@ -250,7 +253,12 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		// are the first pod along that path (this is how pods break ties for
 		// computations that otherwise have the same priority).
 
+		// Traders should not match against themselves
 		if mat.traders[cmpOrderFragment.OrderID] == notification.Trader {
+			continue
+		}
+		// At least one order must be from this matrix epoch
+		if mat.blockNumbers[cmpOrderFragment.OrderID] < mat.epoch.BlockNumber.Int64() && notification.BlockNumber < mat.epoch.BlockNumber.Int64() {
 			continue
 		}
 

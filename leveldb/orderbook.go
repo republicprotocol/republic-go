@@ -47,9 +47,12 @@ func (store *OrderbookStore) Close() error {
 }
 
 // PutOrder implements the orderbook.OrderStorer interface.
-func (store *OrderbookStore) PutOrder(id order.ID, status order.Status, trader string) error {
+func (store *OrderbookStore) PutOrder(id order.ID, status order.Status, trader string, blockNumber int64) error {
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.BigEndian, status); err != nil {
+		return err
+	}
+	if err := binary.Write(buf, binary.BigEndian, blockNumber); err != nil {
 		return err
 	}
 	if err := binary.Write(buf, binary.BigEndian, []byte(trader)); err != nil {
@@ -64,19 +67,23 @@ func (store *OrderbookStore) DeleteOrder(id order.ID) error {
 }
 
 // Order implements the orderbook.OrderStorer interface.
-func (store *OrderbookStore) Order(id order.ID) (order.Status, string, error) {
+func (store *OrderbookStore) Order(id order.ID) (order.Status, string, int64, error) {
 	data, err := store.db.Get(append(TableOrderbookOrdersBegin, id[:]...), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
 		}
-		return order.Nil, "", err
+		return order.Nil, "", 0, err
 	}
 	buf := bytes.NewBuffer(data)
 
 	orderStatus := order.Nil
 	if err := binary.Read(buf, binary.BigEndian, &orderStatus); err != nil {
-		return order.Nil, "", err
+		return order.Nil, "", 0, err
+	}
+	blockNumber := int64(0)
+	if err := binary.Read(buf, binary.BigEndian, &blockNumber); err != nil {
+		return order.Nil, "", 0, err
 	}
 	trader := string(buf.Bytes())
 
@@ -85,7 +92,7 @@ func (store *OrderbookStore) Order(id order.ID) (order.Status, string, error) {
 	// cast, and an appropriate error should be returned in the case of
 	// erroneous values.
 
-	return orderStatus, trader, nil
+	return orderStatus, trader, blockNumber, nil
 }
 
 // Orders implements the orderbook.OrderStorer interface.

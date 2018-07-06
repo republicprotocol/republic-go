@@ -28,6 +28,7 @@ type NotificationOpenOrder struct {
 	OrderID       order.ID
 	OrderFragment order.Fragment
 	Trader        string
+	BlockNumber   int64
 }
 
 // IsNotification implements the Notification interface.
