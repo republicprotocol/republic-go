@@ -473,10 +473,28 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.pods()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return []registry.Pod{}, err
+	}
+
+	return binder.pods(epoch.Epochhash)
 }
 
-func (binder *Binder) pods() ([]registry.Pod, error) {
+// PreviousPods returns the Pod configuration for the previous Epoch.
+func (binder *Binder) PreviousPods() ([]registry.Pod, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	previousEpoch, err := binder.darknodeRegistry.PreviousEpoch(binder.callOpts)
+	if err != nil {
+		return []registry.Pod{}, err
+	}
+
+	return binder.pods(previousEpoch.Epochhash)
+}
+
+func (binder *Binder) pods(epochVal *big.Int) ([]registry.Pod, error) {
 	darknodeAddrs, err := binder.darknodes()
 	if err != nil {
 		return []registry.Pod{}, err
@@ -489,11 +507,7 @@ func (binder *Binder) pods() ([]registry.Pod, error) {
 	if len(darknodeAddrs) < int(numberOfNodesInPod.ToBigInt().Int64()) {
 		return []registry.Pod{}, fmt.Errorf("degraded pod: expected at least %v addresses, got %v", int(numberOfNodesInPod.ToBigInt().Int64()), len(darknodeAddrs))
 	}
-	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
-	if err != nil {
-		return []registry.Pod{}, err
-	}
-	epochVal := epoch.Epochhash
+
 	numberOfDarknodes := big.NewInt(int64(len(darknodeAddrs)))
 	x := big.NewInt(0).Mod(epochVal, numberOfDarknodes)
 	positionInOcean := make([]int, len(darknodeAddrs))
@@ -552,7 +566,7 @@ func (binder *Binder) epoch() (registry.Epoch, error) {
 	var blockhash [32]byte
 	copy(blockhash[:], epoch.Epochhash.Bytes())
 
-	pods, err := binder.pods()
+	pods, err := binder.pods(epoch.Epochhash)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
@@ -604,7 +618,12 @@ func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
 }
 
 func (binder *Binder) pod(addr identity.Address) (registry.Pod, error) {
-	pods, err := binder.pods()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Pod{}, err
+	}
+
+	pods, err := binder.pods(epoch.Epochhash)
 	if err != nil {
 		return registry.Pod{}, err
 	}
