@@ -23,6 +23,10 @@ import (
 // ErrUnknownPod is returned when an unknown pod is mapped.
 var ErrUnknownPod = errors.New("unknown pod id")
 
+// ErrUnsupportedEpochDepth is returned when an unsupported epoch depth is
+// received in an OrderFragmentMapping.
+var ErrUnsupportedEpochDepth = errors.New("unsupported epoch depth")
+
 // ErrInvalidNumberOfPods is returned when an insufficient number of pods are
 // mapped.
 var ErrInvalidNumberOfPods = errors.New("invalid number of pods")
@@ -42,6 +46,10 @@ var NumBackgroundWorkers = runtime.NumCPU() * 4
 // An OrderFragmentMapping maps pods to encrypted order fragments.
 type OrderFragmentMapping map[[32]byte][]OrderFragment
 
+// OrderFragmentMappings is a slice where the index of an OrderFragmentMapping
+// represents the epoch depth of each OrderFragment inside the mapping.
+type OrderFragmentMappings []OrderFragmentMapping
+
 // OrderFragment has an order.EncryptedFragment, encrypted by the trader before
 // being sent to the Ingress, and the required index that identifies which set
 // shares are held by the order.EncryptedFragment.
@@ -60,7 +68,7 @@ type Ingress interface {
 	// trader identifies them as the owner, the order ID is submitted to the
 	// Orderbook along with the necessary fee, and the order fragment mapping
 	// is used to send order fragments to pods in the Darkpool.
-	OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error
+	OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMappings OrderFragmentMappings) error
 
 	// CancelOrder on the Orderbook. A signature from the trader is needed to
 	// verify the cancelation.
@@ -77,11 +85,12 @@ type ingress struct {
 	swarmer         swarm.Swarmer
 	orderbookClient orderbook.Client
 
-	podsMu *sync.RWMutex
-	pods   map[[32]byte]registry.Pod
+	podsMu   *sync.RWMutex
+	podsCurr map[[32]byte]registry.Pod
+	podsPrev map[[32]byte]registry.Pod
 
 	queueRequests              chan Request
-	queueOrderFragmentMappings chan OrderFragmentMapping
+	queueOrderFragmentMappings chan OpenOrderRequest
 }
 
 // NewIngress returns an Ingress. The background services of the Ingress must
@@ -93,11 +102,12 @@ func NewIngress(contract ContractBinder, swarmer swarm.Swarmer, orderbookClient 
 		swarmer:         swarmer,
 		orderbookClient: orderbookClient,
 
-		podsMu: new(sync.RWMutex),
-		pods:   map[[32]byte]registry.Pod{},
+		podsMu:   new(sync.RWMutex),
+		podsCurr: map[[32]byte]registry.Pod{},
+		podsPrev: map[[32]byte]registry.Pod{},
 
 		queueRequests:              make(chan Request, 1024),
-		queueOrderFragmentMappings: make(chan OrderFragmentMapping, 1024),
+		queueOrderFragmentMappings: make(chan OpenOrderRequest, 1024),
 	}
 	return ingress
 }
@@ -169,22 +179,24 @@ func (ingress *ingress) Sync(done <-chan struct{}) <-chan error {
 	return errs
 }
 
-func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMappings OrderFragmentMappings) error {
 	// TODO: Verify that the signature is valid before sending it to the
 	// Orderbook. This is not strictly necessary but it can save the Ingress
 	// some gas.
-	if err := ingress.verifyOrderFragmentMapping(orderFragmentMapping); err != nil {
-		return err
-	}
-
-	go func() {
-		logger.Info(fmt.Sprintf("queueing opening of order %v", orderID))
-		ingress.queueRequests <- OpenOrderRequest{
-			signature:            signature,
-			orderID:              orderID,
-			orderFragmentMapping: orderFragmentMapping,
+	for i := range orderFragmentMappings {
+		if err := ingress.verifyOrderFragmentMapping(orderFragmentMappings[i], i); err != nil {
+			return err
 		}
-	}()
+		go func(i int) {
+			logger.Info(fmt.Sprintf("queueing opening of order %v", orderID))
+			ingress.queueRequests <- OpenOrderRequest{
+				signature:               signature,
+				orderID:                 orderID,
+				orderFragmentMapping:    orderFragmentMappings[i],
+				orderFragmentEpochDepth: i,
+			}
+		}(i)
+	}
 	return nil
 }
 
@@ -233,9 +245,10 @@ func (ingress *ingress) syncFromEpoch(epoch registry.Epoch) error {
 		return err
 	}
 	ingress.podsMu.Lock()
-	ingress.pods = map[[32]byte]registry.Pod{}
+	ingress.podsPrev = ingress.podsCurr
+	ingress.podsCurr = map[[32]byte]registry.Pod{}
 	for _, pod := range pods {
-		ingress.pods[pod.Hash] = pod
+		ingress.podsCurr[pod.Hash] = pod
 	}
 	ingress.podsMu.Unlock()
 	return nil
@@ -304,7 +317,7 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 
 	select {
 	case <-done:
-	case ingress.queueOrderFragmentMappings <- req.orderFragmentMapping:
+	case ingress.queueOrderFragmentMappings <- req:
 	}
 }
 
@@ -323,11 +336,11 @@ func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, e
 			select {
 			case <-done:
 				return
-			case orderFragmentMapping, ok := <-ingress.queueOrderFragmentMappings:
+			case req, ok := <-ingress.queueOrderFragmentMappings:
 				if !ok {
 					return
 				}
-				if err := ingress.processOrderFragmentMapping(orderFragmentMapping); err != nil {
+				if err := ingress.processOrderFragmentMapping(req.orderFragmentMapping, req.orderFragmentEpochDepth); err != nil {
 					select {
 					case <-done:
 						return
@@ -339,17 +352,28 @@ func (ingress *ingress) processOrderFragmentMappingQueue(done <-chan struct{}, e
 	})
 }
 
-func (ingress *ingress) processOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) processOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping, orderFragmentEpochDepth int) error {
 	ingress.podsMu.RLock()
 	defer ingress.podsMu.RUnlock()
 
-	errs := make([]error, 0, len(ingress.pods))
+	// Select pods based on the depth
+	pods := map[[32]byte]registry.Pod{}
+	switch orderFragmentEpochDepth {
+	case 0:
+		pods = ingress.podsCurr
+	case 1:
+		pods = ingress.podsPrev
+	default:
+		return ErrUnsupportedEpochDepth
+	}
+
+	errs := make([]error, 0, len(pods))
 	podDidReceiveFragments := int64(0)
 
-	dispatch.CoForAll(ingress.pods, func(hash [32]byte) {
+	dispatch.CoForAll(pods, func(hash [32]byte) {
 		orderFragments := orderFragmentMapping[hash]
 		if orderFragments != nil && len(orderFragments) > 0 {
-			if err := ingress.sendOrderFragmentsToPod(ingress.pods[hash], orderFragments); err != nil {
+			if err := ingress.sendOrderFragmentsToPod(pods[hash], orderFragments); err != nil {
 				errs = append(errs, err)
 				return
 			}
@@ -432,16 +456,27 @@ func (ingress *ingress) sendOrderFragmentsToPod(pod registry.Pod, orderFragments
 	return nil
 }
 
-func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping) error {
+func (ingress *ingress) verifyOrderFragmentMapping(orderFragmentMapping OrderFragmentMapping, orderFragmentEpochDepth int) error {
 	ingress.podsMu.RLock()
 	defer ingress.podsMu.RUnlock()
 
-	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(ingress.pods) {
-		logger.Error(fmt.Sprintf("invalid number of pods: got %v, expected %v", len(orderFragmentMapping), len(ingress.pods)))
+	// Select pods based on the depth
+	pods := map[[32]byte]registry.Pod{}
+	switch orderFragmentEpochDepth {
+	case 0:
+		pods = ingress.podsCurr
+	case 1:
+		pods = ingress.podsPrev
+	default:
+		return ErrUnsupportedEpochDepth
+	}
+
+	if len(orderFragmentMapping) == 0 || len(orderFragmentMapping) > len(pods) {
+		logger.Error(fmt.Sprintf("invalid number of pods: got %v, expected %v", len(orderFragmentMapping), len(pods)))
 		return ErrInvalidNumberOfPods
 	}
 	for hash, orderFragments := range orderFragmentMapping {
-		pod, ok := ingress.pods[hash]
+		pod, ok := pods[hash]
 		if !ok {
 			return ErrUnknownPod
 		}

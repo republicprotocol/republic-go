@@ -6,7 +6,11 @@ import (
 
 // An OrderFragmentMapping maps pods to encrypted order fragments represented
 // as a JSON object. This representation is useful for HTTP drivers.
-type OrderFragmentMapping map[string][]OrderFragment
+type OrderFragmentMapping map[string]OrderFragments
+
+// OrderFragmentMappings is a slice where the index of an OrderFragmentMapping
+// represents the epoch depth of each OrderFragment inside the mapping.
+type OrderFragmentMappings []OrderFragmentMapping
 
 // OrderFragment is an order.EncryptedFragment, encrypted by the trader. It
 // stores the an index that identifies which index of shamir.Shares are stored
@@ -28,10 +32,13 @@ type OrderFragment struct {
 	Nonce           string           `json:"nonce"`
 }
 
+// OrderFragments is a slice.
+type OrderFragments []OrderFragment
+
 // An OpenOrderAdapter can be used to open an order.Order by sending an
 // OrderFragmentMapping to the Darknodes in the network.
 type OpenOrderAdapter interface {
-	OpenOrder(signature string, orderFragmentMapping OrderFragmentMapping) error
+	OpenOrder(signature string, orderFragmentMappings OrderFragmentMappings) error
 }
 
 // A CancelOrderAdapter can be used to cancel an order.Order by sending a

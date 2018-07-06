@@ -45,13 +45,13 @@ func NewIngressAdapter(ingress ingress.Ingress) IngressAdapter {
 	}
 }
 
-func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappingIn OrderFragmentMapping) error {
+func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappingsIn OrderFragmentMappings) error {
 	signature, err := UnmarshalSignature(signatureIn)
 	if err != nil {
 		return err
 	}
 
-	orderID, orderFragmentMapping, err := UnmarshalOrderFragmentMapping(orderFragmentMappingIn)
+	orderID, orderFragmentMappings, err := UnmarshalOrderFragmentMappings(orderFragmentMappingsIn)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (adapter *IngressAdapter) OpenOrder(signatureIn string, orderFragmentMappin
 	return adapter.Ingress.OpenOrder(
 		signature,
 		orderID,
-		orderFragmentMapping,
+		orderFragmentMappings,
 	)
 }
 
@@ -246,4 +246,8 @@ func UnmarshalOrderFragmentMapping(orderFragmentMappingIn OrderFragmentMapping) 
 		}
 	}
 	return orderID, orderFragmentMapping, nil
+}
+
+func UnmarshalOrderFragmentMappings(orderFragmentMappingsIn OrderFragmentMappings) (order.ID, ingress.OrderFragmentMappings, error) {
+
 }

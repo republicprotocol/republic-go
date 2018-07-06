@@ -24,9 +24,10 @@ func (req EpochRequest) IsRequest() {}
 // the Ethereum blockchain and forward order.Fragments to their respective
 // Darknodes.
 type OpenOrderRequest struct {
-	signature            [65]byte
-	orderID              order.ID
-	orderFragmentMapping OrderFragmentMapping
+	signature               [65]byte
+	orderID                 order.ID
+	orderFragmentMapping    OrderFragmentMapping
+	orderFragmentEpochDepth int
 }
 
 // IsRequest implements the Request interface.
