@@ -179,6 +179,7 @@ func UnmarshalOrderFragment(orderFragmentIn OrderFragment) (ingress.OrderFragmen
 	orderFragment := ingress.OrderFragment{EncryptedFragment: order.EncryptedFragment{}}
 	orderFragment.Index = orderFragmentIn.Index
 	orderFragment.EncryptedFragment.ID, err = UnmarshalOrderFragmentID(orderFragmentIn.ID)
+	orderFragment.EncryptedFragment.EpochDepth = order.FragmentEpochDepth(orderFragmentIn.EpochDepth)
 	if err != nil {
 		return orderFragment, err
 	}

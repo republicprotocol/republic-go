@@ -25,6 +25,7 @@ type OrderFragment struct {
 	OrderExpiry     int64            `json:"orderExpiry"`
 	Index           int64            `json:"index"`
 	ID              string           `json:"id"`
+	EpochDepth      int32            `json:"epochDepth"`
 	Tokens          string           `json:"tokens"`
 	Price           []string         `json:"price"`
 	Volume          []string         `json:"volume"`

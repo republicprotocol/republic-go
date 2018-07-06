@@ -74,13 +74,13 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
-		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods))
+		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods, 0))
 		// Previous epoch
 		pods, err = contractBinder.PreviousPods()
 		if err != nil {
 			log.Fatalf("cannot get previous pods from darkpool: %v", err)
 		}
-		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods))
+		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods, 1))
 
 		data, err := json.MarshalIndent(request, "", "  ")
 		if err != nil {
@@ -155,7 +155,7 @@ func loadContractBinder(config contract.Config, keystore crypto.Keystore) (contr
 	return contract.NewBinder(auth, conn)
 }
 
-func generateOrderFragmentMapping(contractBinder *contract.Binder, ord order.Order, pods []registry.Pod) adapter.OrderFragmentMapping {
+func generateOrderFragmentMapping(contractBinder *contract.Binder, ord order.Order, pods []registry.Pod, depth int) adapter.OrderFragmentMapping {
 	orderFragmentMapping := adapter.OrderFragmentMapping{}
 
 	for _, pod := range pods {
@@ -179,6 +179,7 @@ func generateOrderFragmentMapping(contractBinder *contract.Binder, ord order.Ord
 
 			encryptedFragment, err := ordFragment.Encrypt(pubKey)
 			marshaledOrdFragment.ID = base64.StdEncoding.EncodeToString(encryptedFragment.ID[:])
+			marshaledOrdFragment.EpochDepth = int32(depth)
 			marshaledOrdFragment.OrderID = base64.StdEncoding.EncodeToString(encryptedFragment.OrderID[:])
 			marshaledOrdFragment.OrderParity = encryptedFragment.OrderParity
 			marshaledOrdFragment.OrderSettlement = encryptedFragment.OrderSettlement
