@@ -66,7 +66,7 @@ func main() {
 		log.Printf("order = %v, from = %v", ord.ID, contractBinder.From().String())
 		request := http.OpenOrderRequest{
 			Signature:             base64.StdEncoding.EncodeToString(signature),
-			OrderFragmentMappings: [](map[string][]adapter.OrderFragment){},
+			OrderFragmentMappings: adapter.OrderFragmentMappings{},
 		}
 
 		// Current epoch
@@ -74,13 +74,13 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot get pods from darkpool: %v", err)
 		}
-		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(ord, pods))
+		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods))
 		// Previous epoch
 		pods, err = contractBinder.PreviousPods()
 		if err != nil {
 			log.Fatalf("cannot get previous pods from darkpool: %v", err)
 		}
-		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(ord, pods))
+		request.OrderFragmentMappings = append(request.OrderFragmentMappings, generateOrderFragmentMapping(&contractBinder, ord, pods))
 
 		data, err := json.MarshalIndent(request, "", "  ")
 		if err != nil {
@@ -155,8 +155,8 @@ func loadContractBinder(config contract.Config, keystore crypto.Keystore) (contr
 	return contract.NewBinder(auth, conn)
 }
 
-func generateOrderFragmentMapping(ord order.Order, pods []registry.Pod) map[string]([]adapter.OrderFragment) {
-	orderFragmentMapping := map[string]([]adapter.OrderFragment){}
+func generateOrderFragmentMapping(contractBinder *contract.Binder, ord order.Order, pods []registry.Pod) adapter.OrderFragmentMapping {
+	orderFragmentMapping := adapter.OrderFragmentMapping{}
 
 	for _, pod := range pods {
 		n := int64(len(pod.Darknodes))

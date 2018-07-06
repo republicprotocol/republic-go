@@ -13,8 +13,8 @@ import (
 // OpenOrderRequest is an JSON object sent to the HTTP handlers to request the
 // opening of an order.
 type OpenOrderRequest struct {
-	Signature            string                       `json:"signature"`
-	OrderFragmentMapping adapter.OrderFragmentMapping `json:"orderFragmentMapping"`
+	Signature             string                        `json:"signature"`
+	OrderFragmentMappings adapter.OrderFragmentMappings `json:"orderFragmentMappings"`
 }
 
 func NewServer(openOrderAdapter adapter.OpenOrderAdapter, cancelOrderAdapter adapter.CancelOrderAdapter) http.Handler {
@@ -52,7 +52,7 @@ func OpenOrderHandler(adapter adapter.OpenOrderAdapter) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("cannot decode json into an order or a list of order fragments: %v", err))
 			return
 		}
-		if err := adapter.OpenOrder(openOrderRequest.Signature, openOrderRequest.OrderFragmentMapping); err != nil {
+		if err := adapter.OpenOrder(openOrderRequest.Signature, openOrderRequest.OrderFragmentMappings); err != nil {
 			writeError(w, http.StatusInternalServerError, fmt.Sprintf("cannot open order: %v", err))
 			return
 		}
