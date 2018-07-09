@@ -271,6 +271,7 @@ func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, tr
 	if err != nil {
 		if err == ErrOrderFragmentNotFound {
 			// No order fragment received yet
+			logger.Info(fmt.Sprintf("received order = %v without order fragment", orderID))
 			return
 		}
 		select {
@@ -309,6 +310,7 @@ func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-c
 	if err != nil {
 		if err == ErrOrderNotFound {
 			// No order synchronised yet
+			logger.Info(fmt.Sprintf("received order fragment without order = %v", orderFragment.OrderID))
 			return
 		}
 		select {
