@@ -127,8 +127,8 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 
 // Sync implements the Orderbook interface.
 func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification, 4096)
-	errs := make(chan error, 4096)
+	notifications := make(chan Notification, 1)
+	errs := make(chan error, 1)
 
 	// Check whether the server has already been started
 	orderbook.doneMu.RLock()
