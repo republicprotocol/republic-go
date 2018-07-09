@@ -172,7 +172,7 @@ type computationMatrix struct {
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
 	traders            map[order.ID]string
-	blockNumbers       map[order.ID]int64
+	blockNumbers       map[order.ID]uint64
 }
 
 func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
@@ -181,7 +181,7 @@ func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
 		buyOrderFragments:  []order.Fragment{},
 		sellOrderFragments: []order.Fragment{},
 		traders:            map[order.ID]string{},
-		blockNumbers:       map[order.ID]int64{},
+		blockNumbers:       map[order.ID]uint64{},
 	}
 }
 
