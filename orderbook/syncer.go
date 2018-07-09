@@ -162,6 +162,8 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 
 	// Synchronise new orders from the ContractBinder
 	logger.Info(fmt.Sprintf("synchronising orders from %v", pointer))
+	defer logger.Info("done synchronising orders")
+
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		select {
