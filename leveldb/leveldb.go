@@ -4,6 +4,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/republicprotocol/republic-go/ome"
+
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -28,6 +30,8 @@ type Store struct {
 	orderbookOrderTable         *OrderbookOrderTable
 	orderbookOrderFragmentTable *OrderbookOrderFragmentTable
 	orderbookPointerTable       *OrderbookPointerTable
+
+	somerComputationTable *SomerComputationTable
 }
 
 // NewStore returns a new Store with a new LevelDB instances that use the
@@ -35,15 +39,19 @@ type Store struct {
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
 func NewStore(dir string) (*Store, error) {
-	db, err := leveldb.OpenFile(path.Join(dir, "orderbook"), nil)
+	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return nil, err
 	}
 	return &Store{
-		db:                          db,
+		db: db,
+
 		orderbookOrderTable:         NewOrderbookOrderTable(db),
 		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
 		orderbookPointerTable:       NewOrderbookPointerTable(),
+		orderbookOrderTable:         NewOrderbookOrderTable(db),
+
+		somerComputationTable: NewSomerComputationTable(db),
 	}, nil
 }
 
@@ -67,5 +75,11 @@ func (store *Store) OrderbookOrderFragmentStorer() orderbook.OrderFragmentStorer
 // OrderbookPointerStore returns the OrderbookPointerTable used by the Store.
 // It implements the orderbook.PointerStorer interface.
 func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
+	return store.orderbookPointerTable
+}
+
+// SomerComputationStore returns the SomerComputationTable used by the Store.
+// It implements the ome.ComputationStorer interface.
+func (store *Store) SomerComputationStore() ome.ComputationStorer {
 	return store.orderbookPointerTable
 }
