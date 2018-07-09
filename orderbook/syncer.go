@@ -80,6 +80,9 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 // syncClosures iterates through all orders and deletes those that are no
 // longer open.
 func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+	logger.Info("synchronising closures")
+	defer logger.Info("done synchronising closures")
+
 	orderIter, err := syncer.orderStore.Orders()
 	if err != nil {
 		select {
@@ -149,6 +152,8 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 // interval between synchronisations is large enough then it is possible that
 // they are already closed.
 func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+	logger.Info(fmt.Sprintf("synchronising orders from %v", pointer))
+	defer logger.Info("done synchronising orders")
 
 	// Load the current pointer
 	pointer, err := syncer.pointerStore.Pointer()
@@ -161,8 +166,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 
 	// Synchronise new orders from the ContractBinder
-	logger.Info(fmt.Sprintf("synchronising orders from %v", pointer))
-	defer logger.Info("done synchronising orders")
 
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
