@@ -107,7 +107,6 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
 			select {
 			case <-done:
-				return
 			case errs <- fmt.Errorf("cannot delete order: %v", err):
 			}
 		}
