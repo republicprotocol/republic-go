@@ -56,17 +56,17 @@ func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, tra
 	if err != nil {
 		return err
 	}
-	return table.db.Put(append(OrderbookOrderTableBegin, id[:]...), data, nil)
+	return table.db.Put(table.key(id[:]), data, nil)
 }
 
 // DeleteOrder implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) DeleteOrder(id order.ID) error {
-	return table.db.Delete(append(OrderbookOrderTableBegin, id[:]...), nil)
+	return table.db.Delete(table.key(id[:]), nil)
 }
 
 // Order implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint64, error) {
-	data, err := table.db.Get(append(OrderbookOrderTableBegin, id[:]...), nil)
+	data, err := table.db.Get(table.key(id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
@@ -83,13 +83,13 @@ func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint
 
 // Orders implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) Orders() (orderbook.OrderIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: append(OrderbookOrderTableBegin, OrderbookOrderIterBegin...), Limit: append(OrderbookOrderTableEnd, OrderbookOrderIterEnd...)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderIterBegin), Limit: table.key(OrderbookOrderIterEnd)}, nil)
 	return newOrderbookOrderIterator(iter), nil
 }
 
 // Prune iterates over all orders and deletes those that have expired.
 func (table *OrderbookOrderTable) Prune() (err error) {
-	iter := table.db.NewIterator(&util.Range{Start: append(OrderbookOrderTableBegin, OrderbookOrderIterBegin...), Limit: append(OrderbookOrderTableEnd, OrderbookOrderIterEnd...)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderIterBegin), Limit: table.key(OrderbookOrderIterEnd)}, nil)
 	defer iter.Release()
 
 	now := time.Now()
@@ -107,6 +107,10 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 		}
 	}
 	return err
+}
+
+func (table *OrderbookOrderTable) key(k []byte) []byte {
+	return append(append(OrderbookOrderTableBegin, k...), OrderbookOrderTablePadding...)
 }
 
 // OrderbookOrderIterator implements the orderbook.OrderIterator using a
