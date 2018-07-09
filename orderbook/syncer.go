@@ -152,11 +152,11 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 // interval between synchronisations is large enough then it is possible that
 // they are already closed.
 func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+	// Load the current pointer
+	pointer, err := syncer.pointerStore.Pointer()
 	logger.Info(fmt.Sprintf("synchronising orders from %v", pointer))
 	defer logger.Info("done synchronising orders")
 
-	// Load the current pointer
-	pointer, err := syncer.pointerStore.Pointer()
 	if err != nil {
 		select {
 		case <-done:
