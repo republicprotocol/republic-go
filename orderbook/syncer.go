@@ -229,7 +229,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		// notification can be generated
 		case order.Open:
 			numOpenOrders++
-			syncer.insertOrder(orderID, orderStatuses[i], traders[i], blockNumber.Int64(), done, notifications, errs)
+			syncer.insertOrder(orderID, orderStatuses[i], traders[i], blockNumber.Uint64(), done, notifications, errs)
 
 		// Other statuses can generate notifications immediately
 		case order.Confirmed:
@@ -254,7 +254,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 }
 
-func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, blockNumber int64, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
+func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, blockNumber uint64, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
 
 	// Store the order
 	if err := syncer.orderStore.PutOrder(orderID, orderStatus, trader, blockNumber); err != nil {

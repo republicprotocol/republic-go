@@ -75,7 +75,6 @@ func NewStore(dir string) (*Store, error) {
 		orderbookOrderTable:         NewOrderbookOrderTable(db),
 		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
 		orderbookPointerTable:       NewOrderbookPointerTable(),
-		orderbookOrderTable:         NewOrderbookOrderTable(db),
 
 		somerComputationTable: NewSomerComputationTable(db),
 	}, nil

@@ -6,7 +6,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/ome"
 
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -32,25 +31,25 @@ func newSomerComputationIterator(iter iterator.Iterator) *SomerComputationIterat
 	}
 }
 
-// Next implements the orderbook.OrderIterator interface.
+// Next implements the ome.ComputationIterator interface.
 func (iter *SomerComputationIterator) Next() bool {
 	return iter.inner.Next()
 }
 
-// Cursor implements the orderbook.OrderIterator interface.
+// Cursor implements the ome.ComputationIterator interface.
 func (iter *SomerComputationIterator) Cursor() (ome.Computation, error) {
 	if !iter.inner.Valid() {
 		return ome.Computation{}, ome.ErrCursorOutOfRange
 	}
-
 	value := SomerComputationValue{}
-	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
+	data := iter.inner.Value()
+	if err := json.Unmarshal(data, &value); err != nil {
 		return ome.Computation{}, err
 	}
 	return value.Computation, iter.inner.Error()
 }
 
-// Collect implements the orderbook.OrderIterator interface.
+// Collect implements the ome.ComputationIterator interface.
 func (iter *SomerComputationIterator) Collect() ([]ome.Computation, error) {
 	computations := []ome.Computation{}
 	for iter.Next() {
@@ -63,7 +62,7 @@ func (iter *SomerComputationIterator) Collect() ([]ome.Computation, error) {
 	return computations, iter.inner.Error()
 }
 
-// Release implements the orderbook.OrderIterator interface.
+// Release implements the ome.ComputationIterator interface.
 func (iter *SomerComputationIterator) Release() {
 	iter.inner.Release()
 }
@@ -105,12 +104,12 @@ func (table *SomerComputationTable) Computation(id ome.ComputationID) (ome.Compu
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrComputationNotFound
 		}
-		return order.Nil, "", 0, err
+		return ome.Computation{}, err
 	}
 
 	value := SomerComputationValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Nil, "", 0, err
+		return ome.Computation{}, err
 	}
 	return value.Computation, nil
 }
@@ -121,7 +120,7 @@ func (table *SomerComputationTable) Computations() (ome.Computations, error) {
 	return newSomerComputationIterator(iter), nil
 }
 
-// Prune iterates over all orders and deletes those that have expired.
+// Prune iterates over all computations and deletes those that have expired.
 func (table *SomerComputationTable) Prune() (err error) {
 	iter := table.db.NewIterator(&util.Range{Start: table.key(SomerComputationIterBegin), Limit: table.key(SomerComputationIterEnd)}, nil)
 	defer iter.Release()

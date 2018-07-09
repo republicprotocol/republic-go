@@ -165,8 +165,8 @@ type OrderbookOrderFragmentValue struct {
 	OrderFragment order.Fragment `json:"orderFragment"`
 }
 
-// OrderbookOrderFragmentIterator is a LevelDB implementation of the order
-// fragment iterator interface defined by the orderbook package.
+// OrderbookOrderFragmentIterator implements the
+// orderbook.OrderFragmentIterator using a LevelDB iterator.
 type OrderbookOrderFragmentIterator struct {
 	inner iterator.Iterator
 }
@@ -184,15 +184,15 @@ func (iter *OrderbookOrderFragmentIterator) Next() bool {
 
 // Cursor implements the orderbook.OrderFragmentIterator interface.
 func (iter *OrderbookOrderFragmentIterator) Cursor() (order.Fragment, error) {
-	orderFragment := order.Fragment{}
 	if !iter.inner.Valid() {
-		return orderFragment, orderbook.ErrCursorOutOfRange
+		return order.Fragment{}, orderbook.ErrCursorOutOfRange
 	}
+	value := OrderbookOrderFragmentValue{}
 	data := iter.inner.Value()
-	if err := json.Unmarshal(data, &orderFragment); err != nil {
-		return orderFragment, err
+	if err := json.Unmarshal(data, &value); err != nil {
+		return order.Fragment{}, err
 	}
-	return orderFragment, iter.inner.Error()
+	return value.OrderFragment, iter.inner.Error()
 }
 
 // Collect implements the orderbook.OrderFragmentIterator interface.
