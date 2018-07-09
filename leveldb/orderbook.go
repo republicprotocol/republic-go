@@ -2,7 +2,6 @@ package leveldb
 
 import (
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
