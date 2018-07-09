@@ -27,8 +27,8 @@ var (
 var (
 	OrderbookOrderFragmentTableBegin   = []byte{0x02, 0x00}
 	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
-	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 64)
-	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 64)
+	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
+	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 	OrderbookOrderFragmentExpiry       = 72 * time.Hour
 )
 
