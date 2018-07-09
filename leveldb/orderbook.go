@@ -52,8 +52,6 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, error) {
 	offset := len(OrderbookOrderTableBegin)
 	length := len(orderID)
 	copy(orderID[:], iter.inner.Key()[offset:offset+length])
-	log.Println("key", iter.inner.Key())
-	log.Println("orderID", orderID)
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
