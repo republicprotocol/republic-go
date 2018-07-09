@@ -115,7 +115,7 @@ func (table *SomerComputationTable) Computation(id ome.ComputationID) (ome.Compu
 }
 
 // Computations implements the ome.ComputationStorer interface.
-func (table *SomerComputationTable) Computations() (ome.Computations, error) {
+func (table *SomerComputationTable) Computations() (ome.ComputationIterator, error) {
 	iter := table.db.NewIterator(&util.Range{Start: table.key(SomerComputationIterBegin), Limit: table.key(SomerComputationIterEnd)}, nil)
 	return newSomerComputationIterator(iter), nil
 }

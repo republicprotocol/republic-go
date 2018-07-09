@@ -90,17 +90,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
-	defer store.Close()
-
-	orderbookPointerStore := leveldb.NewOrderbookPointerStore()
-	orderbookStore, err := leveldb.NewOrderbookStore("db")
-	if err != nil {
-		log.Fatalf("cannot open orderbook store: %v", err)
-	}
-	defer orderbookStore.Close()
+	defer store.Release()
 
 	// New DHT
-	dht := dht.NewDHT(config.Address, 64) 
+	dht := dht.NewDHT(config.Address, 64)
 
 	// New gRPC components
 	server := grpc.NewServer()
@@ -113,7 +106,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbookPointerStore, orderbookStore, orderbookStore, &contractBinder, time.Second*4, 1024)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, time.Second*4, 1024)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -183,10 +176,10 @@ func main() {
 			log.Fatalf("cannot get current epoch: %v", err)
 		}
 		gen := ome.NewComputationGenerator()
-		matcher := ome.NewMatcher(store, smpcer)
-		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
-		settler := ome.NewSettler(store, smpcer, &contractBinder)
-		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
+		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 14*time.Second, 1)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
+		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
@@ -220,6 +213,12 @@ func main() {
 
 				// Notify the Ome
 				ome.OnChangeEpoch(epoch)
+			}
+		}, func() {
+			// Prune the database every hour
+			for {
+				store.Prune()
+				time.Sleep(time.Hour)
 			}
 		})
 	}()

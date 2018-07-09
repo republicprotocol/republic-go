@@ -85,15 +85,29 @@ func (store *Store) Release() error {
 	return store.db.Close()
 }
 
+// Prune the Store by deleting expired data.
+func (store *Store) Prune() (err error) {
+	if localErr := store.orderbookOrderTable.Prune(); localErr != nil {
+		err = localErr
+	}
+	if localErr := store.orderbookOrderFragmentTable.Prune(); localErr != nil {
+		err = localErr
+	}
+	if localErr := store.somerComputationTable.Prune(); localErr != nil {
+		err = localErr
+	}
+	return err
+}
+
 // OrderbookOrderStore returns the OrderbookOrderTable used by the Store. It
 // implements the orderbook.OrderStorer interface.
 func (store *Store) OrderbookOrderStore() orderbook.OrderStorer {
 	return store.orderbookOrderTable
 }
 
-// OrderbookOrderFragmentStorer returns the OrderbookOrderFragmentTable used by
+// OrderbookOrderFragmentStore returns the OrderbookOrderFragmentTable used by
 // the Store. It implements the orderbook.OrderFragmentStorer interface.
-func (store *Store) OrderbookOrderFragmentStorer() orderbook.OrderFragmentStorer {
+func (store *Store) OrderbookOrderFragmentStore() orderbook.OrderFragmentStorer {
 	return store.orderbookOrderFragmentTable
 }
 
@@ -106,7 +120,7 @@ func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
 // SomerComputationStore returns the SomerComputationTable used by the Store.
 // It implements the ome.ComputationStorer interface.
 func (store *Store) SomerComputationStore() ome.ComputationStorer {
-	return store.orderbookPointerTable
+	return store.somerComputationTable
 }
 
 func paddingBytes(value byte, num int) []byte {
