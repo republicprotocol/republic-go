@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
@@ -18,13 +19,25 @@ import (
 // StreamServer.
 var ErrUnverifiedConnection = errors.New("unverified connection")
 
-// ErrNilAuthentication is returned when no authentication message is provided
-// for a connection.
-var ErrNilAuthentication = errors.New("nil authentication")
+// ErrMalformedSignature is returned when a malformed signature, or address, is
+// provided when  authenticating a connection.
+var ErrMalformedSignature = errors.New("malformed signature")
+
+// ErrMalformedEncryptionSecret is returned when a malformed encryption secret
+// is provided when authenticating a connection.
+var ErrMalformedEncryptionSecret = errors.New("malformed encryption secret")
 
 // ErrStreamDisconnected is returned when a stream.Stream is disconnected and
 // a connection cannot be re-established.
 var ErrStreamDisconnected = errors.New("stream disconnected")
+
+// ErrCannotGenerateSecret is returned when a random secret cannot be created
+// for encrypting a connection.
+var ErrCannotGenerateSecret = errors.New("cannot generate secret")
+
+// ErrCannotEncryptSecret is returned when a secret cannot be encrypted for
+// secure transfer.
+var ErrCannotEncryptSecret = errors.New("cannot encrypt secret")
 
 // concurrentStream is a grpc.Stream that is safe for concurrent reading and
 // writing and implements the stream.Stream interface.
@@ -32,16 +45,18 @@ type concurrentStream struct {
 	done   chan struct{}
 	closed bool
 
+	cipher     crypto.AESCipher
 	grpcSendMu *sync.Mutex
 	grpcRecvMu *sync.Mutex
 	grpcStream grpc.Stream
 }
 
-func newConcurrentStream(grpcStream grpc.Stream) *concurrentStream {
+func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStream {
 	return &concurrentStream{
 		done:   make(chan struct{}),
 		closed: false,
 
+		cipher:     crypto.NewAESCipher(secret[:]),
 		grpcSendMu: new(sync.Mutex),
 		grpcRecvMu: new(sync.Mutex),
 		grpcStream: grpcStream,
@@ -61,6 +76,11 @@ func (concurrentStream *concurrentStream) Send(message stream.Message) error {
 	if err != nil {
 		return err
 	}
+	data, err = concurrentStream.cipher.Encrypt(data)
+	if err != nil {
+		return err
+	}
+
 	return concurrentStream.grpcStream.SendMsg(&StreamMessage{
 		Data: data,
 	})
@@ -75,11 +95,16 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 		return stream.ErrRecvOnClosedStream
 	}
 
-	data := StreamMessage{}
-	if err := concurrentStream.grpcStream.RecvMsg(&data); err != nil {
+	secureData := StreamMessage{}
+	if err := concurrentStream.grpcStream.RecvMsg(&secureData); err != nil {
 		return err
 	}
-	return message.UnmarshalBinary(data.Data)
+	data, err := concurrentStream.cipher.Decrypt(secureData.Data)
+	if err != nil {
+		return err
+	}
+
+	return message.UnmarshalBinary(data)
 }
 
 // Close the stream. This will close the done channel, and prevents future
@@ -111,14 +136,16 @@ func (concurrentStream *concurrentStream) Done() <-chan struct{} {
 // streamClient implements the stream.Client by using gRPC to create
 // concurrentConnStreams.
 type streamClient struct {
-	signer crypto.Signer
-	addr   identity.Address
+	signer    crypto.Signer
+	encrypter crypto.Encrypter
+	addr      identity.Address
 }
 
-func newStreamClient(signer crypto.Signer, addr identity.Address) *streamClient {
+func newStreamClient(signer crypto.Signer, encrypter crypto.Encrypter, addr identity.Address) *streamClient {
 	return &streamClient{
-		signer: signer,
-		addr:   addr,
+		signer:    signer,
+		encrypter: encrypter,
+		addr:      addr,
 	}
 }
 
@@ -145,26 +172,34 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 
+	// Generate a secret
+	secret := [16]byte{}
+	if _, err := rand.Read(secret[:]); err != nil {
+		return nil, ErrCannotGenerateSecret
+	}
+	encryptedSecret, err := client.encrypter.Encrypt(secret[:], []byte(multiAddr.Address()))
+	if err != nil {
+		return nil, ErrCannotEncryptSecret
+	}
+
 	// Sign an authentication message so that the StreamService can verify the
 	// identity.Address of the client
-	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
-	data = crypto.Keccak256(data)
-	dataSignature, err := client.signer.Sign(data)
+	signature := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", client.addr, multiAddr.Address()))
+	signature = crypto.Keccak256(signature)
+	signature, err = client.signer.Sign(signature)
 	if err != nil {
 		return nil, fmt.Errorf("cannot sign stream authentication: %v", err)
 	}
 	// Send the authentication message
 	if err := grpcStream.Send(&StreamMessage{
-		Authentication: &StreamAuthentication{
-			Signature: dataSignature,
-			Address:   client.addr.String(),
-		},
-		Data: []byte{},
+		Address:   client.addr.String(),
+		Signature: signature,
+		Data:      encryptedSecret,
 	}); err != nil {
 		return nil, fmt.Errorf("cannot send stream address: %v", err)
 	}
 
-	return newConcurrentStream(grpcStream), err
+	return newConcurrentStream(secret, grpcStream), err
 }
 
 // concurrentStreamConnector connects and reconnects concurrentStreams.
@@ -367,10 +402,10 @@ type Streamer struct {
 // create bidirectional streams and keeps its stream.Streams alive until the
 // opening context.Context is done. The user does not need to explicitly
 // attempt to reconnect in the event of a fault.
-func NewStreamer(signer crypto.Signer, addr identity.Address) *Streamer {
+func NewStreamer(signer crypto.Signer, encrypter crypto.Encrypter, addr identity.Address) *Streamer {
 	return &Streamer{
 		addr:      addr,
-		connector: newConcurrentStreamConnector(newStreamClient(signer, addr)),
+		connector: newConcurrentStreamConnector(newStreamClient(signer, encrypter, addr)),
 	}
 }
 
@@ -457,15 +492,17 @@ func (streamer *ctxStreamer) message(message stream.Message, f func(stream *conc
 // and pass the connections to a Streamer.
 type StreamerService struct {
 	verifier  crypto.Verifier
+	decrypter crypto.Decrypter
 	addr      identity.Address
 	connector *concurrentStreamConnector
 }
 
 // NewStreamerService returns an implementation of the gRPC StreamService that
 // connects stream.Streams from clients to a Streamer.
-func NewStreamerService(verifier crypto.Verifier, streamer *Streamer) StreamerService {
+func NewStreamerService(verifier crypto.Verifier, decrypter crypto.Decrypter, streamer *Streamer) StreamerService {
 	return StreamerService{
 		verifier:  verifier,
+		decrypter: decrypter,
 		addr:      streamer.addr,
 		connector: streamer.connector,
 	}
@@ -482,14 +519,14 @@ func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) 
 	if err != nil {
 		return err
 	}
-	addr, err := service.verifyAuthentication(message.GetAuthentication())
+	addr, secret, err := service.verifyAuthentication(message.GetSignature(), message.GetAddress(), message.GetData())
 	if err != nil {
 		return err
 	}
 
 	// Establish a connection with the recycler so that the stream can be used
 	// outside of this service
-	concurrentStream := newConcurrentStream(grpcStream)
+	concurrentStream := newConcurrentStream(secret, grpcStream)
 	service.connector.accept(addr, concurrentStream)
 
 	// Wait until the client closes the connection or the stream itself is
@@ -502,13 +539,29 @@ func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) 
 	}
 }
 
-func (service *StreamerService) verifyAuthentication(auth *StreamAuthentication) (identity.Address, error) {
-	if auth == nil || auth.Address == "" || auth.Signature == nil || len(auth.Signature) != 65 {
-		return identity.Address(""), ErrNilAuthentication
+func (service *StreamerService) verifyAuthentication(signature []byte, addr string, encryptedSecret []byte) (identity.Address, [16]byte, error) {
+	if signature == nil || len(signature) != 65 || addr == "" {
+		return identity.Address(""), [16]byte{}, ErrMalformedSignature
+	}
+	if encryptedSecret == nil {
+		return identity.Address(""), [16]byte{}, ErrMalformedEncryptionSecret
 	}
 
-	data := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", auth.Address, service.addr))
-	data = crypto.Keccak256(data)
+	message := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", addr, service.addr))
+	message = crypto.Keccak256(message)
+	if err := service.verifier.Verify(message, signature); err != nil {
+		return identity.Address(""), [16]byte{}, err
+	}
 
-	return identity.Address(auth.Address), service.verifier.Verify(data, auth.Signature)
+	secret, err := service.decrypter.Decrypt(encryptedSecret)
+	if err != nil {
+		return identity.Address(""), [16]byte{}, err
+	}
+	if len(secret) != 16 {
+		return identity.Address(""), [16]byte{}, ErrMalformedEncryptionSecret
+	}
+	secret16 := [16]byte{}
+	copy(secret16[:], secret)
+
+	return identity.Address(addr), secret16, nil
 }

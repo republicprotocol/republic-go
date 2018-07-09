@@ -17,23 +17,23 @@ var ErrMalformedPadding = errors.New("malformed padding")
 // the block size.
 var ErrMalformedCipherText = errors.New("malformed cipher text")
 
-type AESKey struct {
+type AESCipher struct {
 	secret []byte
 }
 
-func RandomAESKey() (AESKey, error) {
+func RandomAESCipher() (AESCipher, error) {
 	secret := [16]byte{}
 	if _, err := io.ReadFull(rand.Reader, secret[:]); err != nil {
-		return AESKey{}, err
+		return AESCipher{}, err
 	}
-	return AESKey{secret: secret[:]}, nil
+	return AESCipher{secret: secret[:]}, nil
 }
 
-func NewAESKey(secret []byte) AESKey {
-	return AESKey{secret: secret}
+func NewAESCipher(secret []byte) AESCipher {
+	return AESCipher{secret: secret}
 }
 
-func (key *AESKey) Encrypt(plainText []byte) ([]byte, error) {
+func (key *AESCipher) Encrypt(plainText []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key.secret)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (key *AESKey) Encrypt(plainText []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func (key *AESKey) Decrypt(cipherText []byte) ([]byte, error) {
+func (key *AESCipher) Decrypt(cipherText []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key.secret)
 	if err != nil {
 		return nil, err
