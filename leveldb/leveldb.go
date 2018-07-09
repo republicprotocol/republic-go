@@ -9,7 +9,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-
+func paddingBytes(value byte, num int) []byte {
+	padding := make([]byte, num)
+	for i := range padding {
+		padding[i] = value
+	}
+	return padding
+}
 
 // Key prefixes to partition data into tables.
 var (
