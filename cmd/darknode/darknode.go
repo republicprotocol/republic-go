@@ -110,8 +110,8 @@ func main() {
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamer := grpc.NewStreamer(&crypter, config.Address)
-	streamerService := grpc.NewStreamerService(&crypter, streamer)
+	streamer := grpc.NewStreamer(&crypter, &crypter, config.Address)
+	streamerService := grpc.NewStreamerService(&crypter, &crypter, streamer)
 	streamerService.Register(server)
 
 	// Populate status information

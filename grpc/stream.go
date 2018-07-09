@@ -177,7 +177,7 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	if _, err := rand.Read(secret[:]); err != nil {
 		return nil, ErrCannotGenerateSecret
 	}
-	encryptedSecret, err := client.encrypter.Encrypt(secret[:], []byte(multiAddr.Address()))
+	encryptedSecret, err := client.encrypter.Encrypt(multiAddr.Address().String(), secret[:])
 	if err != nil {
 		return nil, ErrCannotEncryptSecret
 	}
