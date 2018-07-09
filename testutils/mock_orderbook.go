@@ -75,7 +75,7 @@ func (book *Orderbook) Sync() (orderbook.ChangeSet, error) {
 	return orderbook.ChangeSet{}, nil
 }
 
-func (book *Orderbook) AddOrder(ord order.Order) {
+func (book *Orderbook) InsertOrder(ord order.Order) {
 	if _, ok := book.orders[ord.ID]; !ok {
 		book.orders[ord.ID] = ord
 	}

@@ -84,7 +84,7 @@ var _ = Describe("Matcher", func() {
 				os.RemoveAll("./data.out")
 			}()
 			smpcer := testutils.NewSmpc()
-			matcher := NewMatcher(store, smpcer)
+			matcher := NewMatcher(store.SomerComputationStore(), smpcer)
 
 			numTrials := 256
 			numMatches := 0
