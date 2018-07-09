@@ -183,13 +183,21 @@ func (ingress *ingress) OpenOrder(signature [65]byte, orderID order.ID, orderFra
 	// TODO: Verify that the signature is valid before sending it to the
 	// Orderbook. This is not strictly necessary but it can save the Ingress
 	// some gas.
+	go func() {
+		ingress.queueRequests <- OpenOrderRequest{
+			signature:               signature,
+			orderID:                 orderID,
+			orderFragmentMapping:    nil,
+			orderFragmentEpochDepth: -1,
+		}
+	}()
 	for i := range orderFragmentMappings {
 		if err := ingress.verifyOrderFragmentMapping(orderFragmentMappings[i], i); err != nil {
 			return err
 		}
 		go func(i int) {
 			logger.Info(fmt.Sprintf("queueing opening of order %v", orderID))
-			ingress.queueRequests <- OpenOrderRequest{
+			ingress.queueOrderFragmentMappings <- OpenOrderRequest{
 				signature:               signature,
 				orderID:                 orderID,
 				orderFragmentMapping:    orderFragmentMappings[i],
@@ -313,11 +321,6 @@ func (ingress *ingress) processOpenOrderRequest(req OpenOrderRequest, done <-cha
 		case <-done:
 		case errs <- err:
 		}
-	}
-
-	select {
-	case <-done:
-	case ingress.queueOrderFragmentMappings <- req:
 	}
 }
 
