@@ -117,10 +117,12 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		// not open
 		orderID, orderStatus, err := orderIter.Cursor()
 		if err != nil {
+			logger.Info(fmt.Sprintf("error getting cursor from store, %v", err))
 			select {
 			case <-done:
 				return
 			case errs <- fmt.Errorf("cannot load order iterator cursor: %v", err):
+				logger.Info("write cursor error")
 				continue
 			}
 		}
@@ -132,10 +134,12 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		// Refresh the status and mark it for deltion if it is not open
 		orderStatus, err = syncer.contractBinder.Status(orderID)
 		if err != nil {
+			logger.Info(fmt.Sprintf("error getting status of the order, %v", err))
 			select {
 			case <-done:
 				return
 			case errs <- fmt.Errorf("cannot sync order status: %v", err):
+				logger.Info("write status error")
 				continue
 			}
 		}
