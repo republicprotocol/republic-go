@@ -1,86 +1,71 @@
 package leveldb
 
 import (
-	"encoding/json"
 	"path"
+	"time"
 
-	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-
-
-// Key prefixes to partition data into tables.
+// Constants for use in the SomerComputationTable.
 var (
-	TableOmeComputations = []byte{0x04, 0x0, 0x0, 0x0}
+	SomerComputationTableBegin   = []byte{0x03, 0x00}
+	SomerComputationTablePadding = paddingBytes(0x00, 32)
+	SomerComputationIterBegin    = paddingBytes(0x00, 32)
+	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
+	SomerComputationExpiry       = 72 * time.Hour
 )
 
-// Key postfixes used by iterators to define table ranges.
-var (
-	TableIterStart = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	TableIterEnd   = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
-)
-
-// Store is an implementation of storage interfaces using LevelDB to load and
-// store data to persistent storage. It uses a single database instance and
-// high-order bytes for separating data into tables. All keys are 40 bytes
-// long, 8 table prefix bytes and a 32 byte key. LevelDB provides a basic type
-// type of in-memory caching but has no optimisations that are specific to the
-// data.
+// Store is an aggregate of all tables that implement storage interfaces. It
+// provides access to all of these storage interfaces using different
+// underlying LevelDB instances, ensuring that data is shared where possible
+// and isolated where needed. For this reason, it is recommended to access all
+// storage interfaces through the creation of a Store instance.
 type Store struct {
 	db *leveldb.DB
+
+	orderbookOrderTable         *OrderbookOrderTable
+	orderbookOrderFragmentTable *OrderbookOrderFragmentTable
+	orderbookPointerTable       *OrderbookPointerTable
 }
 
-// NewStore returns a LevelDB implementation of storage interfaces. A call to
-// Store.Close is required to free resources allocated by the Store.
+// NewStore returns a new Store with a new LevelDB instances that use the
+// the given directory as the root for all LevelDB instances. A call to
+// Store.Release is needed to ensure that no resources are leaked when
+// the Store is no longer needed. Each Store must have a unique directory.
 func NewStore(dir string) (*Store, error) {
-	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
+	db, err := leveldb.OpenFile(path.Join(dir, "orderbook"), nil)
 	if err != nil {
 		return nil, err
 	}
 	return &Store{
-		db: db,
+		db:                          db,
+		orderbookOrderTable:         NewOrderbookOrderTable(db),
+		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
+		orderbookPointerTable:       NewOrderbookPointerTable(),
 	}, nil
 }
 
-// Close the internal LevelDB database.
-func (store *Store) Close() error {
+// Release the resources required by the Store.
+func (store *Store) Release() error {
 	return store.db.Close()
 }
 
-// PutComputation implements the ome.Storer interface.
-func (store *Store) PutComputation(computation ome.Computation) error {
-	data, err := json.Marshal(computation)
-	if err != nil {
-		return err
-	}
-	return store.db.Put(append(TableOmeComputations, computation.ID[:]...), data, nil)
+// OrderbookOrderStore returns the OrderbookOrderTable used by the Store. It
+// implements the orderbook.OrderStorer interface.
+func (store *Store) OrderbookOrderStore() orderbook.OrderStorer {
+	return store.orderbookOrderTable
 }
 
-// DeleteComputation implements the ome.Storer interface.
-func (store *Store) DeleteComputation(id ome.ComputationID) error {
-	return store.db.Delete(append(TableOmeComputations, id[:]...), nil)
+// OrderbookOrderFragmentStorer returns the OrderbookOrderFragmentTable used by
+// the Store. It implements the orderbook.OrderFragmentStorer interface.
+func (store *Store) OrderbookOrderFragmentStorer() orderbook.OrderFragmentStorer {
+	return store.orderbookOrderFragmentTable
 }
 
-// Computation implements the ome.Storer interface.
-func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
-	computation := ome.Computation{}
-	data, err := store.db.Get(append(TableOmeComputations, id[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = ome.ErrComputationNotFound
-		}
-		return computation, err
-	}
-	if err := json.Unmarshal(data, &computation); err != nil {
-		return computation, err
-	}
-	return computation, nil
-}
-
-// Computations implements the ome.Storer interface.
-func (store *Store) Computations() (ome.ComputationIterator, error) {
-	iter := store.db.NewIterator(&util.Range{Start: append(TableOmeComputations, TableIterStart...), Limit: append(TableOmeComputations, TableIterEnd...)}, nil)
-	return newComputationIterator(iter), nil
+// OrderbookPointerStore returns the OrderbookPointerTable used by the Store.
+// It implements the orderbook.PointerStorer interface.
+func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
+	return store.orderbookPointerTable
 }

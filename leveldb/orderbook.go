@@ -2,7 +2,6 @@ package leveldb
 
 import (
 	"encoding/json"
-	"path"
 	"sync"
 	"time"
 
@@ -205,59 +204,6 @@ func (store *OrderbookPointerTable) Clone() (orderbook.PointerStorer, error) {
 		pointerMu: new(sync.RWMutex),
 		pointer:   store.pointer,
 	}, nil
-}
-
-// OrderbookStore is an aggregate of the OrderbookOrderTable,
-// OrderbookOrderFragmentTable, and OrderbookPointerTable. It provides access
-// to all of these storage interfaces using a single underying LevelDB
-// instance.
-type OrderbookStore struct {
-	db *leveldb.DB
-
-	orderTable         *OrderbookOrderTable
-	orderFragmentTable *OrderbookOrderFragmentTable
-	pointerTable       *OrderbookPointerTable
-}
-
-// NewOrderbookStore returns a new OrderbookStore with a new LevelDB instance
-// that uses the given directory for persistent disk storage. To call to
-// OrderbookStore.Release is needed to ensure that no resources are leaked when
-// the OrderbookStore is no longer needed. Each OrderbookStore must have a
-// unique directory.
-func NewOrderbookStore(dir string) (*OrderbookStore, error) {
-	db, err := leveldb.OpenFile(path.Join(dir, "orderbook"), nil)
-	if err != nil {
-		return nil, err
-	}
-	return &OrderbookStore{
-		db:                 db,
-		orderTable:         NewOrderbookOrderTable(db),
-		orderFragmentTable: NewOrderbookOrderFragmentTable(db),
-		pointerTable:       NewOrderbookPointerTable(),
-	}, nil
-}
-
-// Release the resources required by the OrderbookStore.
-func (store *OrderbookStore) Release() error {
-	return store.db.Close()
-}
-
-// OrderTable returns the OrderbookOrderTable used by the OrderbookStore. It
-// implements the orderbook.OrderStorer interface.
-func (store *OrderbookStore) OrderTable() orderbook.OrderStorer {
-	return store.orderTable
-}
-
-// OrderFragmentTable returns the OrderbookOrderFragmentTable used by the
-// OrderbookStore. It implements the orderbook.OrderFragmentStorer interface.
-func (store *OrderbookStore) OrderFragmentTable() orderbook.OrderFragmentStorer {
-	return store.orderFragmentTable
-}
-
-// PointerTable returns the OrderbookPointerTable used by the OrderbookStore.
-// It implements the orderbook.PointerStorer interface.
-func (store *OrderbookStore) PointerTable() orderbook.PointerStorer {
-	return store.pointerTable
 }
 
 // OrderbookOrderFragmentIterator is a LevelDB implementation of the order
