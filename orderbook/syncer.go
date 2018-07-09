@@ -85,11 +85,9 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 
 	orderIter, err := syncer.orderStore.Orders()
 	if err != nil {
-		logger.Info(fmt.Sprintf("error getting orders from store, %v", err))
 		select {
 		case <-done:
 		case errs <- fmt.Errorf("cannot load order iterator: %v", err):
-			logger.Info("write store error")
 		}
 		return
 	}
