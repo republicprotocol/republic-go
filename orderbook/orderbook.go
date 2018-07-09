@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -157,64 +158,11 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	// channel
 	go func() {
 		defer close(notifications)
-		for {
-			select {
-			case <-done:
-				return
-			case notificationCh, ok := <-orderbook.broadcastNotifications:
-				if !ok {
-					return
-				}
-				go func() {
-					for {
-						select {
-						case <-done:
-							return
-						case val, ok := <-notificationCh:
-							if !ok {
-								return
-							}
-							select {
-							case <-done:
-								return
-							case notifications <- val:
-							}
-						}
-					}
-				}()
-			}
-		}
+		dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
 	}()
 	go func() {
 		defer close(errs)
-		for {
-			select {
-			case <-done:
-				return
-			case errCh, ok := <-orderbook.broadcastErrs:
-				if !ok {
-					return
-				}
-				go func() {
-					for {
-						select {
-						case <-done:
-							return
-						case val, ok := <-errCh:
-							if !ok {
-								return
-							}
-							select {
-							case <-done:
-								return
-							case errs <- val:
-							}
-						}
-					}
-				}()
-			}
-		}
-		// dispatch.Merge(done, orderbook.broadcastErrs, errs)
+		dispatch.Merge(done, orderbook.broadcastErrs, errs)
 	}()
 
 	return notifications, errs
