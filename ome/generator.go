@@ -257,10 +257,11 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		if mat.traders[cmpOrderFragment.OrderID] == notification.Trader {
 			continue
 		}
-		// At least one order must be from this matrix epoch
-		if mat.blockNumbers[cmpOrderFragment.OrderID] < mat.epoch.BlockNumber.Int64() && notification.BlockNumber < mat.epoch.BlockNumber.Int64() {
-			continue
-		}
+
+		// TODO: Check that at least one of the orders in the pairing was
+		// opened during this matrix epoch. Otherwise, orders that are opened
+		// in the same epoch will be matched twice. Once in the current epoch,
+		// and once in the previous epoch.
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {

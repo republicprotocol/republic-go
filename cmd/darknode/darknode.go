@@ -100,7 +100,7 @@ func main() {
 	defer orderbookStore.Close()
 
 	// New DHT
-	dht := dht.NewDHT(config.Address, 64)
+	dht := dht.NewDHT(config.Address, 64) 
 
 	// New gRPC components
 	server := grpc.NewServer()
