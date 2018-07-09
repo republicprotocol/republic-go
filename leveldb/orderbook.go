@@ -261,13 +261,13 @@ func (table *OrderbookOrderFragmentTable) OrderFragment(epoch registry.Epoch, id
 
 // OrderFragments implements the orderbook.OrderFragmentStorer interface.
 func (table *OrderbookOrderFragmentTable) OrderFragments(epoch registry.Epoch) (orderbook.OrderFragmentIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key(epoch.Hash[:], OrderbookOrderFragmentIterBeginPerEpoch), Limit: table.key(epoch.Hash[:], OrderbookOrderFragmentIterEndPerEpoch)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(epoch.Hash[:], OrderbookOrderFragmentIterBegin), Limit: table.key(epoch.Hash[:], OrderbookOrderFragmentIterEnd)}, nil)
 	return newOrderbookOrderFragmentIterator(iter), nil
 }
 
 // Prune iterates over all orders and deletes those that have expired.
 func (table *OrderbookOrderFragmentTable) Prune() (err error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key([]byte{}, OrderbookOrderFragmentIterBegin), Limit: table.key([]byte{}, OrderbookOrderFragmentIterEnd)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderFragmentIterBegin, OrderbookOrderFragmentIterBegin), Limit: table.key(OrderbookOrderFragmentIterEnd, OrderbookOrderFragmentIterEnd)}, nil)
 	defer iter.Release()
 
 	now := time.Now()
