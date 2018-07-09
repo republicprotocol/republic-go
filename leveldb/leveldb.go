@@ -5,12 +5,38 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/ome"
-
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-// Constants for use in the SomerComputationTable.
+// Constants for use in the OrderbookOrderTable. Keys in the
+// OrderbookOrderTable have a length of 32 bytes, and so 32 bytes of padding is
+// needed to ensure that keys are 64 bytes.
+var (
+	OrderbookOrderTableBegin   = []byte{0x01, 0x00}
+	OrderbookOrderTablePadding = paddingBytes(0x00, 32)
+	OrderbookOrderIterBegin    = paddingBytes(0x00, 32)
+	OrderbookOrderIterEnd      = paddingBytes(0xFF, 32)
+	OrderbookOrderExpiry       = 72 * time.Hour
+)
+
+// Constants for use in the OrderbookOrderFragmentTable. Keys in the
+// OrderbookOrderFragmentTable have a length of 64 bytes, 32 bytes for the
+// epoch and 32 bytes for the order ID, and so no padding is needed to ensure
+// that keys are 64 bytes.
+var (
+	OrderbookOrderFragmentTableBegin        = []byte{0x02, 0x00}
+	OrderbookOrderFragmentTablePadding      = paddingBytes(0x00, 0)
+	OrderbookOrderFragmentIterBeginPerEpoch = paddingBytes(0x00, 32)
+	OrderbookOrderFragmentIterEndPerEpoch   = paddingBytes(0xFF, 32)
+	OrderbookOrderFragmentIterBegin         = paddingBytes(0x00, 64)
+	OrderbookOrderFragmentIterEnd           = paddingBytes(0xFF, 64)
+	OrderbookOrderFragmentExpiry            = 72 * time.Hour
+)
+
+// Constants for use in the SomerComputationTable. Keys in the
+// SomerComputationTable have a length of 32 bytes, and so 32 bytes of padding
+// is needed to ensure that keys are 64 bytes.
 var (
 	SomerComputationTableBegin   = []byte{0x03, 0x00}
 	SomerComputationTablePadding = paddingBytes(0x00, 32)
@@ -82,4 +108,12 @@ func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
 // It implements the ome.ComputationStorer interface.
 func (store *Store) SomerComputationStore() ome.ComputationStorer {
 	return store.orderbookPointerTable
+}
+
+func paddingBytes(value byte, num int) []byte {
+	padding := make([]byte, num)
+	for i := range padding {
+		padding[i] = value
+	}
+	return padding
 }

@@ -7,23 +7,15 @@ import (
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// Constants for use in the OrderbookOrderTable.
-var (
-	OrderbookOrderTableBegin = []byte{0x01, 0x00}
-	OrderbookOrderTableEnd   = []byte{0x01, 0xFF}
-	OrderbookOrderIterBegin  = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	OrderbookOrderIterEnd    = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
-	OrderbookOrderExpiry     = 72 * time.Hour
-)
-
-// OrderbookOrderValue is the storage format for values being store in LevelDB.
-// It contains metadata, such as the timestamp, so that LevelDB can provide
-// features such as expiration.
+// OrderbookOrderValue is the storage format for orders being stored in
+// LevelDB. It contains additional timestamping information so that LevelDB can
+// provide pruning.
 type OrderbookOrderValue struct {
 	Timestamp   time.Time    `json:"timestamp"`
 	Status      order.Status `json:"status"`
@@ -85,14 +77,13 @@ func (iter *OrderbookOrderIterator) Release() {
 	iter.inner.Release()
 }
 
-// OrderbookOrderTable implements the orderbook.OrderStorer interface using
-// LevelDB.
+// OrderbookOrderTable implements the orderbook.OrderStorer interface.
 type OrderbookOrderTable struct {
 	db *leveldb.DB
 }
 
-// NewOrderbookOrderTable returns a new OrderbookOrderTable that uses the given
-// LevelDB instance to store and load values from the disk.
+// NewOrderbookOrderTable returns a new OrderbookOrderTable that uses a LevelDB
+// instance to store and load values from the disk.
 func NewOrderbookOrderTable(db *leveldb.DB) *OrderbookOrderTable {
 	return &OrderbookOrderTable{db: db}
 }
@@ -109,17 +100,17 @@ func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, tra
 	if err != nil {
 		return err
 	}
-	return table.db.Put(append(OrderbookOrderTableBegin, id[:]...), data, nil)
+	return table.db.Put(table.key(id[:]), data, nil)
 }
 
 // DeleteOrder implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) DeleteOrder(id order.ID) error {
-	return table.db.Delete(append(OrderbookOrderTableBegin, id[:]...), nil)
+	return table.db.Delete(table.key(id[:]), nil)
 }
 
 // Order implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint64, error) {
-	data, err := table.db.Get(append(OrderbookOrderTableBegin, id[:]...), nil)
+	data, err := table.db.Get(table.key(id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
@@ -136,13 +127,13 @@ func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint
 
 // Orders implements the orderbook.OrderStorer interface.
 func (table *OrderbookOrderTable) Orders() (orderbook.OrderIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: append(OrderbookOrderTableBegin, OrderbookOrderIterBegin...), Limit: append(OrderbookOrderTableEnd, OrderbookOrderIterEnd...)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderIterBegin), Limit: table.key(OrderbookOrderIterEnd)}, nil)
 	return newOrderbookOrderIterator(iter), nil
 }
 
 // Prune iterates over all orders and deletes those that have expired.
 func (table *OrderbookOrderTable) Prune() (err error) {
-	iter := table.db.NewIterator(&util.Range{Start: append(OrderbookOrderTableBegin, OrderbookOrderIterBegin...), Limit: append(OrderbookOrderTableEnd, OrderbookOrderIterEnd...)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderIterBegin), Limit: table.key(OrderbookOrderIterEnd)}, nil)
 	defer iter.Release()
 
 	now := time.Now()
@@ -160,6 +151,144 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 		}
 	}
 	return err
+}
+
+func (table *OrderbookOrderTable) key(k []byte) []byte {
+	return append(append(OrderbookOrderTableBegin, k...), OrderbookOrderTablePadding...)
+}
+
+// OrderbookOrderFragmentValue is the storage format for order fragments being
+// stored in LevelDB. It contains additional timestamping information so that
+// LevelDB can provide pruning.
+type OrderbookOrderFragmentValue struct {
+	Timestamp     time.Time      `json:"timestamp"`
+	OrderFragment order.Fragment `json:"orderFragment"`
+}
+
+// OrderbookOrderFragmentIterator is a LevelDB implementation of the order
+// fragment iterator interface defined by the orderbook package.
+type OrderbookOrderFragmentIterator struct {
+	inner iterator.Iterator
+}
+
+func newOrderbookOrderFragmentIterator(iter iterator.Iterator) *OrderbookOrderFragmentIterator {
+	return &OrderbookOrderFragmentIterator{
+		inner: iter,
+	}
+}
+
+// Next implements the orderbook.OrderFragmentIterator interface.
+func (iter *OrderbookOrderFragmentIterator) Next() bool {
+	return iter.inner.Next()
+}
+
+// Cursor implements the orderbook.OrderFragmentIterator interface.
+func (iter *OrderbookOrderFragmentIterator) Cursor() (order.Fragment, error) {
+	orderFragment := order.Fragment{}
+	if !iter.inner.Valid() {
+		return orderFragment, orderbook.ErrCursorOutOfRange
+	}
+	data := iter.inner.Value()
+	if err := json.Unmarshal(data, &orderFragment); err != nil {
+		return orderFragment, err
+	}
+	return orderFragment, iter.inner.Error()
+}
+
+// Collect implements the orderbook.OrderFragmentIterator interface.
+func (iter *OrderbookOrderFragmentIterator) Collect() ([]order.Fragment, error) {
+	orderFragments := []order.Fragment{}
+	for iter.Next() {
+		orderFragment, err := iter.Cursor()
+		if err != nil {
+			return orderFragments, err
+		}
+		orderFragments = append(orderFragments, orderFragment)
+	}
+	return orderFragments, iter.inner.Error()
+}
+
+// Release implements the orderbook.OrderFragmentIterator interface.
+func (iter *OrderbookOrderFragmentIterator) Release() {
+	iter.inner.Release()
+}
+
+// OrderbookOrderFragmentTable implements the orderbook.OrderFragmentStorer interface.
+type OrderbookOrderFragmentTable struct {
+	db *leveldb.DB
+}
+
+// NewOrderbookOrderFragmentTable returns a new OrderbookOrderFragmentTable that uses a LevelDB
+// instance to store and load values from the disk.
+func NewOrderbookOrderFragmentTable(db *leveldb.DB) *OrderbookOrderFragmentTable {
+	return &OrderbookOrderFragmentTable{db: db}
+}
+
+// PutOrderFragment implements the orderbook.OrderFragmentStorer interface.
+func (table *OrderbookOrderFragmentTable) PutOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error {
+	value := OrderbookOrderFragmentValue{
+		Timestamp:     time.Now(),
+		OrderFragment: orderFragment,
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return table.db.Put(table.key(epoch.Hash[:], orderFragment.OrderID[:]), data, nil)
+}
+
+// DeleteOrderFragment implements the orderbook.OrderFragmentStorer interface.
+func (table *OrderbookOrderFragmentTable) DeleteOrderFragment(epoch registry.Epoch, id order.ID) error {
+	return table.db.Delete(table.key(epoch.Hash[:], id[:]), nil)
+}
+
+// OrderFragment implements the orderbook.OrderFragmentStorer interface.
+func (table *OrderbookOrderTable) OrderFragment(id order.ID) (order.Fragment, error) {
+	data, err := table.db.Get(table.key(id[:]), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = orderbook.ErrOrderFragmentNotFound
+		}
+		return order.Fragment{}, err
+	}
+
+	value := OrderbookOrderFragmentValue{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return order.Fragment{}, err
+	}
+	return value.OrderFragment, nil
+}
+
+// OrderFragments implements the orderbook.OrderFragmentStorer interface.
+func (table *OrderbookOrderFragmentTable) OrderFragments(epoch registry.Epoch) (orderbook.OrderFragmentIterator, error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key(epoch.Hash[:], OrderbookOrderFragmentIterBeginPerEpoch), Limit: table.key(epoch.Hash[:], OrderbookOrderFragmentIterEndPerEpoch)}, nil)
+	return newOrderbookOrderFragmentIterator(iter), nil
+}
+
+// Prune iterates over all orders and deletes those that have expired.
+func (table *OrderbookOrderFragmentTable) Prune() (err error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key([]byte{}, OrderbookOrderFragmentIterBegin), Limit: table.key([]byte{}, OrderbookOrderFragmentIterEnd)}, nil)
+	defer iter.Release()
+
+	now := time.Now()
+	for iter.Next() {
+		key := iter.Key()
+		value := OrderbookOrderFragmentValue{}
+		if localErr := json.Unmarshal(iter.Value(), &value); localErr != nil {
+			err = localErr
+			continue
+		}
+		if value.Timestamp.Add(OrderbookOrderFragmentExpiry).Before(now) {
+			if localErr := table.db.Delete(key, nil); localErr != nil {
+				err = localErr
+			}
+		}
+	}
+	return err
+}
+
+func (table *OrderbookOrderFragmentTable) key(epoch, orderID []byte) []byte {
+	return append(append(append(OrderbookOrderFragmentTableBegin, epoch...), orderID...), OrderbookOrderFragmentTablePadding...)
 }
 
 // OrderbookPointerTable implements the orderbook.PointerStorer using in-memory
@@ -204,55 +333,4 @@ func (store *OrderbookPointerTable) Clone() (orderbook.PointerStorer, error) {
 		pointerMu: new(sync.RWMutex),
 		pointer:   store.pointer,
 	}, nil
-}
-
-// OrderbookOrderFragmentIterator is a LevelDB implementation of the order
-// fragment iterator interface defined by the orderbook package.
-type OrderbookOrderFragmentIterator struct {
-	inner iterator.Iterator
-	next  bool
-}
-
-func newOrderbookOrderFragmentIterator(iter iterator.Iterator) *OrderbookOrderFragmentIterator {
-	return &OrderbookOrderFragmentIterator{
-		inner: iter,
-		next:  false,
-	}
-}
-
-// Next implements the orderbook.OrderFragmentIterator interface.
-func (iter *OrderbookOrderFragmentIterator) Next() bool {
-	iter.next = iter.inner.Next()
-	return iter.next
-}
-
-// Cursor implements the orderbook.OrderFragmentIterator interface.
-func (iter *OrderbookOrderFragmentIterator) Cursor() (order.Fragment, error) {
-	orderFragment := order.Fragment{}
-	if !iter.next {
-		return orderFragment, orderbook.ErrCursorOutOfRange
-	}
-	data := iter.inner.Value()
-	if err := json.Unmarshal(data, &orderFragment); err != nil {
-		return orderFragment, err
-	}
-	return orderFragment, iter.inner.Error()
-}
-
-// Collect implements the orderbook.OrderFragmentIterator interface.
-func (iter *OrderbookOrderFragmentIterator) Collect() ([]order.Fragment, error) {
-	orderFragments := []order.Fragment{}
-	for iter.Next() {
-		orderFragment, err := iter.Cursor()
-		if err != nil {
-			return orderFragments, err
-		}
-		orderFragments = append(orderFragments, orderFragment)
-	}
-	return orderFragments, iter.inner.Error()
-}
-
-// Release implements the orderbook.OrderFragmentIterator interface.
-func (iter *OrderbookOrderFragmentIterator) Release() {
-	iter.inner.Release()
 }
