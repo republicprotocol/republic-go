@@ -3,6 +3,7 @@ package dispatch
 import (
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 // Forward all values from an input channels into an output channel. Forward is
@@ -12,12 +13,16 @@ func Forward(done <-chan struct{}, in interface{}, out interface{}) {
 
 	// Ensure that all arguments are compatible types
 	if reflect.TypeOf(out).Kind() != reflect.Chan {
-		panic(fmt.Sprintf("cannot merge into type %v", reflect.TypeOf(out)))
+		panic(fmt.Sprintf("cannot forward into type %v", reflect.TypeOf(out)))
 	}
-	if reflect.TypeOf(in).Kind() != reflect.TypeOf(out).Kind() {
-		panic(fmt.Sprintf("cannot merge from type %v", reflect.TypeOf(in)))
+	if reflect.TypeOf(in).Kind() != reflect.Chan {
+		panic(fmt.Sprintf("cannot forward from type %v", reflect.TypeOf(in)))
+	}
+	if reflect.TypeOf(in).Elem().Kind() != reflect.TypeOf(out).Elem().Kind() {
+		panic(fmt.Sprintf("cannot forward from type %v to type %v", reflect.TypeOf(in), reflect.TypeOf(out)))
 	}
 
+	defer reflect.ValueOf(out).Close()
 	for {
 		// select {
 		// case <-done:
@@ -35,11 +40,11 @@ func Forward(done <-chan struct{}, in interface{}, out interface{}) {
 		// case <-done:
 		// case out <- val:
 		// }
-		chosen, val, ok = reflect.Select([]reflect.SelectCase{
+		chosen, _, _ = reflect.Select([]reflect.SelectCase{
 			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
 			reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(out), Send: val},
 		})
-		if chosen == 0 || !ok {
+		if chosen == 0 {
 			return
 		}
 	}
@@ -66,6 +71,7 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 		panic(fmt.Sprintf("cannot merge from type %T with elements of type", reflect.TypeOf(in).Elem().Elem()))
 	}
 
+	var wg sync.WaitGroup
 	for {
 
 		// select {
@@ -77,10 +83,13 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(in)},
 		})
 		if chosen == 0 || !ok {
-			return
+			break
 		}
 
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
+
 			for {
 				// select {
 				// case <-done:
@@ -98,7 +107,7 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 				// case <-done:
 				// case out <- val:
 				// }
-				chosen, val, _ = reflect.Select([]reflect.SelectCase{
+				chosen, _, _ = reflect.Select([]reflect.SelectCase{
 					reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
 					reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(out), Send: val},
 				})
@@ -108,4 +117,7 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 			}
 		}()
 	}
+
+	wg.Wait()
+	reflect.ValueOf(out).Close()
 }
