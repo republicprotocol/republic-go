@@ -48,7 +48,7 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, error) {
 	}
 
 	// Copy the key into the order ID making sure to ignore the table prefix
-	copy(orderID[:], iter.inner.Key()[len(OrderbookOrderTableBegin):])
+	copy(orderID[:], iter.inner.Key()[len(OrderbookOrderTableBegin):len(orderID)])
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
