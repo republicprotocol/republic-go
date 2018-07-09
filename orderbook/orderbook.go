@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -127,8 +126,8 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 
 // Sync implements the Orderbook interface.
 func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification)
-	errs := make(chan error, 1)
+	notifications := make(chan Notification, 4096)
+	errs := make(chan error, 4096)
 
 	// Check whether the server has already been started
 	orderbook.doneMu.RLock()
@@ -158,11 +157,64 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	// channel
 	go func() {
 		defer close(notifications)
-		dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
+		for {
+			select {
+			case <-done:
+				return
+			case notificationCh, ok := <-orderbook.broadcastNotifications:
+				if !ok {
+					return
+				}
+				go func() {
+					for {
+						select {
+						case <-done:
+							return
+						case val, ok := <-notificationCh:
+							if !ok {
+								return
+							}
+							select {
+							case <-done:
+								return
+							case notifications <- val:
+							}
+						}
+					}
+				}()
+			}
+		}
 	}()
 	go func() {
 		defer close(errs)
-		dispatch.Merge(done, orderbook.broadcastErrs, errs)
+		for {
+			select {
+			case <-done:
+				return
+			case errCh, ok := <-orderbook.broadcastErrs:
+				if !ok {
+					return
+				}
+				go func() {
+					for {
+						select {
+						case <-done:
+							return
+						case val, ok := <-errCh:
+							if !ok {
+								return
+							}
+							select {
+							case <-done:
+								return
+							case errs <- val:
+							}
+						}
+					}
+				}()
+			}
+		}
+		// dispatch.Merge(done, orderbook.broadcastErrs, errs)
 	}()
 
 	return notifications, errs
