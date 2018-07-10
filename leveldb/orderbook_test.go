@@ -15,11 +15,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+var orders = make([]order.Order, 100)
 var orderFragments = make([]order.Fragment, 100)
 var epoch = registry.Epoch{}
 
 const dbFolder = "./tmp/"
 const dbFile = dbFolder + "db"
+const orderStatus = order.Open
 
 var _ = Describe("LevelDB storage", func() {
 	BeforeEach(func() {
@@ -27,6 +29,7 @@ var _ = Describe("LevelDB storage", func() {
 			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
+			orders[i] = ord
 			orderFragments[i] = ordFragments[0]
 
 			_, err = io.ReadFull(rand.Reader, epoch.Hash[:])
@@ -42,16 +45,20 @@ var _ = Describe("LevelDB storage", func() {
 	Context("when pruning data", func() {
 		It("should not retrieve expired data", func() {
 			db := newDB(dbFile)
+			orderbookOrderTable := NewOrderbookOrderTable(db, 2*time.Second)
 			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, 2*time.Second)
 
-			// Put the order fragments into the table and attempt to retrieve
+			// Put data into the tables and attempt to retrieve
+			putAndExpectOrders(orderbookOrderTable)
 			putAndExpectOrderFragments(orderbookOrderFragmentTable)
 
 			// Sleep and then prune to expire the data
 			time.Sleep(2 * time.Second)
+			orderbookOrderTable.Prune()
 			orderbookOrderFragmentTable.Prune()
 
 			// All data should have expired so we should not get any data back
+			expectMissingOrders(orderbookOrderTable)
 			expectMissingOrderFragments(orderbookOrderFragmentTable)
 		})
 
@@ -125,6 +132,30 @@ func newDB(path string) *leveldb.DB {
 	db, err := leveldb.OpenFile(path, nil)
 	Expect(err).ShouldNot(HaveOccurred())
 	return db
+}
+
+func putAndExpectOrders(table *OrderbookOrderTable) {
+	for i := 0; i < len(orderFragments); i++ {
+		err := table.PutOrder(orders[i].ID, orderStatus, "", uint64(i))
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+	expectOrders(table)
+}
+
+func expectOrders(table *OrderbookOrderTable) {
+	for i := 0; i < 100; i++ {
+		status, _, _, err := table.Order(orders[i].ID)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(status).Should(Equal(orderStatus))
+	}
+}
+
+func expectMissingOrders(table *OrderbookOrderTable) {
+	for i := 0; i < 100; i++ {
+		_, _, _, err := table.Order(orders[i].ID)
+		Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+	}
 }
 
 func putAndExpectOrderFragments(table *OrderbookOrderFragmentTable) {
