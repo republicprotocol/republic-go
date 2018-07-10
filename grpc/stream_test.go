@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/republicprotocol/republic-go/testutils"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
@@ -340,8 +342,7 @@ func newStreamer() (*Streamer, identity.Address, error) {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
-	mockSigner := 
-	return NewStreamer(&ecdsaKey, addr), addr, nil
+	return NewStreamer(&ecdsaKey, testutils.NewCrypter(), addr), addr, nil
 }
 
 func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streamer, identity.Address, error) {
@@ -357,15 +358,8 @@ func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streame
 			break
 		}
 	}
-	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), streamer)
+	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), testutils.NewCrypter(), streamer)
 	return &service, streamer, addr, nil
-}
-
-type mockSigner struct {
-}
-
-func (signer *mockSigner) Sign(data []byte) ([]byte, error) {
-	return data, nil
 }
 
 type mockStreamMessage struct {
