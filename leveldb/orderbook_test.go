@@ -10,14 +10,16 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var orderFragments = make([]order.Fragment, 100)
 var epoch = registry.Epoch{}
-var dbFolder = "./tmp/"
-var dbFile = dbFolder + "db"
+
+const dbFolder = "./tmp/"
+const dbFile = dbFolder + "db"
 
 var _ = Describe("LevelDB storage", func() {
 	BeforeEach(func() {
@@ -143,8 +145,7 @@ func expectOrderFragments(table *OrderbookOrderFragmentTable) {
 
 func expectMissingOrderFragments(table *OrderbookOrderFragmentTable) {
 	for i := 0; i < len(orderFragments); i++ {
-		orderFrag, err := table.OrderFragment(epoch, orderFragments[i].OrderID)
-		Expect(orderFrag.Equal(&orderFragments[i])).Should(BeFalse())
-		Expect(err).Should(HaveOccurred())
+		_, err := table.OrderFragment(epoch, orderFragments[i].OrderID)
+		Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
 	}
 }
