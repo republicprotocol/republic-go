@@ -24,12 +24,10 @@ var (
 // epoch and 32 bytes for the order ID, and so no padding is needed to ensure
 // that keys are 64 bytes.
 var (
-	OrderbookOrderFragmentTableBegin        = []byte{0x02, 0x00}
-	OrderbookOrderFragmentTablePadding      = paddingBytes(0x00, 0)
-	OrderbookOrderFragmentIterBeginPerEpoch = paddingBytes(0x00, 32)
-	OrderbookOrderFragmentIterEndPerEpoch   = paddingBytes(0xFF, 32)
-	OrderbookOrderFragmentIterBegin         = paddingBytes(0x00, 64)
-	OrderbookOrderFragmentIterEnd           = paddingBytes(0xFF, 64)
+	OrderbookOrderFragmentTableBegin   = []byte{0x02, 0x00}
+	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
+	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
+	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 )
 
 // Constants for use in the SomerComputationTable. Keys in the

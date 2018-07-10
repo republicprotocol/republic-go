@@ -52,27 +52,28 @@ func (book *Orderbook) ConfirmOrderMatch(buy order.ID, sell order.ID) error {
 
 func (book *Orderbook) OpenOrder(ctx context.Context, orderFragment order.EncryptedFragment) error {
 	var err error
-	book.orderFragments[orderFragment.OrderID], err = orderFragment.Decrypt(*book.rsaKey.PrivateKey)
+	book.orderFragments[orderFragment.OrderID], err = orderFragment.Decrypt(book.rsaKey.PrivateKey)
 	return err
 }
 
-func (book *Orderbook) Sync() (orderbook.ChangeSet, error) {
+func (book *Orderbook) Sync() (<-chan orderbook.Notification, error) {
+	var notificationChan <-chan orderbook.Notification
 	if !book.hasSynced {
-		changes := make(orderbook.ChangeSet, 5)
-		i := 0
-		for _, orderFragment := range book.orderFragments {
-			changes[i] = orderbook.Change{
-				OrderID:       orderFragment.OrderID,
-				OrderParity:   orderFragment.OrderParity,
-				OrderPriority: orderbook.Priority(i),
-				OrderStatus:   order.Open,
-			}
-			i++
-		}
-		book.hasSynced = true
-		return changes, nil
+		// changes := make(orderbook.ChangeSet, 5)
+		// i := 0
+		// for _, orderFragment := range book.orderFragments {
+		// changes[i] = orderbook.Change{
+		// 	OrderID:       orderFragment.OrderID,
+		// 	OrderParity:   orderFragment.OrderParity,
+		// 	OrderPriority: orderbook.Priority(i),
+		// 	OrderStatus:   order.Open,
+		// }
+		// 	i++
+		// }
+		// book.hasSynced = true
+		return notificationChan, nil
 	}
-	return orderbook.ChangeSet{}, nil
+	return notificationChan, nil
 }
 
 func (book *Orderbook) InsertOrder(ord order.Order) {
