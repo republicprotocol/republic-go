@@ -1016,6 +1016,10 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 
 func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		oldValue := binder.transactOpts.Value
+		defer func() {
+			binder.transactOpts.Value = oldValue
+		}()
 		if tokenAddress.Hex() == EthereumAddress {
 			binder.transactOpts.Value = value
 		}
@@ -1036,10 +1040,6 @@ func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address
 
 func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-		if tokenAddress.Hex() == EthereumAddress {
-			binder.transactOpts.Value = value
-		}
-
 		return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
 	})
 	if err != nil {
