@@ -76,12 +76,13 @@ var _ = Describe("Contract Binder", func() {
 			orderpairs := make([]ome.Computation, numberOfOrderPairs)
 
 			for i := 0; i < numberOfOrderPairs; i++ {
-				orderpairs[i] = testutils.RandomComputation()
-
-				err := binder.OpenBuyOrder([65]byte{}, orderpairs[i].Buy)
+				orderpairs[i], err = testutils.RandomComputation()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				err = binder.OpenSellOrder([65]byte{}, orderpairs[i].Sell)
+				err := binder.OpenBuyOrder([65]byte{}, orderpairs[i].Buy.OrderID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				err = binder.OpenSellOrder([65]byte{}, orderpairs[i].Sell.OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
