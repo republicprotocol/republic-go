@@ -117,7 +117,7 @@ var _ = Describe("Syncer", func() {
 			}()
 		})
 
-		FIt("should be able to sync canceling order events", func() {
+		It("should be able to sync canceling order events", func() {
 			// Open orders
 			openOrders(contract, buys, sells)
 
