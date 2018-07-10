@@ -1014,6 +1014,10 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 }
 
 func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) (*types.Transaction, error) {
+	if tokenAddress.Hex() == EthereumAddress {
+		binder.transactOpts.Value = value
+	}
+
 	return binder.renExBalance.Deposit(binder.transactOpts, tokenAddress, value)
 }
 
