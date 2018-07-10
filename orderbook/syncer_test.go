@@ -1,7 +1,6 @@
 package orderbook_test
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -65,15 +64,19 @@ var _ = Describe("Syncer", func() {
 
 			close(done)
 
+			var count = 0
+
 			go func() {
 				for {
 					select {
 					case <-done:
 						return
-					case something := <-notifications:
-						log.Println(something)
-					case err := <-errs:
-						log.Println(err)
+					case _, ok := <-notifications:
+						if !ok {
+							return
+						}
+						count++
+					case <-errs:
 						return
 					}
 				}
@@ -95,15 +98,19 @@ var _ = Describe("Syncer", func() {
 
 			defer close(done)
 
+			var count = 0
+
 			go func() {
 				for {
 					select {
 					case <-done:
 						return
-					case something := <-notifications:
-						log.Println(something)
-					case err := <-errs:
-						log.Println(err)
+					case _, ok := <-notifications:
+						if !ok {
+							return
+						}
+						count++
+					case <-errs:
 						return
 					}
 				}
@@ -134,10 +141,12 @@ var _ = Describe("Syncer", func() {
 					select {
 					case <-done:
 						return
-					case <-notifications:
+					case _, ok := <-notifications:
+						if !ok {
+							return
+						}
 						count++
-					case err := <-errs:
-						log.Println(err)
+					case <-errs:
 						return
 					}
 				}
