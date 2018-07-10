@@ -14,6 +14,7 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
+var expiry = 72 * time.Hour
 var _ = Describe("LevelDB storage", func() {
 
 	orders := make([]order.Order, 100)
@@ -42,7 +43,7 @@ var _ = Describe("LevelDB storage", func() {
 	Context("when storing, loading, and removing data", func() {
 
 		It("should return a default value when loading pointers before storing them", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 			buyPointer, err := db.OrderbookPointerStore().Pointer()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -52,7 +53,7 @@ var _ = Describe("LevelDB storage", func() {
 		})
 
 		It("should return an error when loading data before storing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
@@ -71,7 +72,7 @@ var _ = Describe("LevelDB storage", func() {
 		})
 
 		It("should not return an error when removing data before storing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
@@ -90,7 +91,7 @@ var _ = Describe("LevelDB storage", func() {
 		})
 
 		It("should load data equal to when it was stored", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
@@ -130,7 +131,7 @@ var _ = Describe("LevelDB storage", func() {
 		})
 
 		It("should load all data that was stored", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
@@ -215,7 +216,7 @@ var _ = Describe("LevelDB storage", func() {
 		})
 
 		It("should return an error when loading data after removing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
@@ -260,7 +261,7 @@ var _ = Describe("LevelDB storage", func() {
 	Context("when rebooting", func() {
 
 		It("should load data that were stored before rebooting", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 			for i := 0; i < 100; i++ {
 				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
@@ -278,7 +279,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 10; i++ {
-				nextDb, err := NewStore("./tmp")
+				nextDb, err := NewStore("./tmp", expiry)
 				Expect(err).ShouldNot(HaveOccurred())
 				for j := 0; j < 100; j++ {
 					status, _, _, err := nextDb.OrderbookOrderStore().Order(orders[i].ID)
