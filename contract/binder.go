@@ -140,8 +140,8 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 	// If any other type of nonce error occurs we will refresh the nonce and
 	// try again for up to 1 minute
 	var nonce uint64
-	for try := 0; try < 12 && strings.Contains(err.Error(), "nonce"); try++ {
-		time.Sleep(5 * time.Second)
+	for try := 0; try < 60 && strings.Contains(err.Error(), "nonce"); try++ {
+		time.Sleep(time.Second)
 		nonce, err = binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
 		if err != nil {
 			continue
