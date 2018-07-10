@@ -11,25 +11,28 @@ import (
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
+var expiry = 72 * time.Hour
 var _ = Describe("LevelDB storage", func() {
 
-	changes := make([]orderbook.Change, 100)
 	orders := make([]order.Order, 100)
 	orderFragments := make([]order.Fragment, 100)
-	computations := make([]ome.Computation, 100)
+	computations := make([]ome.Computation, 50)
 
 	BeforeEach(func() {
+		j := 0
 		for i := 0; i < 100; i++ {
 			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
-			change := orderbook.NewChange(ord.ID, ord.Parity, order.Open, orderbook.Priority(i), "", uint(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
-			changes[i] = change
 			orders[i] = ord
 			orderFragments[i] = ordFragments[0]
-			computations[i] = ome.NewComputation(ord.ID, ord.ID, [32]byte{})
+			if (i+1)%2 == 0 {
+				computations[j] = ome.NewComputation([32]byte{byte(j)}, orderFragments[i], orderFragments[i-1], ome.ComputationStateMatched, true)
+				j++
+			}
 		}
 	})
 
@@ -37,137 +40,183 @@ var _ = Describe("LevelDB storage", func() {
 		os.RemoveAll("./tmp/")
 	})
 
+	Context("when pruning data", func() {
+
+		It("should not load any expired data", func() {
+			db, err := NewStore("./tmp", 2*time.Second)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			for i := 0; i < 100; i++ {
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			}
+
+			// Prune the data
+			time.Sleep(2 * time.Second)
+			db.Prune()
+
+			for i := 0; i < 100; i++ {
+				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
+				if i < 50 {
+					_, err = db.SomerComputationStore().Computation(computations[i].ID)
+					Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				}
+			}
+
+			err = db.Release()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+	})
+
 	Context("when storing, loading, and removing data", func() {
 
 		It("should return a default value when loading pointers before storing them", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
-			buyPointer, err := db.BuyPointer()
+			buyPointer, err := db.OrderbookPointerStore().Pointer()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(buyPointer).Should(Equal(orderbook.Pointer(0)))
-			sellPointer, err := db.SellPointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(sellPointer).Should(Equal(orderbook.Pointer(0)))
-			err = db.Close()
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should return an error when loading data before storing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for i := 0; i < 100; i++ {
-				_, err = db.Change(changes[i].OrderID)
-				Expect(err).Should(Equal(orderbook.ErrChangeNotFound))
-				_, err = db.OrderFragment(orderFragments[i].OrderID)
+				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orderFragments[i].OrderID)
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
-				_, err = db.Computation(computations[i].ID)
-				Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				if i < 50 {
+					_, err = db.SomerComputationStore().Computation(computations[i].ID)
+					Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				}
 			}
-			err = db.Close()
+
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should not return an error when removing data before storing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for i := 0; i < 100; i++ {
-				err = db.DeleteChange(changes[i].OrderID)
+				err = db.OrderbookOrderStore().DeleteOrder(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.DeleteOrderFragment(orderFragments[i].OrderID)
+				err = db.OrderbookOrderFragmentStore().DeleteOrderFragment(registry.Epoch{}, orderFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.DeleteComputation(computations[i].ID)
-				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().DeleteComputation(computations[i].ID)
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			}
-			err = db.Close()
+
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should load data equal to when it was stored", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
-			for i := 0; i < 100; i++ {
-				err = db.PutChange(changes[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutOrderFragment(orderFragments[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutComputation(computations[i])
-				Expect(err).ShouldNot(HaveOccurred())
-			}
-			for i := 0; i < 100; i++ {
-				change, err := db.Change(changes[i].OrderID)
-				Expect(err).ShouldNot(HaveOccurred())
-				orderFragment, err := db.OrderFragment(orders[i].ID)
-				Expect(err).ShouldNot(HaveOccurred())
-				com, err := db.Computation(computations[i].ID)
-				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(change.Equal(&changes[i])).Should(BeTrue())
+			for i := 0; i < 100; i++ {
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			}
+
+			for i := 0; i < 100; i++ {
+				status, _, _, err := db.OrderbookOrderStore().Order(orders[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				orderFragment, err := db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					com, err := db.SomerComputationStore().Computation(computations[i].ID)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(com.Equal(&computations[i])).Should(BeTrue())
+				}
+
+				Expect(status).Should(Equal(order.Open))
 				Expect(orderFragment.Equal(&orderFragments[i])).Should(BeTrue())
-				Expect(com.Equal(&computations[i])).Should(BeTrue())
+
 			}
-			err = db.PutBuyPointer(42)
+			err = db.OrderbookPointerStore().PutPointer(42)
 			Expect(err).ShouldNot(HaveOccurred())
-			buyPointer, err := db.BuyPointer()
+			pointer, err := db.OrderbookPointerStore().Pointer()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(buyPointer).Should(Equal(orderbook.Pointer(42)))
+			Expect(pointer).Should(Equal(orderbook.Pointer(42)))
 
-			err = db.PutSellPointer(420)
-			Expect(err).ShouldNot(HaveOccurred())
-			sellPointer, err := db.SellPointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(sellPointer).Should(Equal(orderbook.Pointer(420)))
-
-			err = db.Close()
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should load all data that was stored", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for i := 0; i < 100; i++ {
-				err = db.PutChange(changes[i])
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutOrderFragment(orderFragments[i])
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutComputation(computations[i])
-				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			}
 
-			changesIter, err := db.Changes()
+			ordersIter, err := db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
-			defer changesIter.Release()
-			chngs, err := changesIter.Collect()
+			defer ordersIter.Release()
+			orderIDs, _, err := ordersIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fragmentsIter, err := db.OrderFragments()
+			fragmentsIter, err := db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
 			Expect(err).ShouldNot(HaveOccurred())
 			defer fragmentsIter.Release()
 			frgmnts, err := fragmentsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			comsIter, err := db.Computations()
+			comsIter, err := db.SomerComputationStore().Computations()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer comsIter.Release()
 			coms, err := comsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Expect(chngs).Should(HaveLen(len(changes)))
+			Expect(orderIDs).Should(HaveLen(len(orders)))
 			Expect(frgmnts).Should(HaveLen(len(orderFragments)))
 			Expect(coms).Should(HaveLen(len(computations)))
 
-			changesIter, err = db.Changes()
+			ordersIter, err = db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
-			changesIter.Next()
-			changesCur, err := changesIter.Cursor()
+			ordersIter.Next()
+			ordersCur, _, err := ordersIter.Cursor()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fragmentsIter, err = db.OrderFragments()
+			fragmentsIter, err = db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
 			Expect(err).ShouldNot(HaveOccurred())
 			fragmentsIter.Next()
 			fragmentsCur, err := fragmentsIter.Cursor()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			comsIter, err = db.Computations()
+			comsIter, err = db.SomerComputationStore().Computations()
 			Expect(err).ShouldNot(HaveOccurred())
 			comsIter.Next()
 			comsCur, err := comsIter.Cursor()
@@ -178,7 +227,7 @@ var _ = Describe("LevelDB storage", func() {
 				foundFragment := false
 				foundCom := false
 				for j := 0; j < 100; j++ {
-					if foundChange || changesCur.Equal(&changes[j]) {
+					if foundChange || ordersCur.Equal(orders[j].ID) {
 						foundChange = true
 					}
 					if foundFragment || fragmentsCur.Equal(&orderFragments[j]) {
@@ -190,7 +239,7 @@ var _ = Describe("LevelDB storage", func() {
 					if foundChange && foundCom {
 						break
 					}
-					changesIter.Next()
+					ordersIter.Next()
 					fragmentsIter.Next()
 					comsIter.Next()
 				}
@@ -198,38 +247,49 @@ var _ = Describe("LevelDB storage", func() {
 				Expect(foundFragment).Should(BeTrue())
 				Expect(foundCom).Should(BeTrue())
 			}
-			err = db.Close()
+
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("should return an error when loading data after removing it", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for i := 0; i < 100; i++ {
-				err = db.PutChange(changes[i])
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutOrderFragment(orderFragments[i])
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutComputation(computations[i])
-				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			}
+
 			for i := 0; i < 100; i++ {
-				err = db.DeleteChange(changes[i].OrderID)
+				err = db.OrderbookOrderStore().DeleteOrder(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.DeleteOrderFragment(orders[i].ID)
+				err = db.OrderbookOrderFragmentStore().DeleteOrderFragment(registry.Epoch{}, orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.DeleteComputation(computations[i].ID)
-				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().DeleteComputation(computations[i].ID)
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			}
+
 			for i := 0; i < 100; i++ {
-				_, err = db.Change(changes[i].OrderID)
-				Expect(err).Should(Equal(orderbook.ErrChangeNotFound))
-				_, err = db.OrderFragment(orders[i].ID)
+				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
-				_, err = db.Computation(computations[i].ID)
-				Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				if i < 50 {
+					_, err = db.SomerComputationStore().Computation(computations[i].ID)
+					Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				}
 			}
-			err = db.Close()
+
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -238,44 +298,44 @@ var _ = Describe("LevelDB storage", func() {
 	Context("when rebooting", func() {
 
 		It("should load data that were stored before rebooting", func() {
-			db, err := NewStore("./tmp")
+			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 			for i := 0; i < 100; i++ {
-				err = db.PutChange(changes[i])
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutOrderFragment(orderFragments[i])
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
-				err = db.PutComputation(computations[i])
-				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
 			}
-			err = db.PutBuyPointer(42)
+			err = db.OrderbookPointerStore().PutPointer(42)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = db.PutSellPointer(420)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = db.Close()
+			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 10; i++ {
-				nextDb, err := NewStore("./tmp")
+				nextDb, err := NewStore("./tmp", expiry)
 				Expect(err).ShouldNot(HaveOccurred())
 				for j := 0; j < 100; j++ {
-					change, err := nextDb.Change(changes[i].OrderID)
+					status, _, _, err := nextDb.OrderbookOrderStore().Order(orders[i].ID)
 					Expect(err).ShouldNot(HaveOccurred())
-					orderFragment, err := nextDb.OrderFragment(orders[i].ID)
+					orderFragment, err := nextDb.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 					Expect(err).ShouldNot(HaveOccurred())
-					com, err := nextDb.Computation(computations[i].ID)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(change.Equal(&changes[i])).Should(BeTrue())
+					if i < 50 {
+						com, err := nextDb.SomerComputationStore().Computation(computations[i].ID)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(com.Equal(&computations[i])).Should(BeTrue())
+					}
+					Expect(status).Should(Equal(order.Open))
 					Expect(orderFragment.Equal(&orderFragments[i])).Should(BeTrue())
-					Expect(com.Equal(&computations[i])).Should(BeTrue())
+
 				}
-				buyPointer, err := nextDb.BuyPointer()
+				pointer, err := db.OrderbookPointerStore().Pointer()
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(buyPointer).Should(Equal(orderbook.Pointer(42)))
-				sellPointer, err := nextDb.SellPointer()
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(sellPointer).Should(Equal(orderbook.Pointer(420)))
-				err = nextDb.Close()
+				Expect(pointer).Should(Equal(orderbook.Pointer(42)))
+				err = nextDb.Release()
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 		})

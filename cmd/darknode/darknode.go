@@ -86,7 +86,7 @@ func main() {
 	multiAddr.Signature = multiAddrSignature
 
 	// New database for persistent storage
-	store, err := leveldb.NewStore(*dataParam)
+	store, err := leveldb.NewStore(*dataParam, 72*time.Hour)
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}

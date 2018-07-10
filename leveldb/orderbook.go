@@ -81,13 +81,17 @@ func (iter *OrderbookOrderIterator) Release() {
 
 // OrderbookOrderTable implements the orderbook.OrderStorer interface.
 type OrderbookOrderTable struct {
-	db *leveldb.DB
+	db     *leveldb.DB
+	expiry time.Duration
 }
 
 // NewOrderbookOrderTable returns a new OrderbookOrderTable that uses a LevelDB
 // instance to store and load values from the disk.
-func NewOrderbookOrderTable(db *leveldb.DB) *OrderbookOrderTable {
-	return &OrderbookOrderTable{db: db}
+func NewOrderbookOrderTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrderTable {
+	return &OrderbookOrderTable{
+		db:     db,
+		expiry: expiry,
+	}
 }
 
 // PutOrder implements the orderbook.OrderStorer interface.
@@ -146,7 +150,7 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(OrderbookOrderExpiry).Before(now) {
+		if value.Timestamp.Add(table.expiry).Before(now) {
 			if localErr := table.db.Delete(key, nil); localErr != nil {
 				err = localErr
 			}
@@ -217,13 +221,17 @@ func (iter *OrderbookOrderFragmentIterator) Release() {
 
 // OrderbookOrderFragmentTable implements the orderbook.OrderFragmentStorer interface.
 type OrderbookOrderFragmentTable struct {
-	db *leveldb.DB
+	db     *leveldb.DB
+	expiry time.Duration
 }
 
 // NewOrderbookOrderFragmentTable returns a new OrderbookOrderFragmentTable that uses a LevelDB
 // instance to store and load values from the disk.
-func NewOrderbookOrderFragmentTable(db *leveldb.DB) *OrderbookOrderFragmentTable {
-	return &OrderbookOrderFragmentTable{db: db}
+func NewOrderbookOrderFragmentTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrderFragmentTable {
+	return &OrderbookOrderFragmentTable{
+		db:     db,
+		expiry: expiry,
+	}
 }
 
 // PutOrderFragment implements the orderbook.OrderFragmentStorer interface.
@@ -280,7 +288,7 @@ func (table *OrderbookOrderFragmentTable) Prune() (err error) {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(OrderbookOrderFragmentExpiry).Before(now) {
+		if value.Timestamp.Add(table.expiry).Before(now) {
 			if localErr := table.db.Delete(key, nil); localErr != nil {
 				err = localErr
 			}
@@ -298,14 +306,16 @@ func (table *OrderbookOrderFragmentTable) key(epoch, orderID []byte) []byte {
 type OrderbookPointerTable struct {
 	pointerMu *sync.RWMutex
 	pointer   orderbook.Pointer
+	expiry    time.Duration
 }
 
 // NewOrderbookPointerTable returns a new OrderbookPointerTable with the
 // orderbook.Pointer initialised to zero.
-func NewOrderbookPointerTable() *OrderbookPointerTable {
+func NewOrderbookPointerTable(expiry time.Duration) *OrderbookPointerTable {
 	return &OrderbookPointerTable{
 		pointerMu: new(sync.RWMutex),
 		pointer:   orderbook.Pointer(0),
+		expiry:    expiry,
 	}
 }
 

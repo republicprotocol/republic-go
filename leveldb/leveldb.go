@@ -17,7 +17,6 @@ var (
 	OrderbookOrderTablePadding = paddingBytes(0x00, 32)
 	OrderbookOrderIterBegin    = paddingBytes(0x00, 32)
 	OrderbookOrderIterEnd      = paddingBytes(0xFF, 32)
-	OrderbookOrderExpiry       = 72 * time.Hour
 )
 
 // Constants for use in the OrderbookOrderFragmentTable. Keys in the
@@ -29,7 +28,6 @@ var (
 	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
 	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
 	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
-	OrderbookOrderFragmentExpiry       = 72 * time.Hour
 )
 
 // Constants for use in the SomerComputationTable. Keys in the
@@ -40,7 +38,6 @@ var (
 	SomerComputationTablePadding = paddingBytes(0x00, 32)
 	SomerComputationIterBegin    = paddingBytes(0x00, 32)
 	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
-	SomerComputationExpiry       = 72 * time.Hour
 )
 
 // Store is an aggregate of all tables that implement storage interfaces. It
@@ -62,7 +59,7 @@ type Store struct {
 // the given directory as the root for all LevelDB instances. A call to
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
-func NewStore(dir string) (*Store, error) {
+func NewStore(dir string, expiry time.Duration) (*Store, error) {
 	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return nil, err
@@ -70,9 +67,9 @@ func NewStore(dir string) (*Store, error) {
 	return &Store{
 		db: db,
 
-		orderbookOrderTable:         NewOrderbookOrderTable(db),
-		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
-		orderbookPointerTable:       NewOrderbookPointerTable(),
+		orderbookOrderTable:         NewOrderbookOrderTable(db, expiry),
+		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, expiry),
+		orderbookPointerTable:       NewOrderbookPointerTable(expiry),
 
 		somerComputationTable: NewSomerComputationTable(db),
 	}, nil
