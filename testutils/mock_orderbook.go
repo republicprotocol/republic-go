@@ -32,11 +32,10 @@ func (mock *EmptyOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notific
 	errs := make(chan error)
 
 	go func() {
-		for {
-			select {
-			case <-done:
-			}
-		}
+		defer close(notifications)
+		defer close(errs)
+
+		<-done
 	}()
 
 	return notifications, errs
@@ -83,6 +82,8 @@ func (mock *RandOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notifica
 	errs := make(chan error)
 
 	go func() {
+		defer close(notifications)
+		defer close(errs)
 
 		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
@@ -108,6 +109,8 @@ func (mock *RandOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notifica
 					case notifications <- notification:
 					}
 				}
+				mock.orderFragments = append(mock.orderFragments, mock.orderFragmentsQueue...)
+				mock.orderFragmentsQueue = []order.Fragment{}
 
 				// Randomly remove an order.Fragment
 				n := rand.Intn(len(mock.orderFragments))
