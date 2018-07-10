@@ -17,7 +17,6 @@ var (
 	OrderbookOrderTablePadding = paddingBytes(0x00, 32)
 	OrderbookOrderIterBegin    = paddingBytes(0x00, 32)
 	OrderbookOrderIterEnd      = paddingBytes(0xFF, 32)
-	OrderbookOrderExpiry       = 72 * time.Hour
 )
 
 // Constants for use in the OrderbookOrderFragmentTable. Keys in the
@@ -29,7 +28,6 @@ var (
 	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
 	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
 	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
-	OrderbookOrderFragmentExpiry       = 72 * time.Hour
 )
 
 // Constants for use in the SomerComputationTable. Keys in the
@@ -40,7 +38,6 @@ var (
 	SomerComputationTablePadding = paddingBytes(0x00, 32)
 	SomerComputationIterBegin    = paddingBytes(0x00, 32)
 	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
-	SomerComputationExpiry       = 72 * time.Hour
 )
 
 // Store is an aggregate of all tables that implement storage interfaces. It
@@ -70,9 +67,9 @@ func NewStore(dir string) (*Store, error) {
 	return &Store{
 		db: db,
 
-		orderbookOrderTable:         NewOrderbookOrderTable(db),
-		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
-		orderbookPointerTable:       NewOrderbookPointerTable(),
+		orderbookOrderTable:         NewOrderbookOrderTable(db, 72*time.Hour),
+		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, 72*time.Hour),
+		orderbookPointerTable:       NewOrderbookPointerTable(72 * time.Hour),
 
 		somerComputationTable: NewSomerComputationTable(db),
 	}, nil

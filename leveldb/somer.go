@@ -70,7 +70,8 @@ func (iter *SomerComputationIterator) Release() {
 // SomerComputationTable implements the ome.ComputationStorer interface using
 // LevelDB.
 type SomerComputationTable struct {
-	db *leveldb.DB
+	db     *leveldb.DB
+	expiry time.Duration
 }
 
 // NewSomerComputationTable returns a new SomerComputationTable that uses the
@@ -133,7 +134,7 @@ func (table *SomerComputationTable) Prune() (err error) {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(SomerComputationExpiry).Before(now) {
+		if value.Timestamp.Add(table.expiry).Before(now) {
 			if localErr := table.db.Delete(key, nil); localErr != nil {
 				err = localErr
 			}
