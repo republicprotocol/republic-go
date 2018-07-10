@@ -340,6 +340,7 @@ func newStreamer() (*Streamer, identity.Address, error) {
 		return nil, identity.Address(""), err
 	}
 	addr := identity.Address(ecdsaKey.Address())
+	mockSigner := 
 	return NewStreamer(&ecdsaKey, addr), addr, nil
 }
 
@@ -358,6 +359,13 @@ func newStreamerService(clientAddr identity.Address) (*StreamerService, *Streame
 	}
 	service := NewStreamerService(crypto.NewEcdsaVerifier(clientAddr.String()), streamer)
 	return &service, streamer, addr, nil
+}
+
+type mockSigner struct {
+}
+
+func (signer *mockSigner) Sign(data []byte) ([]byte, error) {
+	return data, nil
 }
 
 type mockStreamMessage struct {
