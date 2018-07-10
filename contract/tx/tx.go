@@ -2,6 +2,7 @@ package transact
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/republicprotocol/republic-go/contract"
 )
 
 type TxSender interface {
@@ -18,20 +20,22 @@ type TxSender interface {
 }
 
 type txSender struct {
+	conn           contract.Conn
 	transactOptsMu *sync.Mutex
 	transactOpts   bind.TransactOpts
 }
 
-func NewTxSender(transactOpts bind.TransactOpts) (TxSender, error) {
+func NewTxSender(conn contract.Conn, transactOpts bind.TransactOpts) (TxSender, error) {
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
 	if err != nil {
 		return nil, err
 	}
 	transactOpts.Nonce = big.NewInt(int64(nonce))
 	return &txSender{
+		conn:           conn,
 		transactOptsMu: new(sync.Mutex),
 		transactOpts:   transactOpts,
-	}
+	}, nil
 }
 
 // Send locks TxSender resources to execute function f (handling nonces explicitly)
@@ -65,7 +69,7 @@ func (txSender *txSender) send(f func() (*types.Transaction, error)) (*types.Tra
 	// try again for up to 1 minute
 	var nonce uint64
 	for try := 0; try < 60 && strings.Contains(err.Error(), "nonce"); try++ {
-		log.Errorf("[tx error] unknown = %v", err)
+		log.Error(fmt.Sprintf("[tx error] unknown = %v", err))
 		time.Sleep(time.Second)
 		nonce, err = txSender.conn.Client.PendingNonceAt(context.Background(), txSender.transactOpts.From)
 		if err != nil {
