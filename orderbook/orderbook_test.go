@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
@@ -31,15 +34,15 @@ var _ = Describe("Orderbook", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create mock syncer and storer
-			syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out")
+			// syncer := testutils.NewSyncer(numberOfOrders)
+			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, syncer, storer)
+			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
@@ -59,7 +62,7 @@ var _ = Describe("Orderbook", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
-			iter, err := storer.OrderFragments()
+			iter, err := storer.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
 			Expect(err).ShouldNot(HaveOccurred())
 			defer iter.Release()
 			collection, err := iter.Collect()
@@ -74,18 +77,18 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out")
+			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, syncer, storer)
+			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			Ω(syncer.HasSynced()).Should(BeFalse())
-			changeset, err := orderbook.Sync()
-			Ω(err).ShouldNot(HaveOccurred())
+			doneChan := make(<-chan struct{})
+			changeset, _ := orderbook.Sync(doneChan)
 			Ω(len(changeset)).Should(BeZero())
 			Ω(syncer.HasSynced()).Should(BeTrue())
 		})
@@ -197,13 +200,18 @@ func (binder *orderbookBinder) Trader(orderID order.ID) (string, error) {
 }
 
 // BlockNumber returns the block number when the order being last modified.
-func (binder *orderbookBinder) BlockNumber(orderID order.ID) (uint, error) {
-	return 100, nil
+func (binder *orderbookBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
+	return big.NewInt(100), nil
 }
 
 // Depth returns the depth of an order.
 func (binder *orderbookBinder) Depth(orderID order.ID) (uint, error) {
 	return 10, nil
+}
+
+// Depth returns the depth of an order.
+func (binder *orderbookBinder) MinimumEpochInterval() (*big.Int, error) {
+	return big.NewInt(10), nil
 }
 
 // OpenBuyOrder in the mock orderbookBinder.
@@ -252,6 +260,10 @@ func (binder *orderbookBinder) ConfirmOrder(id order.ID, match order.ID) error {
 		return fmt.Errorf("cannot confirm order that is not open: %v", err)
 	}
 	return nil
+}
+
+func (binder *orderbookBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	return []order.ID{}, []order.Status{}, []string{}, nil
 }
 
 func (binder *orderbookBinder) setOrderStatus(orderID order.ID, status order.Status) error {

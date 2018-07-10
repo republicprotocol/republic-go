@@ -7,8 +7,7 @@ import (
 	"testing"
 )
 
-// FIXME: Re-enable
-// func TestOrderbook(t *testing.T) {
-// 	RegisterFailHandler(Fail)
-// 	RunSpecs(t, "Orderbook Suite")
-// }
+func TestOrderbook(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Orderbook Suite")
+}
