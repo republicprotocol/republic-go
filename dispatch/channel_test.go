@@ -1,6 +1,8 @@
 package dispatch_test
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/dispatch"
@@ -9,17 +11,6 @@ import (
 var _ = Describe("Channels", func() {
 
 	Context("when merging a channel of channels", func() {
-
-		It("should close the output channel when the done channel is closed", func() {
-			done := make(chan struct{})
-			ins := make(chan (chan int))
-			out := make(chan int)
-
-			go Merge(done, ins, out)
-
-			close(done)
-			<-out
-		})
 
 		It("should merge a single input channel", func() {
 			done := make(chan struct{})
@@ -40,7 +31,7 @@ var _ = Describe("Channels", func() {
 			}
 
 			close(done)
-			<-out
+			time.Sleep(time.Millisecond)
 		})
 
 		It("should merge multiple input channels", func() {
@@ -71,7 +62,7 @@ var _ = Describe("Channels", func() {
 			}
 
 			close(done)
-			<-out
+			time.Sleep(time.Millisecond)
 		})
 
 		It("should panic for invalid input types", func() {
@@ -103,17 +94,6 @@ var _ = Describe("Channels", func() {
 
 	Context("when forwarding a channel", func() {
 
-		It("should close the output channel when the done channel is closed", func() {
-			done := make(chan struct{})
-			in := make(chan int)
-			out := make(chan int)
-
-			go Forward(done, in, out)
-
-			close(done)
-			<-out
-		})
-
 		It("should forward an input channel", func() {
 			done := make(chan struct{})
 			in := make(chan int)
@@ -131,7 +111,7 @@ var _ = Describe("Channels", func() {
 			}
 
 			close(done)
-			<-out
+			time.Sleep(time.Millisecond)
 		})
 
 		It("should panic for invalid input types", func() {
