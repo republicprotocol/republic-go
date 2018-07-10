@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -15,13 +14,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-var _ = Describe("LevelDB storage", func() {
-	orderFragments := make([]order.Fragment, 100)
-	epoch := registry.Epoch{}
-	dbFolder := "./tmp/"
-	dbFile := "db"
-	expiry := 72 * time.Hour
+var orderFragments = make([]order.Fragment, 100)
+var epoch = registry.Epoch{}
+var dbFolder = "./tmp/"
+var dbFile = dbFolder + "db"
+var expiry = 72 * time.Hour
 
+var _ = Describe("LevelDB storage", func() {
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
 			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
@@ -41,53 +40,34 @@ var _ = Describe("LevelDB storage", func() {
 
 	Context("when pruning data", func() {
 		It("should not retrieve expired data", func() {
-			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-			Expect(err).ShouldNot(HaveOccurred())
-
+			db := newDB(dbFile)
 			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, 2*time.Second)
 
 			// Put the order fragments into the table and attempt to retrieve
-			for i := 0; i < len(orderFragments); i++ {
-				err := orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-				Expect(err).ShouldNot(HaveOccurred())
-				// We should be able to get the same result back
-				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
-			}
+			putAndExpectOrderFragments(orderbookOrderFragmentTable)
+
 			// Sleep and then prune to expire the data
 			time.Sleep(2 * time.Second)
 			orderbookOrderFragmentTable.Prune()
 
 			// All data should have expired so we should not get any data back
-			for i := 0; i < len(orderFragments); i++ {
-				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeFalse())
-				Expect(err).Should(HaveOccurred())
-			}
+			expectMissingOrderFragments(orderbookOrderFragmentTable)
 		})
 
 	})
 
 	Context("when deleting data", func() {
 		It("should not retrieve deleted data", func() {
-			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-			Expect(err).ShouldNot(HaveOccurred())
-
+			db := newDB(dbFile)
 			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
+			putAndExpectOrderFragments(orderbookOrderFragmentTable)
 
-			// Put the order fragments into the table and attempt to retrieve
+			// Attempt to delete and read each of the order fragments
 			for i := 0; i < len(orderFragments); i++ {
-				err := orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-				Expect(err).ShouldNot(HaveOccurred())
-				// We should be able to get the same result back
-				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
-				err = orderbookOrderFragmentTable.DeleteOrderFragment(epoch, orderFrag.OrderID)
+				err := orderbookOrderFragmentTable.DeleteOrderFragment(epoch, orderFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 				// Try to read the deleted order fragment
-				orderFrag, err = orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
+				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
 				// We should not be able to get the same result back
 				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeFalse())
 				// We expect a not found error to have occurred
@@ -100,33 +80,16 @@ var _ = Describe("LevelDB storage", func() {
 	Context("when storing data", func() {
 
 		It("should load data the same data that was stored", func() {
-			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-			Expect(err).ShouldNot(HaveOccurred())
-
+			db := newDB(dbFile)
 			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
-
-			// Put the order fragments into the table and attempt to retrieve
-			for i := 0; i < len(orderFragments); i++ {
-				err = orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
-			}
+			putAndExpectOrderFragments(orderbookOrderFragmentTable)
 		})
 
 		Context("and iterating through", func() {
 			It("should load the same amount of data that was stored", func() {
-				db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-				Expect(err).ShouldNot(HaveOccurred())
-
+				db := newDB(dbFile)
 				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
-
-				// Put the order fragments into the table and attempt to retrieve
-				for i := 0; i < len(orderFragments); i++ {
-					err := orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
-					Expect(err).ShouldNot(HaveOccurred())
-				}
+				putAndExpectOrderFragments(orderbookOrderFragmentTable)
 
 				orderFragIter, err := orderbookOrderFragmentTable.OrderFragments(epoch)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -138,38 +101,51 @@ var _ = Describe("LevelDB storage", func() {
 
 		Context("when rebooting", func() {
 			It("should persist data after reboot", func() {
-				db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-				Expect(err).ShouldNot(HaveOccurred())
-
+				db := newDB(dbFile)
 				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
-
-				// Put the order fragments into the table and attempt to retrieve
-				for i := 0; i < len(orderFragments); i++ {
-					err = orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
-					Expect(err).ShouldNot(HaveOccurred())
-					orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
-				}
+				putAndExpectOrderFragments(orderbookOrderFragmentTable)
 
 				// Simulate a reboot by closing the database
-				err = db.Close()
+				err := db.Close()
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Reopen the database and try to read from it
-				newDB, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
-				Expect(err).ShouldNot(HaveOccurred())
-
+				newDB := newDB(dbFile)
 				newOrderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(newDB, expiry)
-				for i := 0; i < len(orderFragments); i++ {
-					orderFrag, err := newOrderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
-				}
-
+				expectOrderFragments(newOrderbookOrderFragmentTable)
 			})
 		})
 
 	})
 
 })
+
+func newDB(path string) *leveldb.DB {
+	db, err := leveldb.OpenFile(path, nil)
+	Expect(err).ShouldNot(HaveOccurred())
+	return db
+}
+
+func putAndExpectOrderFragments(table *OrderbookOrderFragmentTable) {
+	for i := 0; i < len(orderFragments); i++ {
+		err := table.PutOrderFragment(epoch, orderFragments[i])
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+	expectOrderFragments(table)
+}
+
+func expectOrderFragments(table *OrderbookOrderFragmentTable) {
+	for i := 0; i < len(orderFragments); i++ {
+		orderFrag, err := table.OrderFragment(epoch, orderFragments[i].OrderID)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
+	}
+}
+
+func expectMissingOrderFragments(table *OrderbookOrderFragmentTable) {
+	for i := 0; i < len(orderFragments); i++ {
+		orderFrag, err := table.OrderFragment(epoch, orderFragments[i].OrderID)
+		Expect(orderFrag.Equal(&orderFragments[i])).Should(BeFalse())
+		Expect(err).Should(HaveOccurred())
+	}
+}
