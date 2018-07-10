@@ -14,36 +14,41 @@ import (
 )
 
 var _ = Describe("Computations", func() {
-	var buy, sell order.Order
+	var buyFragment, sellFragment order.Fragment
 
 	BeforeEach(func() {
-		buy, sell = testutils.RandomBuyOrder(), testutils.RandomSellOrder()
+		buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
+		Expect(err).ShouldNot(HaveOccurred())
+		buyFragment = buyFragments[0]
+		sellFragments, err := testutils.RandomSellOrderFragments(6, 4)
+		Expect(err).ShouldNot(HaveOccurred())
+		sellFragment = sellFragments[0]
 	})
 
 	Context("when checking for equality", func() {
 		It("should return true for equal computation IDs", func() {
-			computationID := NewComputationID(buy.ID, sell.ID)
+			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID)
 			expectedID := ComputationID{}
-			copy(expectedID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
+			copy(expectedID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
 			Ω(bytes.Equal(computationID[:], expectedID[:]))
 		})
 
 		It("should return true for the same computations compared against itself", func() {
-			computation := NewComputation(buy.ID, sell.ID, [32]byte{})
+			computation := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
 			Expect(computation.Equal(&computation)).Should(BeTrue())
 			Expect(computation.ID.String()).Should(Equal(computation.ID.String()))
 		})
 
 		It("should return true for equal computations compared against each other", func() {
-			lhs := NewComputation(buy.ID, sell.ID, [32]byte{})
-			rhs := NewComputation(buy.ID, sell.ID, [32]byte{})
+			lhs := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
+			rhs := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
 			Expect(lhs.Equal(&rhs)).Should(BeTrue())
 			Expect(lhs.ID.String()).Should(Equal(rhs.ID.String()))
 		})
 
 		It("should return false for unequal computations compared against each other", func() {
-			lhs := NewComputation(buy.ID, sell.ID, [32]byte{})
-			rhs := NewComputation(sell.ID, buy.ID, [32]byte{})
+			lhs := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
+			rhs := NewComputation([32]byte{}, sellFragment, buyFragment, ComputationStateNil, false)
 			Expect(lhs.Equal(&rhs)).Should(BeFalse())
 			Expect(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
 		})
@@ -58,16 +63,6 @@ var _ = Describe("Computations", func() {
 			Ω(fmt.Sprintf("%v", ComputationStateRejected)).Should(Equal("rejected"))
 			Ω(fmt.Sprintf("%v", ComputationStateSettled)).Should(Equal("settled"))
 			Ω(fmt.Sprintf("%v", ComputationState(100))).Should(Equal("unsupported state"))
-		})
-	})
-
-	Context("computation", func() {
-		It("should be comparable", func() {
-			comp := testutils.RandomComputation()
-			another := testutils.RandomComputation()
-			Ω(comp.Equal(&another)).Should(BeFalse())
-			Ω(comp.Equal(&comp)).Should(BeTrue())
-			Ω(another.Equal(&another)).Should(BeTrue())
 		})
 	})
 })

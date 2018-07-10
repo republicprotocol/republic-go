@@ -42,6 +42,14 @@ func RandomBuyOrder() order.Order {
 	return ord
 }
 
+// RandomBuyOrderFragments will generate order fragments for a random buy
+// order.
+func RandomBuyOrderFragments(n, k int64) ([]order.Fragment, error) {
+	ord := RandomBuyOrder()
+	frags, err := ord.Split(n, k)
+	return frags, err
+}
+
 // RandomSellOrder will generate a random sell order.
 func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
@@ -53,6 +61,14 @@ func RandomSellOrder() order.Order {
 
 	ord := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
+}
+
+// RandomSellOrderFragments will generate order fragments for a random buy
+// order.
+func RandomSellOrderFragments(n, k int64) ([]order.Fragment, error) {
+	ord := RandomSellOrder()
+	frags, err := ord.Split(n, k)
+	return frags, err
 }
 
 // RandomOrderMatch will generate a random order and its match.
