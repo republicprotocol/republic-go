@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type TxSender interface {
@@ -50,10 +51,12 @@ func (txSender *txSender) send(f func() (*types.Transaction, error)) (*types.Tra
 		return tx, nil
 	}
 	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced || strings.Contains(err.Error(), "nonce is too low") {
+		log.Info("[tx error] nonce too low = %v", err)
 		txSender.transactOpts.Nonce.Add(txSender.transactOpts.Nonce, big.NewInt(1))
 		return txSender.send(f)
 	}
 	if err == core.ErrNonceTooHigh {
+		log.Info("[tx error] nonce too high = %v", err)
 		txSender.transactOpts.Nonce.Sub(txSender.transactOpts.Nonce, big.NewInt(1))
 		return txSender.send(f)
 	}
@@ -62,6 +65,7 @@ func (txSender *txSender) send(f func() (*types.Transaction, error)) (*types.Tra
 	// try again for up to 1 minute
 	var nonce uint64
 	for try := 0; try < 60 && strings.Contains(err.Error(), "nonce"); try++ {
+		log.Errorf("[tx error] unknown = %v", err)
 		time.Sleep(time.Second)
 		nonce, err = txSender.conn.Client.PendingNonceAt(context.Background(), txSender.transactOpts.From)
 		if err != nil {
