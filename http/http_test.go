@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/http"
+
 	"github.com/republicprotocol/republic-go/http/adapter"
 )
 
@@ -19,7 +20,7 @@ type weakAdapter struct {
 	numCanceled int64
 }
 
-func (adapter *weakAdapter) OpenOrder(signature string, orderFragmentMapping adapter.OrderFragmentMapping) error {
+func (adapter *weakAdapter) OpenOrder(signature string, orderFragmentMapping adapter.OrderFragmentMappings) error {
 	atomic.AddInt64(&adapter.numOpened, 1)
 	return nil
 }
@@ -32,7 +33,7 @@ func (adapter *weakAdapter) CancelOrder(signature string, orderID string) error 
 type errAdapter struct {
 }
 
-func (adapter *errAdapter) OpenOrder(signature string, orderFragmentMapping adapter.OrderFragmentMapping) error {
+func (adapter *errAdapter) OpenOrder(signature string, orderFragmentMapping adapter.OrderFragmentMappings) error {
 	return errors.New("cannot open order")
 }
 
