@@ -56,6 +56,7 @@ type Binder struct {
 	orderbook        *bindings.Orderbook
 	renExSettlement  *bindings.RenExSettlement
 	renExBalance     *bindings.RenExBalances
+	erc20            *bindings.ERC20
 }
 
 // NewBinder returns a Binder to communicate with contracts
@@ -1013,20 +1014,40 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 	}
 }
 
-func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) (*types.Transaction, error) {
-	if tokenAddress.Hex() == EthereumAddress {
-		binder.transactOpts.Value = value
+func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		if tokenAddress.Hex() == EthereumAddress {
+			binder.transactOpts.Value = value
+		}
+
+		return binder.renExBalance.Deposit(binder.transactOpts, tokenAddress, value)
+	})
+	if err != nil {
+		return err
 	}
 
-	return binder.renExBalance.Deposit(binder.transactOpts, tokenAddress, value)
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
+	return err
 }
 
 func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address, []*big.Int, error) {
 	return binder.renExBalance.GetBalances(binder.callOpts, traderAddress)
 }
 
-func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) (*types.Transaction, error) {
-	return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
+func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		if tokenAddress.Hex() == EthereumAddress {
+			binder.transactOpts.Value = value
+		}
+
+		return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
+	return err
 }
 
 func toByte(id []byte) ([20]byte, error) {
