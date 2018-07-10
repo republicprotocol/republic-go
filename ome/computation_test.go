@@ -42,6 +42,7 @@ var _ = Describe("Computations", func() {
 		It("should return true for equal computations compared against each other", func() {
 			lhs := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
 			rhs := NewComputation([32]byte{}, buyFragment, sellFragment, ComputationStateNil, false)
+			lhs.Timestamp = rhs.Timestamp
 			Expect(lhs.Equal(&rhs)).Should(BeTrue())
 			Expect(lhs.ID.String()).Should(Equal(rhs.ID.String()))
 		})

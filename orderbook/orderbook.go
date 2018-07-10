@@ -156,14 +156,8 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 	// Merge all of the channels on the broadcast channel into the output
 	// channel
-	go func() {
-		defer close(notifications)
-		dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
-	}()
-	go func() {
-		defer close(errs)
-		dispatch.Merge(done, orderbook.broadcastErrs, errs)
-	}()
+	go dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
+	go dispatch.Merge(done, orderbook.broadcastErrs, errs)
 
 	return notifications, errs
 }
