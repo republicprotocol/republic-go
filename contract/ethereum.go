@@ -179,3 +179,20 @@ func (conn *Conn) TransferEth(ctx context.Context, from *bind.TransactOpts, to c
 	_, err = conn.PatchedWaitMined(ctx, tx)
 	return err
 }
+
+// SendEth is a helper function for sending ETH to an address
+func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to common.Address, value *big.Int) (*types.Transaction, error) {
+	transactor := &bind.TransactOpts{
+		From:     from.From,
+		Nonce:    from.Nonce,
+		Signer:   from.Signer,
+		Value:    value,
+		GasPrice: from.GasPrice,
+		GasLimit: 30000,
+		Context:  from.Context,
+	}
+
+	// Why is there no ethclient.Transfer?
+	bound := bind.NewBoundContract(to, abi.ABI{}, nil, conn.Client, nil)
+	return bound.Transfer(transactor)
+}
