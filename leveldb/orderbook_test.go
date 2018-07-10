@@ -20,6 +20,7 @@ var _ = Describe("LevelDB storage", func() {
 	epoch := registry.Epoch{}
 	dbFolder := "./tmp/"
 	dbFile := "db"
+	expiry := 72 * time.Hour
 
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
@@ -43,7 +44,7 @@ var _ = Describe("LevelDB storage", func() {
 			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db)
+			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
 
 			// Put the order fragments into the table and attempt to retrieve
 			for i := 0; i < len(orderFragments); i++ {
@@ -72,7 +73,7 @@ var _ = Describe("LevelDB storage", func() {
 			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db)
+			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
 
 			// Put the order fragments into the table and attempt to retrieve
 			for i := 0; i < len(orderFragments); i++ {
@@ -89,7 +90,7 @@ var _ = Describe("LevelDB storage", func() {
 				db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db)
+				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
 
 				// Put the order fragments into the table and attempt to retrieve
 				for i := 0; i < len(orderFragments); i++ {
@@ -110,7 +111,7 @@ var _ = Describe("LevelDB storage", func() {
 				db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db)
+				orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
 
 				// Put the order fragments into the table and attempt to retrieve
 				for i := 0; i < len(orderFragments); i++ {
@@ -129,7 +130,7 @@ var _ = Describe("LevelDB storage", func() {
 				newDB, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				newOrderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(newDB)
+				newOrderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(newDB, expiry)
 				for i := 0; i < len(orderFragments); i++ {
 					orderFrag, err := newOrderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
 					Expect(err).ShouldNot(HaveOccurred())
