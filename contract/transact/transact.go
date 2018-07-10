@@ -51,19 +51,19 @@ func NewTransacter(client *ethclient.Client, transactOpts bind.TransactOpts) (Tr
 	if err != nil {
 		return nil, err
 	}
-	transactOpts.From = transactOpts.From
-	transactOpts.GasLimit = transactOpts.GasLimit
-	transactOpts.GasPrice = big.NewInt(0).Set(transactOpts.GasPrice)
-	transactOpts.Nonce = big.NewInt(0).SetUint64(nonce)
-	transactOpts.Signer = transactOpts.Signer
-	transactOpts.Value = big.NewInt(0).Set(transactOpts.Value)
 
-	return &transacter{
-		client: client,
-
+	transacter := &transacter{
+		client:         client,
 		transactOptsMu: new(sync.Mutex),
 		transactOpts:   transactOpts,
-	}, nil
+	}
+	transacter.transactOpts.From = transactOpts.From
+	transacter.transactOpts.GasLimit = transactOpts.GasLimit
+	transacter.transactOpts.GasPrice = big.NewInt(0).Set(transactOpts.GasPrice)
+	transacter.transactOpts.Nonce = big.NewInt(0).SetUint64(nonce)
+	transacter.transactOpts.Signer = transactOpts.Signer
+	transacter.transactOpts.Value = big.NewInt(0).Set(transactOpts.Value)
+	return transacter, nil
 }
 
 // Transfer implements the Transacter interface.

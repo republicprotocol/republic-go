@@ -36,7 +36,6 @@ type conn struct {
 // because Parity sends a transaction receipt upon receiving the transaction
 // instead of after the transaction is mined.
 func (conn *conn) WaitMined(ctx context.Context, tx *types.Transaction) (*types.Receipt, error) {
-	// In the case of a local network, this provides
 	time.Sleep(100 * time.Millisecond)
 	return bind.WaitMined(ctx, conn.ethClient, tx)
 }
