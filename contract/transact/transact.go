@@ -75,8 +75,10 @@ func (transacter *transacter) Transfer(ctx context.Context, to common.Address, v
 	transacter.transactOptsMu.Lock()
 	defer transacter.transactOptsMu.Unlock()
 
-	oldValue := big.NewInt(0).Set(transacter.transactOpts.Value)
-	defer transacter.transactOpts.Value.Set(oldValue)
+	if transacter.transactOpts.Value != nil {
+		oldValue := big.NewInt(0).Set(transacter.transactOpts.Value)
+		defer transacter.transactOpts.Value.Set(oldValue)
+	}
 
 	empty := bind.NewBoundContract(to, abi.ABI{}, nil, transacter.client, nil)
 	return transacter.transact(ctx, func(ctx context.Context, transactOpts *bind.TransactOpts) (*types.Transaction, error) {
