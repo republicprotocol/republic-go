@@ -54,6 +54,7 @@ var _ = Describe("Orderbook", func() {
 			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			orderbook.Sync(done)
+			orderbook.OnChangeEpoch(registry.Epoch{})
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
@@ -73,6 +74,7 @@ var _ = Describe("Orderbook", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
+			time.Sleep(time.Second)
 			iter, err := storer.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
 			Expect(err).ShouldNot(HaveOccurred())
 			defer iter.Release()
