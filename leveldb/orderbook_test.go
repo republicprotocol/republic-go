@@ -23,7 +23,7 @@ const dbFolder = "./tmp/"
 const dbFile = dbFolder + "db"
 const orderStatus = order.Open
 
-var _ = Describe("LevelDB storage", func() {
+var _ = Describe("Orderbook storage", func() {
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
 			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
@@ -85,6 +85,40 @@ var _ = Describe("LevelDB storage", func() {
 
 	})
 
+	Context("when iterating through out of range data", func() {
+		It("should trigger an out of range error", func() {
+			db := newDB(dbFile)
+			orderbookOrderTable := NewOrderbookOrderTable(db, expiry)
+			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
+
+			putAndExpectOrders(orderbookOrderTable)
+			putAndExpectOrderFragments(orderbookOrderFragmentTable)
+
+			ordersIter, err := orderbookOrderTable.Orders()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentsIter, err := orderbookOrderFragmentTable.OrderFragments(epoch)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer ordersIter.Release()
+			defer orderFragmentsIter.Release()
+
+			for ordersIter.Next() {
+				_, _, err = ordersIter.Cursor()
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			for orderFragmentsIter.Next() {
+				_, err = orderFragmentsIter.Cursor()
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			// These are out of range so we should expect errors
+			_, _, err = ordersIter.Cursor()
+			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
+			_, err = orderFragmentsIter.Cursor()
+			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
+		})
+	})
+
 	Context("when storing data", func() {
 
 		It("should load data the same data that was stored", func() {
@@ -122,6 +156,56 @@ var _ = Describe("LevelDB storage", func() {
 				newOrderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(newDB, expiry)
 				expectOrderFragments(newOrderbookOrderFragmentTable)
 			})
+		})
+	})
+
+	Context("when cloning pointer tables", func() {
+		It("should have the same pointer as the original", func() {
+			orderbookPointerTable := NewOrderbookPointerTable(expiry)
+			err := orderbookPointerTable.PutPointer(42)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			clonedTable, err := orderbookPointerTable.Clone()
+			Expect(err).ShouldNot(HaveOccurred())
+			op, err := orderbookPointerTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			cp, err := clonedTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(op).Should(Equal(cp))
+		})
+
+		It("should not propagate changes from the original to the clone", func() {
+			orderbookPointerTable := NewOrderbookPointerTable(expiry)
+			err := orderbookPointerTable.PutPointer(42)
+			Expect(err).ShouldNot(HaveOccurred())
+			clonedTable, err := orderbookPointerTable.Clone()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = orderbookPointerTable.PutPointer(10)
+			Expect(err).ShouldNot(HaveOccurred())
+			op, err := orderbookPointerTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(op).Should(BeEquivalentTo(10))
+			cp, err := clonedTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(cp).Should(BeEquivalentTo(42))
+		})
+
+		It("should not propagate changes from the clone to the original", func() {
+			orderbookPointerTable := NewOrderbookPointerTable(expiry)
+			err := orderbookPointerTable.PutPointer(42)
+			Expect(err).ShouldNot(HaveOccurred())
+			clonedTable, err := orderbookPointerTable.Clone()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = clonedTable.PutPointer(10)
+			Expect(err).ShouldNot(HaveOccurred())
+			cp, err := clonedTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(cp).Should(BeEquivalentTo(10))
+			op, err := orderbookPointerTable.Pointer()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(op).Should(BeEquivalentTo(42))
 		})
 
 	})

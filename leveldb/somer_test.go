@@ -62,6 +62,34 @@ var _ = Describe("Somer storage", func() {
 
 			Expect(coms).Should(HaveLen(0))
 		})
+	})
 
+	Context("when iterating through out of range data", func() {
+		It("should trigger an out of range error", func() {
+			db := newDB(dbFile)
+			somerComputationTable := NewSomerComputationTable(db)
+
+			// Put the computations into the table and attempt to retrieve
+			for i := 0; i < len(computations); i++ {
+				err := somerComputationTable.PutComputation(computations[i])
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+			for i := 0; i < len(computations); i++ {
+				com, err := somerComputationTable.Computation(computations[i].ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(com.Equal(&computations[i])).Should(BeTrue())
+			}
+
+			comsIter, err := somerComputationTable.Computations()
+			defer comsIter.Release()
+			for comsIter.Next() {
+				_, err := comsIter.Cursor()
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			// This is out of range so we should expect an error
+			_, err = comsIter.Cursor()
+			Expect(err).Should(Equal(ome.ErrCursorOutOfRange))
+		})
 	})
 })
