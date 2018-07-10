@@ -85,6 +85,40 @@ var _ = Describe("Orderbook storage", func() {
 
 	})
 
+	Context("when iterating through out of range data", func() {
+		It("should trigger an out of range error", func() {
+			db := newDB(dbFile)
+			orderbookOrderTable := NewOrderbookOrderTable(db, expiry)
+			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, expiry)
+
+			putAndExpectOrders(orderbookOrderTable)
+			putAndExpectOrderFragments(orderbookOrderFragmentTable)
+
+			ordersIter, err := orderbookOrderTable.Orders()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderFragmentsIter, err := orderbookOrderFragmentTable.OrderFragments(epoch)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer ordersIter.Release()
+			defer orderFragmentsIter.Release()
+
+			for ordersIter.Next() {
+				_, _, err = ordersIter.Cursor()
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			for orderFragmentsIter.Next() {
+				_, err = orderFragmentsIter.Cursor()
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			// These are out of range so we should expect errors
+			_, _, err = ordersIter.Cursor()
+			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
+			_, err = orderFragmentsIter.Cursor()
+			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
+		})
+	})
+
 	Context("when storing data", func() {
 
 		It("should load data the same data that was stored", func() {
