@@ -24,6 +24,8 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
+const EthereumAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+
 // ErrPodNotFound is returned when dark node address was not found in any pod
 var ErrPodNotFound = errors.New("cannot find node in any pod")
 
@@ -53,6 +55,7 @@ type Binder struct {
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
 	renExSettlement  *bindings.RenExSettlement
+	renExBalance     *bindings.RenExBalances
 }
 
 // NewBinder returns a Binder to communicate with contracts
@@ -90,6 +93,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
+	renExBalance, err := bindings.NewRenExBalances(common.HexToAddress(conn.Config.RenExBalancesAddress), bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenExBalance: %v", err))
+		return Binder{}, err
+	}
+
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
@@ -101,6 +110,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		darknodeRegistry: darknodeRegistry,
 		orderbook:        orderbook,
 		renExSettlement:  renExSettlement,
+		renExBalance:     renExBalance,
 	}, nil
 }
 
@@ -986,6 +996,18 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 		}
 		time.Sleep(time.Second * 14)
 	}
+}
+
+func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) (*types.Transaction, error) {
+	return binder.renExBalance.Deposit(binder.transactOpts, tokenAddress, value)
+}
+
+func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address, []*big.Int, error) {
+	return binder.renExBalance.GetBalances(binder.callOpts, traderAddress)
+}
+
+func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) (*types.Transaction, error) {
+	return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
 }
 
 func toByte(id []byte) ([20]byte, error) {
