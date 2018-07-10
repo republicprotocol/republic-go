@@ -18,7 +18,6 @@ var orderFragments = make([]order.Fragment, 100)
 var epoch = registry.Epoch{}
 var dbFolder = "./tmp/"
 var dbFile = dbFolder + "db"
-var expiry = 72 * time.Hour
 
 var _ = Describe("LevelDB storage", func() {
 	BeforeEach(func() {
