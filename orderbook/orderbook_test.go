@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/registry"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
@@ -32,14 +34,14 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out")
+			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, syncer, storer)
+			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
@@ -59,7 +61,7 @@ var _ = Describe("Orderbook", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 
-			iter, err := storer.OrderFragments()
+			iter, err := storer.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
 			Expect(err).ShouldNot(HaveOccurred())
 			defer iter.Release()
 			collection, err := iter.Collect()
@@ -74,18 +76,18 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out")
+			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, syncer, storer)
+			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			Ω(syncer.HasSynced()).Should(BeFalse())
-			changeset, err := orderbook.Sync()
-			Ω(err).ShouldNot(HaveOccurred())
+			doneChan := make(<-chan struct{})
+			changeset, errChan := orderbook.Sync(doneChan)
 			Ω(len(changeset)).Should(BeZero())
 			Ω(syncer.HasSynced()).Should(BeTrue())
 		})

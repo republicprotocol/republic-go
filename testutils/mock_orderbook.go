@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -143,4 +144,28 @@ func (mock *RandOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notifica
 
 // OnChangeEpoch implements the orderbook.Orderbook interface.
 func (mock *RandOrderbook) OnChangeEpoch(epoch registry.Epoch) {
+}
+
+type MockContractBinder struct {
+}
+
+// NewMockContractBinder returns a mockContractBinder
+func NewMockContractBinder() *MockContractBinder {
+	return &MockContractBinder{}
+}
+
+func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	return []order.ID{}, []order.Status{}, []string{}, nil
+}
+
+func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
+	return &big.Int{}, nil
+}
+
+func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
+	return order.Open, nil
+}
+
+func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
+	return &big.Int{}, nil
 }
