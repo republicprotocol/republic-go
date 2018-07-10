@@ -39,6 +39,36 @@ var _ = Describe("LevelDB storage", func() {
 		os.RemoveAll(dbFolder)
 	})
 
+	Context("when pruning data", func() {
+		It("should not retrieve expired data", func() {
+			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db, 2*time.Second)
+
+			// Put the order fragments into the table and attempt to retrieve
+			for i := 0; i < len(orderFragments); i++ {
+				err := orderbookOrderFragmentTable.PutOrderFragment(epoch, orderFragments[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
+				Expect(err).ShouldNot(HaveOccurred())
+				// We should be able to get the same result back
+				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeTrue())
+			}
+			// Sleep and then prune to expire the data
+			time.Sleep(2 * time.Second)
+			orderbookOrderFragmentTable.Prune()
+
+			// All data should have expired so we should not get any data back
+			for i := 0; i < len(orderFragments); i++ {
+				orderFrag, err := orderbookOrderFragmentTable.OrderFragment(epoch, orderFragments[i].OrderID)
+				Expect(orderFrag.Equal(&orderFragments[i])).Should(BeFalse())
+				Expect(err).Should(HaveOccurred())
+			}
+		})
+
+	})
+
 	Context("when deleting data", func() {
 		It("should not retrieve deleted data", func() {
 			db, err := leveldb.OpenFile(filepath.Join(dbFolder, dbFile), nil)
