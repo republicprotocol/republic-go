@@ -172,7 +172,9 @@ var _ = Describe("Ingress Adapter", func() {
 			orderFragmentMappingIn := OrderFragmentMapping{}
 			orderFragmentMappingIn["Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="] = []OrderFragment{}
 
-			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingIn)
+			orderFragmentMappingsIn := OrderFragmentMappings{}
+			orderFragmentMappingsIn = append(orderFragmentMappingsIn, orderFragmentMappingIn)
+			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingsIn)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(1)))
 		})
@@ -184,7 +186,11 @@ var _ = Describe("Ingress Adapter", func() {
 			copy(signatureBytes[:], "incorrect signature")
 			orderFragmentMappingIn := OrderFragmentMapping{}
 			orderFragmentMappingIn["Td2YBy0MRYPYqqBduRmDsIhTySQUlMhPBM+wnNPWKqq="] = []OrderFragment{}
-			err := ingressAdapter.OpenOrder(string(signatureBytes), orderFragmentMappingIn)
+
+			orderFragmentMappingsIn := OrderFragmentMappings{}
+			orderFragmentMappingsIn = append(orderFragmentMappingsIn, orderFragmentMappingIn)
+
+			err := ingressAdapter.OpenOrder(string(signatureBytes), orderFragmentMappingsIn)
 			Expect(err).Should(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(0)))
 		})
@@ -198,7 +204,11 @@ var _ = Describe("Ingress Adapter", func() {
 			signature := base64.StdEncoding.EncodeToString(signatureBytes[:])
 			orderFragmentMappingIn := OrderFragmentMapping{}
 			orderFragmentMappingIn["some invalid hash"] = []OrderFragment{OrderFragment{OrderID: "thisisanorderid"}}
-			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingIn)
+
+			orderFragmentMappingsIn := OrderFragmentMappings{}
+			orderFragmentMappingsIn = append(orderFragmentMappingsIn, orderFragmentMappingIn)
+
+			err = ingressAdapter.OpenOrder(signature, orderFragmentMappingsIn)
 			Expect(err).Should(HaveOccurred())
 			Expect(atomic.LoadInt64(&ingress.numOpened)).To(Equal(int64(0)))
 		})
@@ -242,7 +252,7 @@ func (ingress *mockIngress) Sync(done <-chan struct{}) <-chan error {
 	return nil
 }
 
-func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping ingress.OrderFragmentMapping) error {
+func (ingress *mockIngress) OpenOrder(signature [65]byte, orderID order.ID, orderFragmentMapping ingress.OrderFragmentMappings) error {
 	atomic.AddInt64(&ingress.numOpened, 1)
 	return nil
 }
