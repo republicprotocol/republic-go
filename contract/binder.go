@@ -180,9 +180,24 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 }
 
 func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
+	// If the gas-price is greater than the gas-price limit, temporarily lower
+	// it (TODO: This will slow down `submitOrder`, which darknodes are racing
+	// to submit)
+	lastGasPrice := binder.transactOpts.GasPrice
+	submissionGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
+	// If there was NO error, update gas-price
+	if err == nil {
+		if binder.transactOpts.GasPrice.Cmp(submissionGasPriceLimit) > 0 {
+			binder.transactOpts.GasPrice = submissionGasPriceLimit
+		}
+	}
+
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	tx, err := binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	// Reset gas price before returning value / error
+	binder.transactOpts.GasPrice = lastGasPrice
+	return tx, err
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
