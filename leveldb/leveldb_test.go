@@ -40,6 +40,43 @@ var _ = Describe("LevelDB storage", func() {
 		os.RemoveAll("./tmp/")
 	})
 
+	Context("when pruning data", func() {
+
+		It("should not load any expired data", func() {
+			db, err := NewStore("./tmp", 2*time.Second)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			for i := 0; i < 100; i++ {
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				Expect(err).ShouldNot(HaveOccurred())
+				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				if i < 50 {
+					err = db.SomerComputationStore().PutComputation(computations[i])
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+			}
+
+			// Prune the data
+			time.Sleep(2 * time.Second)
+			db.Prune()
+
+			for i := 0; i < 100; i++ {
+				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
+				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
+				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
+				if i < 50 {
+					_, err = db.SomerComputationStore().Computation(computations[i].ID)
+					Expect(err).Should(Equal(ome.ErrComputationNotFound))
+				}
+			}
+
+			err = db.Release()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+	})
+
 	Context("when storing, loading, and removing data", func() {
 
 		It("should return a default value when loading pointers before storing them", func() {
