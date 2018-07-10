@@ -59,10 +59,14 @@ func NewTransacter(client *ethclient.Client, transactOpts bind.TransactOpts) (Tr
 	}
 	transacter.transactOpts.From = transactOpts.From
 	transacter.transactOpts.GasLimit = transactOpts.GasLimit
-	transacter.transactOpts.GasPrice = big.NewInt(0).Set(transactOpts.GasPrice)
+	if transactOpts.GasPrice != nil {
+		transacter.transactOpts.GasPrice = big.NewInt(0).Set(transactOpts.GasPrice)
+	}
 	transacter.transactOpts.Nonce = big.NewInt(0).SetUint64(nonce)
 	transacter.transactOpts.Signer = transactOpts.Signer
-	transacter.transactOpts.Value = big.NewInt(0).Set(transactOpts.Value)
+	if transactOpts.Value != nil {
+		transacter.transactOpts.Value = big.NewInt(0).Set(transactOpts.Value)
+	}
 	return transacter, nil
 }
 
