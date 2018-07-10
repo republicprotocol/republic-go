@@ -113,27 +113,29 @@ func (mock *RandOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notifica
 				mock.orderFragments = append(mock.orderFragments, mock.orderFragmentsQueue...)
 				mock.orderFragmentsQueue = []order.Fragment{}
 
-				// Randomly remove an order.Fragment
-				n := rand.Intn(len(mock.orderFragments))
-				orderFragment := mock.orderFragments[n]
-				mock.orderFragments[n] = mock.orderFragments[len(mock.orderFragments)-1]
-				mock.orderFragments = mock.orderFragments[:len(mock.orderFragments)-1]
+				if len(mock.orderFragments) > 0 {
+					// Randomly remove an order.Fragment
+					n := rand.Intn(len(mock.orderFragments))
+					orderFragment := mock.orderFragments[n]
+					mock.orderFragments[n] = mock.orderFragments[len(mock.orderFragments)-1]
+					mock.orderFragments = mock.orderFragments[:len(mock.orderFragments)-1]
 
-				// Randomly generate a closure notification for it
-				var notification orderbook.Notification
-				r := rand.Intn(100)
-				if r < 50 {
-					notification = orderbook.NotificationConfirmOrder{
-						OrderID: orderFragment.OrderID,
+					// Randomly generate a closure notification for it
+					var notification orderbook.Notification
+					r := rand.Intn(100)
+					if r < 50 {
+						notification = orderbook.NotificationConfirmOrder{
+							OrderID: orderFragment.OrderID,
+						}
+					} else {
+						notification = orderbook.NotificationCancelOrder{
+							OrderID: orderFragment.OrderID,
+						}
 					}
-				} else {
-					notification = orderbook.NotificationCancelOrder{
-						OrderID: orderFragment.OrderID,
+					select {
+					case <-done:
+					case notifications <- notification:
 					}
-				}
-				select {
-				case <-done:
-				case notifications <- notification:
 				}
 			}
 		}
