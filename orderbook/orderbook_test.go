@@ -20,11 +20,20 @@ import (
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var (
-	numberOfOrders = 20
-)
-
 var _ = Describe("Orderbook", func() {
+
+	var (
+		numberOfOrders = 20
+		done           chan struct{}
+	)
+
+	BeforeEach(func() {
+		done = make(chan struct{})
+	})
+
+	AfterEach(func() {
+		close(done)
+	})
 
 	Context("when opening new orders", func() {
 
@@ -43,6 +52,8 @@ var _ = Describe("Orderbook", func() {
 
 			// Create orderbook
 			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
+
+			orderbook.Sync(done)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
