@@ -22,7 +22,6 @@ func Forward(done <-chan struct{}, in interface{}, out interface{}) {
 		panic(fmt.Sprintf("cannot forward from type %v to type %v", reflect.TypeOf(in), reflect.TypeOf(out)))
 	}
 
-	defer reflect.ValueOf(out).Close()
 	for {
 		// select {
 		// case <-done:
@@ -119,5 +118,4 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 	}
 
 	wg.Wait()
-	reflect.ValueOf(out).Close()
 }
