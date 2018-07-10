@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,7 +117,11 @@ func (binder *Binder) SendTx(f func() (*types.Transaction, error)) (*types.Trans
 
 func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Transaction, error) {
 	tx, err := f()
-	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced {
+	if err == nil {
+		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
+		return tx, nil
+	}
+	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced || strings.Contains(err.Error(), "nonce is too low") {
 		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return binder.sendTx(f)
 	}
@@ -124,18 +129,23 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 		binder.transactOpts.Nonce.Sub(binder.transactOpts.Nonce, big.NewInt(1))
 		return binder.sendTx(f)
 	}
-	if err == nil {
-		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
-		return tx, nil
+
+	// If any other type of nonce error occurs we will refresh the nonce and
+	// try again for up to 1 minute
+	var nonce uint64
+	for try := 0; try < 60 && strings.Contains(err.Error(), "nonce"); try++ {
+		time.Sleep(time.Second)
+		nonce, err = binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
+		if err != nil {
+			continue
+		}
+		binder.transactOpts.Nonce = big.NewInt(int64(nonce))
+		if tx, err = f(); err == nil {
+			binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
+			return tx, nil
+		}
 	}
-	// if strings.Contains(err.Error(), "nonce") {
-	// 	nonce, err := binder.conn.Client.PendingNonceAt(context.Background(), binder.transactOpts.From)
-	// 	if err != nil {
-	// 		return tx, err
-	// 	}
-	// 	binder.transactOpts.Nonce = big.NewInt(int64(nonce))
-	// 	return binder.sendTx(f)
-	// }
+
 	return tx, err
 }
 
