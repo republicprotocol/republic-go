@@ -1,6 +1,7 @@
 package orderbook_test
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -22,11 +23,13 @@ var (
 
 var _ = Describe("Syncer", func() {
 	var (
-		done        chan struct{}
-		orderbook   Orderbook
-		contract    *orderbookBinder
-		storer      *leveldb.Store
-		buys, sells []order.Order
+		notifications <-chan Notification
+		errs          <-chan error
+		done          chan struct{}
+		orderbook     Orderbook
+		contract      *orderbookBinder
+		storer        *leveldb.Store
+		buys, sells   []order.Order
 	)
 
 	BeforeEach(func() {
@@ -39,11 +42,13 @@ var _ = Describe("Syncer", func() {
 		key, err := crypto.RandomRsaKey()
 		Ω(err).ShouldNot(HaveOccurred())
 		orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, 72*time.Hour, 100)
-		done = make(chan struct{})
 
+		done = make(chan struct{})
+		notifications, errs = orderbook.Sync(done)
 	})
 
 	AfterEach(func() {
+		close(done)
 		os.RemoveAll("./data.out")
 	})
 
@@ -51,6 +56,7 @@ var _ = Describe("Syncer", func() {
 
 		It("should be able to sync new opened orders", func() {
 			// priority := Priority(1)
+
 			for i := 0; i < NumberOfOrderPairs; i++ {
 				err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
 				Ω(err).ShouldNot(HaveOccurred())
@@ -59,10 +65,6 @@ var _ = Describe("Syncer", func() {
 				Ω(err).ShouldNot(HaveOccurred())
 			}
 			orderbook.OnChangeEpoch(registry.Epoch{})
-
-			notifications, errs := orderbook.Sync(done)
-
-			close(done)
 
 			var count = 0
 
@@ -76,6 +78,7 @@ var _ = Describe("Syncer", func() {
 							return
 						}
 						count++
+						log.Println(count)
 					case <-errs:
 						return
 					}
@@ -94,10 +97,6 @@ var _ = Describe("Syncer", func() {
 			}
 			orderbook.OnChangeEpoch(registry.Epoch{})
 
-			notifications, errs := orderbook.Sync(done)
-
-			defer close(done)
-
 			var count = 0
 
 			go func() {
@@ -110,6 +109,7 @@ var _ = Describe("Syncer", func() {
 							return
 						}
 						count++
+						log.Println(count)
 					case <-errs:
 						return
 					}
@@ -117,7 +117,7 @@ var _ = Describe("Syncer", func() {
 			}()
 		})
 
-		It("should be able to sync canceling order events", func() {
+		FIt("should be able to sync canceling order events", func() {
 			// Open orders
 			openOrders(contract, buys, sells)
 
@@ -130,10 +130,6 @@ var _ = Describe("Syncer", func() {
 			}
 			orderbook.OnChangeEpoch(registry.Epoch{})
 
-			notifications, errs := orderbook.Sync(done)
-
-			defer close(done)
-
 			var count = 0
 
 			go func() {
@@ -146,6 +142,7 @@ var _ = Describe("Syncer", func() {
 							return
 						}
 						count++
+						log.Println(count)
 					case <-errs:
 						return
 					}
