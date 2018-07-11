@@ -25,11 +25,10 @@ var (
 
 var _ = Describe("Syncer", func() {
 	var (
-		orderbook   Orderbook
-		contract    *testutils.MockContractBinder
-		storer      *leveldb.Store
-		buys, sells []order.Order
-		key         crypto.RsaKey
+		orderbook Orderbook
+		contract  *testutils.MockContractBinder
+		storer    *leveldb.Store
+		key       crypto.RsaKey
 	)
 
 	BeforeEach(func() {
@@ -37,7 +36,6 @@ var _ = Describe("Syncer", func() {
 		contract = testutils.NewMockContractBinder()
 		storer, err = leveldb.NewStore("./tmp/data.out", 72*time.Hour)
 		Ω(err).ShouldNot(HaveOccurred())
-		buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
 		key, err = crypto.RandomRsaKey()
 		Ω(err).ShouldNot(HaveOccurred())
@@ -62,27 +60,6 @@ var _ = Describe("Syncer", func() {
 			notifications, errs := orderbook.Sync(done)
 			orderbook.OnChangeEpoch(epoch)
 
-			fmt.Printf("we have %d orders\n", len(orders))
-			for i, ord := range orders {
-				fmt.Printf("splitting fragments\n")
-				fragments, err := ord.Split(5, 4)
-				Expect(err).ShouldNot(HaveOccurred())
-				// err = storer.OrderbookOrderFragmentStore().PutOrderFragment(epoch, fragments[0])
-				fmt.Printf("encrypting public key\n")
-				encFrag, err := fragments[0].Encrypt(key.PublicKey)
-				Expect(err).ShouldNot(HaveOccurred())
-				fmt.Printf("calling orderbook.open\n")
-				err = orderbook.OpenOrder(context.Background(), encFrag)
-				fmt.Printf("orderbook.open order returned\n")
-				Expect(err).ShouldNot(HaveOccurred())
-				fmt.Printf("adding order %d fragments to storer\n", i)
-			}
-			_, newEpoch, err := testutils.RandomEpoch(1)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			orderbook.OnChangeEpoch(newEpoch)
-			time.Sleep(time.Second)
-
 			go func() {
 				for err := range errs {
 					fmt.Println(err)
@@ -90,12 +67,27 @@ var _ = Describe("Syncer", func() {
 			}()
 
 			count := 0
-			for notification := range notifications {
-				fmt.Println("notification: ")
-				fmt.Println(notification)
-				count++
+			go func() {
+				for _ = range notifications {
+					count++
+				}
+			}()
+
+			for _, ord := range orders {
+				fragments, err := ord.Split(5, 4)
+				Expect(err).ShouldNot(HaveOccurred())
+				encFrag, err := fragments[0].Encrypt(key.PublicKey)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = orderbook.OpenOrder(context.Background(), encFrag)
+				Expect(err).ShouldNot(HaveOccurred())
 			}
-			Expect(count).Should(Equal(NumberOfOrderPairs))
+			_, newEpoch, err := testutils.RandomEpoch(1)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			orderbook.OnChangeEpoch(newEpoch)
+			time.Sleep(time.Second)
+
+			Expect(count).Should(Equal(2 * NumberOfOrderPairs))
 
 		})
 
