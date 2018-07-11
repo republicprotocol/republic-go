@@ -22,7 +22,8 @@ func RandomEpoch(i int) (identity.Address, registry.Epoch, error) {
 				Darknodes: []identity.Address{addr},
 			},
 		},
-		Darknodes:   []identity.Address{addr},
-		BlockNumber: big.NewInt(int64(i)),
+		Darknodes:     []identity.Address{addr},
+		BlockNumber:   big.NewInt(int64(i)),
+		BlockInterval: big.NewInt(int64(2)),
 	}, nil
 }
