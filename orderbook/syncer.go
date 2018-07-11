@@ -59,7 +59,6 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 		defer ticker.Stop()
 
 		for {
-			fmt.Println("looping in sync")
 			select {
 			case <-done:
 				return
@@ -81,8 +80,6 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 // syncClosures iterates through all orders and deletes those that are no
 // longer open.
 func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	fmt.Println("starting syncClosures")
-	defer fmt.Println("completed syncClosures")
 	orderIter, err := syncer.orderStore.Orders()
 	if err != nil {
 		select {
@@ -155,9 +152,6 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 // interval between synchronisations is large enough then it is possible that
 // they are already closed.
 func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	fmt.Println("starting syncOpens")
-	defer fmt.Println("completed syncOpens")
-	
 	// Load the current pointer
 	pointer, err := syncer.pointerStore.Pointer()
 
@@ -171,7 +165,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 
 	// Synchronise new orders from the ContractBinder
 
-	fmt.Println(int(pointer))
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		select {
@@ -212,10 +205,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 	}()
 
-	fmt.Print("epoch")
-	fmt.Println(syncer.epoch)
-	fmt.Print("epoch.blockinterval")
-	fmt.Println(syncer.epoch.BlockInterval)
 	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for i, orderID := range orderIDs {
 
@@ -270,9 +259,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 }
 
 func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, blockNumber uint64, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	fmt.Println("starting insertOrder")
-	defer fmt.Println("completed insertOrder")
-	
 	// Store the order
 	if err := syncer.orderStore.PutOrder(orderID, orderStatus, trader, blockNumber); err != nil {
 		select {
@@ -312,9 +298,6 @@ func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, tr
 }
 
 func (syncer *syncer) insertOrderFragment(orderFragment order.Fragment, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-	fmt.Println("starting insertOrderFragment")
-	defer fmt.Println("completed insertOrderFragment")
-	
 	// Store the order fragment
 	if err := syncer.orderFragmentStore.PutOrderFragment(syncer.epoch, orderFragment); err != nil {
 		select {

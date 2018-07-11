@@ -6,15 +6,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/logger"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/leveldb"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -48,7 +45,7 @@ var _ = Describe("Syncer", func() {
 	Context("when syncing", func() {
 
 		FIt("should be able to sync new opened orders", func() {
-			logger.SetFilterLevel(logger.LevelDebug)
+			// logger.SetFilterLevel(logger.LevelDebug)
 			done := make(chan struct{})
 			defer close(done)
 
@@ -158,15 +155,3 @@ var _ = Describe("Syncer", func() {
 		*/
 	})
 })
-
-func generateOrderPairs(n int) ([]order.Order, []order.Order) {
-	buyOrders := make([]order.Order, n)
-	sellOrders := make([]order.Order, n)
-
-	for i := 0; i < n; i++ {
-		buyOrders[i] = testutils.RandomBuyOrder()
-		sellOrders[i] = testutils.RandomSellOrder()
-	}
-
-	return buyOrders, sellOrders
-}
