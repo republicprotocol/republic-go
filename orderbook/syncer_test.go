@@ -12,6 +12,7 @@ import (
 	. "github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/testutils"
 )
@@ -44,7 +45,6 @@ var _ = Describe("Syncer", func() {
 	Context("when syncing", func() {
 
 		It("should be able to sync new opened orders", func() {
-			// logger.SetFilterLevel(logger.LevelDebug)
 			done := make(chan struct{})
 			defer close(done)
 
@@ -57,21 +57,23 @@ var _ = Describe("Syncer", func() {
 
 			orderbook.OnChangeEpoch(epoch)
 
-			go func() {
-				for err := range errs {
-					fmt.Println(err)
-				}
-			}()
-
 			countMu := new(sync.Mutex)
 			count := 0
-			go func() {
-				for _ = range notifications {
-					countMu.Lock()
-					count++
-					countMu.Unlock()
-				}
-			}()
+
+			go dispatch.CoBegin(
+				func() {
+					for err := range errs {
+						fmt.Println(err)
+					}
+				},
+				func() {
+					for _ = range notifications {
+						countMu.Lock()
+						count++
+						countMu.Unlock()
+					}
+				},
+			)
 
 			for _, ord := range orders {
 				fragments, err := ord.Split(5, 4)
@@ -123,39 +125,39 @@ var _ = Describe("Syncer", func() {
 					}
 				}()
 			})
+			/*
+				It("should be able to sync canceling order events", func() {
+					// Open orders
+					openOrders(contract, buys, sells)
 
-			It("should be able to sync canceling order events", func() {
-				// Open orders
-				openOrders(contract, buys, sells)
+					// Cancel orders
+					// for i := 0; i < NumberOfOrderPairs; i++ {
+					// 	err := contract.CancelOrder([65]byte{}, buys[i].ID)
+					// 	Ω(err).ShouldNot(HaveOccurred())
+					// 	err = contract.CancelOrder([65]byte{}, sells[i].ID)
+					// 	Ω(err).ShouldNot(HaveOccurred())
+					// }
+					orderbook.OnChangeEpoch(registry.Epoch{})
 
-				// Cancel orders
-				// for i := 0; i < NumberOfOrderPairs; i++ {
-				// 	err := contract.CancelOrder([65]byte{}, buys[i].ID)
-				// 	Ω(err).ShouldNot(HaveOccurred())
-				// 	err = contract.CancelOrder([65]byte{}, sells[i].ID)
-				// 	Ω(err).ShouldNot(HaveOccurred())
-				// }
-				orderbook.OnChangeEpoch(registry.Epoch{})
+					var count = 0
 
-				var count = 0
-
-				go func() {
-					for {
-						select {
-						case <-done:
-							return
-						case _, ok := <-notifications:
-							if !ok {
+					go func() {
+						for {
+							select {
+							case <-done:
+								return
+							case _, ok := <-notifications:
+								if !ok {
+									return
+								}
+								count++
+								log.Println(count)
+							case <-errs:
 								return
 							}
-							count++
-							log.Println(count)
-						case <-errs:
-							return
 						}
-					}
-				}()
-			})
+					}()
+				})
 		*/
 	})
 })
