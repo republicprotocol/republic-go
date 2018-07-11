@@ -207,7 +207,7 @@ func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error)
 	if status, ok := binder.orderStatus[orderID]; ok {
 		return status, nil
 	}
-	return order.Open, orderbook.ErrOrderNotFound
+	return order.Nil, orderbook.ErrOrderNotFound
 }
 
 func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
