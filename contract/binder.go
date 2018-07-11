@@ -244,12 +244,15 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	})
 	if sendTxErr != nil {
 		err = fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+		return err
 	}
 
 	// Wait for last transaction
 	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil && err == nil {
-		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+		return err
 	}
+
 	return err
 }
 

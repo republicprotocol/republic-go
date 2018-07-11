@@ -48,8 +48,8 @@ func newSyncer(epoch registry.Epoch, pointerStore PointerStorer, orderStore Orde
 // All changes are produced as Notifications. Notifications of the
 // NotificationOpenOrder type will not have an associated order.Fragment.
 func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fragment) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification)
-	errs := make(chan error)
+	notifications := make(chan Notification, 100)
+	errs := make(chan error, 100)
 
 	go func() {
 		defer close(notifications)
@@ -99,16 +99,31 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 	}()
 
 	// Function for deleting order IDs from storage
-	deleteOrder := func(orderID order.ID) {
+	deleteOrder := func(orderID order.ID, orderStatus order.Status) {
+		// Remove from storage
 		numClosedOrders++
 		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
 			select {
 			case <-done:
 			case errs <- fmt.Errorf("cannot delete order: %v", err):
 			}
+			return
 		}
 
-		// FIXME: Emit a NotificationConfirmOrder or a NotificationCancelOrder
+		// Emit notification
+		var notification Notification
+		switch orderStatus {
+		case order.Confirmed:
+			notification = NotificationConfirmOrder{OrderID: orderID}
+		case order.Canceled:
+			notification = NotificationCancelOrder{OrderID: orderID}
+		default:
+			return
+		}
+		select {
+		case <-done:
+		case notifications <- notification:
+		}
 	}
 
 	for orderIter.Next() {
@@ -121,12 +136,11 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 			case <-done:
 				return
 			case errs <- fmt.Errorf("cannot load order iterator cursor: %v", err):
-				logger.Info("write cursor error")
 				continue
 			}
 		}
 		if orderStatus != order.Open {
-			deleteOrder(orderID)
+			deleteOrder(orderID, orderStatus)
 			continue
 		}
 
@@ -141,8 +155,7 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 			}
 		}
 		if orderStatus != order.Open {
-			deleteOrder(orderID)
-			continue
+			deleteOrder(orderID, orderStatus)
 		}
 	}
 }
@@ -164,7 +177,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 	}
 
 	// Synchronise new orders from the ContractBinder
-
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		select {
