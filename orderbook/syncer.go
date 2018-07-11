@@ -59,6 +59,7 @@ func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fra
 		defer ticker.Stop()
 
 		for {
+			fmt.Println("looping in sync")
 			select {
 			case <-done:
 				return
@@ -165,6 +166,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 
 	// Synchronise new orders from the ContractBinder
 
+	fmt.Println(int(pointer))
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		select {
@@ -205,6 +207,10 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 	}()
 
+	fmt.Print("epoch")
+	fmt.Println(syncer.epoch)
+	fmt.Print("epoch.blockinterval")
+	fmt.Println(syncer.epoch.BlockInterval)
 	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for i, orderID := range orderIDs {
 

@@ -112,7 +112,9 @@ func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore O
 
 // OpenOrder implements the Server interface.
 func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragment order.EncryptedFragment) error {
+	defer fmt.Println("orderbook.OpenOrder returned now")
 	orderFragment, err := encryptedOrderFragment.Decrypt(orderbook.rsaKey.PrivateKey)
+	fmt.Println("decrypted order fragment")
 	if err != nil {
 		return err
 	}
@@ -122,6 +124,7 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
 	}
 
+	fmt.Println("routing order fragment")
 	return orderbook.routeOrderFragment(ctx, orderFragment)
 }
 
@@ -219,10 +222,13 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 }
 
 func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragment order.Fragment) error {
+	fmt.Println("entered route order fragment")
 	orderbook.doneMu.RLock()
+	fmt.Println("acquired orderbook done lock")
 	serverIsRunning := orderbook.done != nil
 	orderbook.doneMu.RUnlock()
 	if !serverIsRunning {
+		fmt.Println("server is not running")
 		return ErrServerIsNotRunning
 	}
 
@@ -238,22 +244,33 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 	// the Darknode and the trader might briefly have different ideas about the
 	// "current" epoch.
 
+	fmt.Println("switching on order fragment epoch depth")
 	switch orderFragment.EpochDepth {
 	case 0:
+		fmt.Println("case 0")
 		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		if orderbook.syncerCurrOrderFragments == nil {
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 			return nil
 		}
+		fmt.Printf("here is the order fragment: %v\n", orderFragment)
+		fmt.Printf("here is the done channel: %v\n", ctx.Done())
+		fmt.Printf("here is the orderbook.done channel: %v\n", orderbook.done)
+		fmt.Printf("here is the order fragment channel: %v\n", orderbook.syncerCurrOrderFragments)
+		fmt.Println("waiting on select")
 		select {
 		case <-ctx.Done():
+			fmt.Println("done channel closed")
 			return ctx.Err()
 		case <-orderbook.done:
+			fmt.Println("orderbook done channel closed")
 			return ErrServerIsNotRunning
 		case orderbook.syncerCurrOrderFragments <- orderFragment:
+			fmt.Println("wrote order fragment to orderbook")
 			return nil
 		}
 	case 1:
+		fmt.Println("case 1")
 		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		if orderbook.syncerPrevOrderFragments == nil {
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
@@ -268,7 +285,10 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 			return nil
 		}
 	default:
+		fmt.Println("default")
 		logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 		return nil
 	}
+	fmt.Println("reached end of routeorderfragment")
+	return nil
 }
