@@ -49,9 +49,8 @@ var _ = Describe("Ome", func() {
 
 		BeforeEach(func() {
 			done = make(chan struct{})
-			addr, err = testutils.RandomAddress()
+			addr, epoch, err = testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
-			epoch = newEpoch(0, addr)
 
 			computationsGenerator = NewComputationGenerator()
 			rsaKey, err := crypto.RandomRsaKey()
@@ -269,20 +268,4 @@ func (binder *omeBinder) setOrderStatus(orderID order.ID, status order.Status) e
 	}
 
 	return nil
-}
-
-// newEpoch returns a new epoch with only one pod and one darknode.
-func newEpoch(i int, node identity.Address) registry.Epoch {
-	return registry.Epoch{
-		Hash: testutils.Random32Bytes(),
-		Pods: []registry.Pod{
-			{
-				Position:  0,
-				Hash:      testutils.Random32Bytes(),
-				Darknodes: []identity.Address{node},
-			},
-		},
-		Darknodes:   []identity.Address{node},
-		BlockNumber: big.NewInt(int64(i)),
-	}
 }
