@@ -3,7 +3,6 @@ package ome_test
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"sync"
 	"time"
