@@ -22,24 +22,25 @@ func NewSyncer(numberOfOrders int) *Syncer {
 }
 
 // Sync returns the first 5 orders in the order list and the syncer as synced.
-func (syncer *Syncer) Sync() (orderbook.ChangeSet, error) {
+func (syncer *Syncer) Sync() (<-chan orderbook.Notification, error) {
+	var notificationChan <-chan orderbook.Notification
 	if !syncer.hasSynced {
-		changes := make(orderbook.ChangeSet, len(syncer.orders))
-		i := 0
-		for _, ord := range syncer.orders {
-			changes[i] = orderbook.Change{
-				OrderID:       ord.ID,
-				OrderParity:   ord.Parity,
-				OrderPriority: orderbook.Priority(i),
-				OrderStatus:   order.Open,
-			}
-			i++
-		}
-		syncer.hasSynced = true
-		return changes, nil
+		// changes := make(orderbook.ChangeSet, len(syncer.orders))
+		// i := 0
+		// for _, ord := range syncer.orders {
+		// changes[i] = orderbook.Change{
+		// 	OrderID:       ord.ID,
+		// 	OrderParity:   ord.Parity,
+		// 	OrderPriority: orderbook.Priority(i),
+		// 	OrderStatus:   order.Open,
+		// }
+		// i++
+		// }
+		// syncer.hasSynced = true
+		return notificationChan, nil
 	}
 
-	return orderbook.ChangeSet{}, nil
+	return notificationChan, nil
 }
 
 // ConfirmOrderMatch confirms the two orders are a match and increment the

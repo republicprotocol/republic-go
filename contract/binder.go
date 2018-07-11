@@ -24,6 +24,8 @@ import (
 	"github.com/republicprotocol/republic-go/stackint"
 )
 
+const EthereumAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+
 // ErrPodNotFound is returned when dark node address was not found in any pod
 var ErrPodNotFound = errors.New("cannot find node in any pod")
 
@@ -53,6 +55,8 @@ type Binder struct {
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
 	renExSettlement  *bindings.RenExSettlement
+	renExBalance     *bindings.RenExBalances
+	erc20            *bindings.ERC20
 }
 
 // NewBinder returns a Binder to communicate with contracts
@@ -90,6 +94,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
+	renExBalance, err := bindings.NewRenExBalances(common.HexToAddress(conn.Config.RenExBalancesAddress), bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenExBalance: %v", err))
+		return Binder{}, err
+	}
+
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
@@ -101,7 +111,15 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		darknodeRegistry: darknodeRegistry,
 		orderbook:        orderbook,
 		renExSettlement:  renExSettlement,
+		renExBalance:     renExBalance,
 	}, nil
+}
+
+// From returns the common.Address used to submit transactions.
+func (binder *Binder) From() common.Address {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+	return binder.transactOpts.From
 }
 
 // SendTx locks binder resources to execute function f (handling nonces explicitly)
@@ -163,9 +181,24 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 }
 
 func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
+	// If the gas-price is greater than the gas-price limit, temporarily lower
+	// it (TODO: This will slow down `submitOrder`, which darknodes are racing
+	// to submit)
+	lastGasPrice := binder.transactOpts.GasPrice
+	submissionGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
+	// If there was NO error, update gas-price
+	if err == nil {
+		if binder.transactOpts.GasPrice.Cmp(submissionGasPriceLimit) > 0 {
+			binder.transactOpts.GasPrice = submissionGasPriceLimit
+		}
+	}
+
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	tx, err := binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	// Reset gas price before returning value / error
+	binder.transactOpts.GasPrice = lastGasPrice
+	return tx, err
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
@@ -466,10 +499,28 @@ func (binder *Binder) Pods() ([]registry.Pod, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.pods()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return []registry.Pod{}, err
+	}
+
+	return binder.pods(epoch.Epochhash)
 }
 
-func (binder *Binder) pods() ([]registry.Pod, error) {
+// PreviousPods returns the Pod configuration for the previous Epoch.
+func (binder *Binder) PreviousPods() ([]registry.Pod, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	previousEpoch, err := binder.darknodeRegistry.PreviousEpoch(binder.callOpts)
+	if err != nil {
+		return []registry.Pod{}, err
+	}
+
+	return binder.pods(previousEpoch.Epochhash)
+}
+
+func (binder *Binder) pods(epochVal *big.Int) ([]registry.Pod, error) {
 	darknodeAddrs, err := binder.darknodes()
 	if err != nil {
 		return []registry.Pod{}, err
@@ -482,11 +533,7 @@ func (binder *Binder) pods() ([]registry.Pod, error) {
 	if len(darknodeAddrs) < int(numberOfNodesInPod.ToBigInt().Int64()) {
 		return []registry.Pod{}, fmt.Errorf("degraded pod: expected at least %v addresses, got %v", int(numberOfNodesInPod.ToBigInt().Int64()), len(darknodeAddrs))
 	}
-	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
-	if err != nil {
-		return []registry.Pod{}, err
-	}
-	epochVal := epoch.Epochhash
+
 	numberOfDarknodes := big.NewInt(int64(len(darknodeAddrs)))
 	x := big.NewInt(0).Mod(epochVal, numberOfDarknodes)
 	positionInOcean := make([]int, len(darknodeAddrs))
@@ -529,26 +576,40 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.epoch()
-}
-
-func (binder *Binder) epoch() (registry.Epoch, error) {
 	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
-	epochBlocknumber, err := stackint.FromBigInt(epoch.Blocknumber)
+	return binder.epoch(epoch)
+}
+
+// PreviousEpoch returns the previous Epoch which includes the Pod configuration.
+func (binder *Binder) PreviousEpoch() (registry.Epoch, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	previousEpoch, err := binder.darknodeRegistry.PreviousEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(previousEpoch)
+}
+
+func (binder *Binder) epoch(epoch struct {
+	Epochhash   *big.Int
+	Blocknumber *big.Int
+}) (registry.Epoch, error) {
+	blockInterval, err := binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
 
 	var blockhash [32]byte
-	for i, b := range epoch.Epochhash.Bytes() {
-		blockhash[i] = b
-	}
+	copy(blockhash[:], epoch.Epochhash.Bytes())
 
-	pods, err := binder.pods()
+	pods, err := binder.pods(epoch.Epochhash)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
@@ -558,16 +619,12 @@ func (binder *Binder) epoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	blocknumber, err := epochBlocknumber.ToUint()
-	if err != nil {
-		return registry.Epoch{}, err
-	}
-
 	return registry.Epoch{
-		Hash:        blockhash,
-		Pods:        pods,
-		Darknodes:   darknodes,
-		BlockNumber: blocknumber,
+		Hash:          blockhash,
+		Pods:          pods,
+		Darknodes:     darknodes,
+		BlockNumber:   epoch.Blocknumber,
+		BlockInterval: blockInterval,
 	}, nil
 }
 
@@ -586,7 +643,12 @@ func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	return binder.epoch()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(epoch)
 }
 
 func (binder *Binder) nextEpoch() (*types.Transaction, error) {
@@ -604,7 +666,12 @@ func (binder *Binder) Pod(addr identity.Address) (registry.Pod, error) {
 }
 
 func (binder *Binder) pod(addr identity.Address) (registry.Pod, error) {
-	pods, err := binder.pods()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Pod{}, err
+	}
+
+	pods, err := binder.pods(epoch.Epochhash)
 	if err != nil {
 		return registry.Pod{}, err
 	}
@@ -761,29 +828,36 @@ func (binder *Binder) orderMatch(id order.ID) (order.ID, error) {
 	return orderIDs[0], nil
 }
 
-// BuyOrders in the Orderbook starting at an offset and returning limited
-// numbers of buy orders.
-func (binder *Binder) BuyOrders(offset, limit int) ([]order.ID, error) {
+// Orders in the Orderbook starting at an offset and returning limited
+// numbers of orders.
+func (binder *Binder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.buyOrders(offset, limit)
+	return binder.orders(offset, limit)
 }
 
-func (binder *Binder) buyOrders(offset, limit int) ([]order.ID, error) {
-	orders := make([]order.ID, 0, limit)
-	for i := 0; i < limit; i++ {
-		ordID, ok, err := binder.orderbook.BuyOrder(binder.callOpts, big.NewInt(int64(offset+i)))
-		if !ok {
-			return orders, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		orders = append(orders, ordID)
+func (binder *Binder) orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	orderIDsBytes, tradersAddrs, orderStatusesUInt8, err := binder.orderbook.GetOrders(binder.callOpts, big.NewInt(int64(offset)), big.NewInt(int64(limit)))
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return orders, nil
+
+	orderIDs := make([]order.ID, len(orderIDsBytes))
+	orderStatuses := make([]order.Status, len(orderStatusesUInt8))
+	traders := make([]string, len(tradersAddrs))
+
+	for i := range orderIDs {
+		orderIDs[i] = orderIDsBytes[i]
+	}
+	for i := range orderStatuses {
+		orderStatuses[i] = order.Status(orderStatusesUInt8[i])
+	}
+	for i := range traders {
+		traders[i] = tradersAddrs[i].String()
+	}
+
+	return orderIDs, orderStatuses, traders, nil
 }
 
 // SellOrders in the Orderbook starting at an offset and returning limited
@@ -894,20 +968,15 @@ func (binder *Binder) depth(orderID order.ID) (uint, error) {
 
 // BlockNumber will return the block number when the order status
 // last mode modified
-func (binder *Binder) BlockNumber(orderID order.ID) (uint, error) {
+func (binder *Binder) BlockNumber(orderID order.ID) (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
 	return binder.blockNumber(orderID)
 }
 
-func (binder *Binder) blockNumber(orderID order.ID) (uint, error) {
-	blockNumber, err := binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
-	if err != nil {
-		return 0, err
-	}
-
-	return uint(blockNumber.Uint64()), nil
+func (binder *Binder) blockNumber(orderID order.ID) (*big.Int, error) {
+	return binder.orderbook.OrderBlockNumber(binder.callOpts, orderID)
 }
 
 // OrderCounts returns the total number of orders in the orderbook
@@ -965,6 +1034,49 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 		}
 		time.Sleep(time.Second * 14)
 	}
+}
+
+func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		oldValue := binder.transactOpts.Value
+		defer func() {
+			binder.transactOpts.Value = oldValue
+		}()
+		if tokenAddress.Hex() == EthereumAddress {
+			binder.transactOpts.Value = value
+		}
+
+		return binder.renExBalance.Deposit(binder.transactOpts, tokenAddress, value)
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
+	return err
+}
+
+func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address, []*big.Int, error) {
+	return binder.renExBalance.GetBalances(binder.callOpts, traderAddress)
+}
+
+func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
+	return err
+}
+
+func (binder *Binder) GetSettlementDetail(buyOrder, sellOrder order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetSettlementDetails(binder.callOpts, buyOrder, sellOrder)
 }
 
 func toByte(id []byte) ([20]byte, error) {

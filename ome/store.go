@@ -2,8 +2,6 @@ package ome
 
 import (
 	"errors"
-
-	"github.com/republicprotocol/republic-go/order"
 )
 
 // ErrComputationNotFound is returned when the Storer cannot find a Computation
@@ -42,16 +40,4 @@ type ComputationIterator interface {
 
 	// Release the resources allocated by the iterator.
 	Release()
-}
-
-// OrderFragmentStorer for the order.Fragments that are received.
-type OrderFragmentStorer interface {
-	OrderFragment(id order.ID) (order.Fragment, error)
-}
-
-// Storer combines the ComputationStorer interface and the
-// OrderFragmentStorer interface into a unified set of storage functions.
-type Storer interface {
-	ComputationStorer
-	OrderFragmentStorer
 }

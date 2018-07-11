@@ -3,6 +3,7 @@ package ome_test
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
@@ -31,16 +33,16 @@ var _ = Describe("Ome", func() {
 		addr     identity.Address
 		err      error
 		epoch    registry.Epoch
-		storer   *leveldb.Store
+		storer   ComputationStorer
 		book     orderbook.Orderbook
 		smpcer   smpc.Smpcer
 		contract ContractBinder
 
 		// Ome components
-		ranker    Ranker
-		matcher   Matcher
-		confirmer Confirmer
-		settler   Settler
+		computationsGenerator ComputationGenerator
+		matcher               Matcher
+		confirmer             Confirmer
+		settler               Settler
 	)
 
 	Context("ome should manage everything about order matching ", func() {
@@ -50,18 +52,23 @@ var _ = Describe("Ome", func() {
 			addr, err = testutils.RandomAddress()
 			Ω(err).ShouldNot(HaveOccurred())
 			epoch = newEpoch(0, addr)
-			storer, err = leveldb.NewStore("./data.out")
+
+			computationsGenerator = NewComputationGenerator()
+			rsaKey, err := crypto.RandomRsaKey()
 			Ω(err).ShouldNot(HaveOccurred())
-			book, err = testutils.NewOrderbook()
+			book = testutils.NewRandOrderbook(rsaKey)
 			Ω(err).ShouldNot(HaveOccurred())
 			smpcer = testutils.NewAlwaysMatchSmpc()
 			contract = newOmeBinder()
 
-			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
 			settler = NewSettler(storer, smpcer, contract)
+
+			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			Ω(err).ShouldNot(HaveOccurred())
+			storer = store.SomerComputationStore()
 		})
 
 		AfterEach(func() {
@@ -70,7 +77,7 @@ var _ = Describe("Ome", func() {
 		})
 
 		It("should be able to sync with the order book ", func() {
-			ome := NewOme(addr, ranker, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
@@ -262,4 +269,20 @@ func (binder *omeBinder) setOrderStatus(orderID order.ID, status order.Status) e
 	}
 
 	return nil
+}
+
+// newEpoch returns a new epoch with only one pod and one darknode.
+func newEpoch(i int, node identity.Address) registry.Epoch {
+	return registry.Epoch{
+		Hash: testutils.Random32Bytes(),
+		Pods: []registry.Pod{
+			{
+				Position:  0,
+				Hash:      testutils.Random32Bytes(),
+				Darknodes: []identity.Address{node},
+			},
+		},
+		Darknodes:   []identity.Address{node},
+		BlockNumber: big.NewInt(int64(i)),
+	}
 }

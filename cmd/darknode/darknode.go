@@ -86,11 +86,11 @@ func main() {
 	multiAddr.Signature = multiAddrSignature
 
 	// New database for persistent storage
-	store, err := leveldb.NewStore(*dataParam)
+	store, err := leveldb.NewStore(*dataParam, 72*time.Hour)
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
-	defer store.Close()
+	defer store.Release()
 
 	// New DHT
 	dht := dht.NewDHT(config.Address, 64)
@@ -106,12 +106,12 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 1024), store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, time.Second*4, 1024)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamer := grpc.NewStreamer(&crypter, config.Address)
-	streamerService := grpc.NewStreamerService(&crypter, streamer)
+	streamer := grpc.NewStreamer(&crypter, &crypter, config.Address)
+	streamerService := grpc.NewStreamerService(&crypter, &crypter, streamer)
 	streamerService.Register(server)
 
 	// Populate status information
@@ -171,18 +171,15 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := contractBinder.Epoch()
+		epoch, err := contractBinder.PreviousEpoch()
 		if err != nil {
-			log.Fatalf("cannot get current epoch: %v", err)
+			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
-		ranker, err := ome.NewRanker(done, config.Address, store, store, epoch)
-		if err != nil {
-			log.Fatalf("cannot create new ranker: %v", err)
-		}
-		matcher := ome.NewMatcher(store, smpcer)
-		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
-		settler := ome.NewSettler(store, smpcer, &contractBinder)
-		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
+		gen := ome.NewComputationGenerator()
+		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 14*time.Second, 1)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
+		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
@@ -191,10 +188,9 @@ func main() {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(14 * time.Second)
+				time.Sleep(time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
@@ -204,7 +200,7 @@ func main() {
 				}
 
 				// Check whether or not ξ has changed
-				if nextEpoch.Equal(&epoch) || nextEpoch.Equal([32]byte{}) {
+				if nextEpoch.Equal(&epoch) {
 					continue
 				}
 				epoch = nextEpoch
@@ -212,6 +208,12 @@ func main() {
 
 				// Notify the Ome
 				ome.OnChangeEpoch(epoch)
+			}
+		}, func() {
+			// Prune the database every hour
+			for {
+				store.Prune()
+				time.Sleep(time.Hour)
 			}
 		})
 	}()

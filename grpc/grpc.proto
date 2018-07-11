@@ -32,13 +32,9 @@ service StreamService {
 }
 
 message StreamMessage {
-    StreamAuthentication authentication = 1;
-    bytes                data           = 2;
-}
-
-message StreamAuthentication {
-    bytes  signature = 1;
-    string address   = 2;
+    string address = 1;
+    bytes signature = 2;
+    bytes data = 3;
 }
 
 service OrderbookService {
@@ -60,11 +56,12 @@ message EncryptedOrderFragment {
     int64           orderExpiry     = 5;
     
     bytes               id            = 6;
-    bytes               tokens        = 7;
-    EncryptedCoExpShare price         = 8;
-    EncryptedCoExpShare volume        = 9;
-    EncryptedCoExpShare minimumVolume = 10;
-    bytes               nonce         = 11;
+    int32               epochDepth    = 7;
+    bytes               tokens        = 8;
+    EncryptedCoExpShare price         = 9;
+    EncryptedCoExpShare volume        = 10;
+    EncryptedCoExpShare minimumVolume = 11;
+    bytes               nonce         = 12;
 }
 
 enum OrderType {

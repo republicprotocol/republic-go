@@ -38,7 +38,7 @@ type Verifier interface {
 // An Encrypter can consume a plain text, and produce a cipher text for that
 // can only be decrypted by a specific recipient.
 type Encrypter interface {
-	Encrypt(plainText []byte, recipient []byte) ([]byte, error)
+	Encrypt(recipient string, plainText []byte) ([]byte, error)
 }
 
 // A Decrypter can consume a cipher text and produce a plain text.

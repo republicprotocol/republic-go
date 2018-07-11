@@ -6,9 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/ome"
 
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -17,14 +17,15 @@ var numberOfComputationsToTest = 100
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
 	var contract *omeBinder
-	var storer *leveldb.Store
+	var storer ComputationStorer
 
 	BeforeEach(func() {
 		var err error
 		depth, pollInterval := uint(0), time.Second
 		contract = newOmeBinder()
-		storer, err = leveldb.NewStore("./data.out")
+		db, err := leveldb.NewStore("./data.out", time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
+		storer = db.SomerComputationStore()
 		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
 	})
 
@@ -39,18 +40,21 @@ var _ = Describe("Confirmer", func() {
 		orderMatches := make(chan Computation)
 		orderIDs := map[[32]byte]struct{}{}
 		computations := make([]Computation, numberOfComputationsToTest)
+
+		var err error
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			computations[i] = testutils.RandomComputation()
-			orderIDs[computations[i].Buy] = struct{}{}
-			orderIDs[computations[i].Sell] = struct{}{}
+			computations[i], err = testutils.RandomComputation()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderIDs[computations[i].Buy.OrderID] = struct{}{}
+			orderIDs[computations[i].Sell.OrderID] = struct{}{}
 			storer.PutComputation(computations[i])
 		}
 
 		// Open all the orders
 		for i := 0; i < numberOfComputationsToTest; i++ {
-			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy)
+			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy.OrderID)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell)
+			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell.OrderID)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
@@ -74,13 +78,13 @@ var _ = Describe("Confirmer", func() {
 		}()
 
 		for match := range confirmedMatches {
-			_, ok := orderIDs[match.Buy]
+			_, ok := orderIDs[match.Buy.OrderID]
 			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Buy)
+			delete(orderIDs, match.Buy.OrderID)
 
-			_, ok = orderIDs[match.Sell]
+			_, ok = orderIDs[match.Sell.OrderID]
 			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Sell)
+			delete(orderIDs, match.Sell.OrderID)
 		}
 
 		Ω(len(orderIDs)).Should(Equal(0))
