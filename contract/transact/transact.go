@@ -74,16 +74,20 @@ func (transacter *transacter) Transfer(ctx context.Context, to common.Address, v
 	transacter.transactOptsMu.Lock()
 	defer transacter.transactOptsMu.Unlock()
 
-	// Save and restore the current value inside transactOpts
+	// Save the state of the transactOpts
 	oldValue := transacter.transactOpts.Value
+	oldGasLimit := transacter.transactOpts.GasLimit
 	defer func() {
+		// Restore the state of the transactOpts
 		transacter.transactOpts.Value = oldValue
+		transacter.transactOpts.GasLimit = oldGasLimit
 	}()
 	transacter.transactOpts.Value = value
+	transacter.transactOpts.GasLimit = 21000
 
-	empty := bind.NewBoundContract(to, abi.ABI{}, nil, transacter.client, nil)
+	contract := bind.NewBoundContract(to, abi.ABI{}, nil, transacter.client, nil)
 	return transacter.transact(ctx, func(ctx context.Context, transactOpts *bind.TransactOpts) (*types.Transaction, error) {
-		return empty.Transfer(transactOpts)
+		return contract.Transfer(transactOpts)
 	})
 }
 
