@@ -171,9 +171,9 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := contractBinder.Epoch()
+		epoch, err := contractBinder.PreviousEpoch()
 		if err != nil {
-			log.Fatalf("cannot get current epoch: %v", err)
+			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
 		gen := ome.NewComputationGenerator()
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
@@ -188,14 +188,9 @@ func main() {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-
-			// TODO: Trigger a change for the previous epoch and then for the
-			// current epoch. This allow rebooting Darknodes to still work with
-			// data from the previous epoch.
-
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(14 * time.Second)
+				time.Sleep(time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()

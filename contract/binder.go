@@ -576,14 +576,31 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.epoch()
-}
-
-func (binder *Binder) epoch() (registry.Epoch, error) {
 	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
+
+	return binder.epoch(epoch)
+}
+
+// PreviousEpoch returns the previous Epoch which includes the Pod configuration.
+func (binder *Binder) PreviousEpoch() (registry.Epoch, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	previousEpoch, err := binder.darknodeRegistry.PreviousEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(previousEpoch)
+}
+
+func (binder *Binder) epoch(epoch struct {
+	Epochhash   *big.Int
+	Blocknumber *big.Int
+}) (registry.Epoch, error) {
 	blockInterval, err := binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
@@ -626,7 +643,12 @@ func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	return binder.epoch()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(epoch)
 }
 
 func (binder *Binder) nextEpoch() (*types.Transaction, error) {
@@ -1016,6 +1038,10 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 
 func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		oldValue := binder.transactOpts.Value
+		defer func() {
+			binder.transactOpts.Value = oldValue
+		}()
 		if tokenAddress.Hex() == EthereumAddress {
 			binder.transactOpts.Value = value
 		}
@@ -1036,10 +1062,6 @@ func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address
 
 func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-		if tokenAddress.Hex() == EthereumAddress {
-			binder.transactOpts.Value = value
-		}
-
 		return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
 	})
 	if err != nil {
@@ -1048,6 +1070,13 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
+}
+
+func (binder *Binder) GetSettlementDetail(buyOrder, sellOrder order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetSettlementDetails(binder.callOpts, buyOrder, sellOrder)
 }
 
 func toByte(id []byte) ([20]byte, error) {
