@@ -168,9 +168,6 @@ func NewMockContractBinder() *MockContractBinder {
 }
 
 func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
-	statuses := make([]order.Status, 0, len(binder.orders))
-	traders := make([]string, 0, len(binder.orders))
-
 	if offset > len(binder.orders) {
 		return []order.ID{}, []order.Status{}, []string{}, errors.New("index out of range")
 	}
@@ -179,6 +176,9 @@ func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order
 	if end > len(binder.orders) {
 		end = len(binder.orders)
 	}
+
+	statuses := make([]order.Status, 0, end-offset)
+	traders := make([]string, 0, end-offset)
 
 	for i := offset; i < end; i++ {
 		id := binder.orders[i]
