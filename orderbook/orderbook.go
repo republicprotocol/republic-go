@@ -63,9 +63,6 @@ type Orderbook interface {
 }
 
 type orderbook struct {
-	doneMu *sync.RWMutex
-	done   chan struct{}
-
 	rsaKey             crypto.RsaKey
 	pointerStore       PointerStorer
 	orderStore         OrderStorer
@@ -88,9 +85,6 @@ type orderbook struct {
 // order.EncryptedFragments that it receives, and stores them in a Storer.
 func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
 	return &orderbook{
-		doneMu: new(sync.RWMutex),
-		done:   nil,
-
 		rsaKey:             rsaKey,
 		pointerStore:       pointerStore,
 		orderStore:         orderStore,
@@ -137,30 +131,6 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 	// and syncerCurrOrderFragments if they are not nil. Remember to acquire a
 	// lock!
 
-	// Check whether the server has already been started
-	orderbook.doneMu.RLock()
-	serverIsRunning := orderbook.done != nil
-	orderbook.doneMu.RUnlock()
-	if serverIsRunning {
-		errs <- ErrServerIsRunning
-		close(notifications)
-		close(errs)
-		return notifications, errs
-	}
-
-	// Open a new done channel that will be used from now on to signal the
-	// closure of the server
-	orderbook.doneMu.Lock()
-	orderbook.done = make(chan struct{})
-	orderbook.doneMu.Unlock()
-	go func() {
-		<-done
-		close(orderbook.done)
-		orderbook.doneMu.Lock()
-		orderbook.done = nil
-		orderbook.doneMu.Unlock()
-	}()
-
 	go func() {
 		// Wait for all goroutines to finish and then cleanup
 		defer close(notifications)
@@ -181,24 +151,19 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
-	orderbook.doneMu.RLock()
-	defer orderbook.doneMu.RUnlock()
+	orderbook.syncerMu.Lock()
+	defer orderbook.syncerMu.Unlock()
 
-	func() {
-		orderbook.syncerMu.Lock()
-		defer orderbook.syncerMu.Unlock()
-
-		// Transition the current epoch into the previous epoch and setup a new
-		// current epoch
-		if orderbook.syncerPrevDone != nil {
-			close(orderbook.syncerPrevDone)
-			close(orderbook.syncerPrevOrderFragments)
-		}
-		orderbook.syncerPrevDone = orderbook.syncerCurrDone
-		orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
-		orderbook.syncerCurrDone = make(chan struct{})
-		orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
-	}()
+	// Transition the current epoch into the previous epoch and setup a new
+	// current epoch
+	if orderbook.syncerPrevDone != nil {
+		close(orderbook.syncerPrevDone)
+		close(orderbook.syncerPrevOrderFragments)
+	}
+	orderbook.syncerPrevDone = orderbook.syncerCurrDone
+	orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
+	orderbook.syncerCurrDone = make(chan struct{})
+	orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
 
 	// Clone a new PointerStorer for the new syncer
 	pointerStore, err := orderbook.pointerStore.Clone()
@@ -210,77 +175,55 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	syncer := newSyncer(epoch, pointerStore, orderbook.orderStore, orderbook.orderFragmentStore, orderbook.contractBinder, orderbook.interval, orderbook.limit)
 	notifications, errs := syncer.sync(orderbook.syncerCurrDone, orderbook.syncerCurrOrderFragments)
 
-	select {
-	case <-orderbook.done:
-	case orderbook.broadcastNotifications <- notifications:
-	}
-
-	select {
-	case <-orderbook.done:
-	case orderbook.broadcastErrs <- errs:
-	}
+	go func() {
+		orderbook.broadcastNotifications <- notifications
+		orderbook.broadcastErrs <- errs
+	}()
 }
 
+// TODO: Using the block number of the order, the orderbook should infer
+// which epoch the order fragment is destined for. If the epoch is unknown
+// then the orderbook should sleep here (this is safe given that this
+// function is generally called in a background goroutine) and try again.
+// Failing a second time should see the order fragment dropped. This helps
+// with robust acceptance of order fragments at the turn of an epoch where
+// the Darknode and the trader might briefly have different ideas about the
+// "current" epoch.
 func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragment order.Fragment) error {
-	fmt.Println("entered route order fragment")
-	orderbook.doneMu.RLock()
-	fmt.Println("acquired orderbook done lock")
-	serverIsRunning := orderbook.done != nil
-	orderbook.doneMu.RUnlock()
-	if !serverIsRunning {
-		fmt.Println("server is not running")
-		return ErrServerIsNotRunning
-	}
+	logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
 
 	orderbook.syncerMu.RLock()
 	defer orderbook.syncerMu.RUnlock()
 
-	// TODO: Using the block number of the order, the orderbook should infer
-	// which epoch the order fragment is destined for. If the epoch is unknown
-	// then the orderbook should sleep here (this is safe given that this
-	// function is generally called in a background goroutine) and try again.
-	// Failing a second time should see the order fragment dropped. This helps
-	// with robust acceptance of order fragments at the turn of an epoch where
-	// the Darknode and the trader might briefly have different ideas about the
-	// "current" epoch.
-
-	fmt.Println("switching on order fragment epoch depth")
 	switch orderFragment.EpochDepth {
 	case 0:
-		fmt.Println("case 0")
-		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
-		if orderbook.syncerCurrOrderFragments == nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
+		if orderbook.syncerCurrDone == nil {
 			return nil
 		}
 		fmt.Printf("here is the order fragment: %v\n", orderFragment)
 		fmt.Printf("here is the done channel: %v\n", ctx.Done())
-		fmt.Printf("here is the orderbook.done channel: %v\n", orderbook.done)
+		fmt.Printf("here is the orderbook.done channel: %v\n", orderbook.syncerCurrDone)
 		fmt.Printf("here is the order fragment channel: %v\n", orderbook.syncerCurrOrderFragments)
 		fmt.Println("waiting on select")
 		select {
 		case <-ctx.Done():
 			fmt.Println("done channel closed")
 			return ctx.Err()
-		case <-orderbook.done:
-			fmt.Println("orderbook done channel closed")
-			return ErrServerIsNotRunning
+		case <-orderbook.syncerCurrDone:
+			return nil
 		case orderbook.syncerCurrOrderFragments <- orderFragment:
 			fmt.Println("wrote order fragment to orderbook")
 			return nil
 		}
 	case 1:
-		fmt.Println("case 1")
-		logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
-		if orderbook.syncerPrevOrderFragments == nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
+		if orderbook.syncerPrevDone == nil {
 			return nil
 		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-orderbook.done:
-			return ErrServerIsNotRunning
+		case <-orderbook.syncerPrevDone:
+			return nil
 		case orderbook.syncerPrevOrderFragments <- orderFragment:
 			return nil
 		}
