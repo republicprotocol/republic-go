@@ -576,14 +576,31 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	return binder.epoch()
-}
-
-func (binder *Binder) epoch() (registry.Epoch, error) {
 	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
 	}
+
+	return binder.epoch(epoch)
+}
+
+// PreviousEpoch returns the previous Epoch which includes the Pod configuration.
+func (binder *Binder) PreviousEpoch() (registry.Epoch, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	previousEpoch, err := binder.darknodeRegistry.PreviousEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(previousEpoch)
+}
+
+func (binder *Binder) epoch(epoch struct {
+	Epochhash   *big.Int
+	Blocknumber *big.Int
+}) (registry.Epoch, error) {
 	blockInterval, err := binder.darknodeRegistry.MinimumEpochInterval(binder.callOpts)
 	if err != nil {
 		return registry.Epoch{}, err
@@ -626,7 +643,12 @@ func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 		return registry.Epoch{}, err
 	}
 
-	return binder.epoch()
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return registry.Epoch{}, err
+	}
+
+	return binder.epoch(epoch)
 }
 
 func (binder *Binder) nextEpoch() (*types.Transaction, error) {
