@@ -1038,6 +1038,10 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 
 func (binder *Binder) Deposit(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		oldValue := binder.transactOpts.Value
+		defer func() {
+			binder.transactOpts.Value = oldValue
+		}()
 		if tokenAddress.Hex() == EthereumAddress {
 			binder.transactOpts.Value = value
 		}
@@ -1058,10 +1062,6 @@ func (binder *Binder) GetBalance(traderAddress common.Address) ([]common.Address
 
 func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) error {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-		if tokenAddress.Hex() == EthereumAddress {
-			binder.transactOpts.Value = value
-		}
-
 		return binder.renExBalance.Withdraw(binder.transactOpts, tokenAddress, value)
 	})
 	if err != nil {
@@ -1070,6 +1070,13 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
+}
+
+func (binder *Binder) GetSettlementDetail(buyOrder, sellOrder order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetSettlementDetails(binder.callOpts, buyOrder, sellOrder)
 }
 
 func toByte(id []byte) ([20]byte, error) {

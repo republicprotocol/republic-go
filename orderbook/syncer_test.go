@@ -25,65 +25,49 @@ var _ = Describe("Syncer", func() {
 	var (
 		notifications <-chan Notification
 		errs          <-chan error
-		done          chan struct{}
 		orderbook     Orderbook
-		contract      *orderbookBinder
+		contract      *testutils.MockContractBinder
 		storer        *leveldb.Store
 		buys, sells   []order.Order
+		key           crypto.RsaKey
 	)
 
 	BeforeEach(func() {
 		var err error
-		contract = newOrderbookBinder()
+		contract = testutils.NewMockContractBinder()
 		storer, err = leveldb.NewStore("./data.out", 72*time.Hour)
 		Ω(err).ShouldNot(HaveOccurred())
 		buys, sells = generateOrderPairs(NumberOfOrderPairs)
 
-		key, err := crypto.RandomRsaKey()
+		key, err = crypto.RandomRsaKey()
 		Ω(err).ShouldNot(HaveOccurred())
 		orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, 72*time.Hour, 100)
-
-		done = make(chan struct{})
-		notifications, errs = orderbook.Sync(done)
 	})
 
 	AfterEach(func() {
-		close(done)
 		os.RemoveAll("./data.out")
 	})
 
 	Context("when syncing", func() {
 
 		It("should be able to sync new opened orders", func() {
-			// priority := Priority(1)
+			done := make(chan struct{})
+			defer close(done)
 
-			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
-				Ω(err).ShouldNot(HaveOccurred())
-
-				err = contract.OpenSellOrder([65]byte{}, sells[i].ID)
-				Ω(err).ShouldNot(HaveOccurred())
-			}
+			notifications, errs = orderbook.Sync(done)
 			orderbook.OnChangeEpoch(registry.Epoch{})
+
+			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
+
+			// orderbook.OnChangeEpoch(registry.Epoch{})
 
 			var count = 0
 
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case _, ok := <-notifications:
-						if !ok {
-							return
-						}
-						count++
-						log.Println(count)
-					case <-errs:
-						return
-					}
-				}
-			}()
+			orderbook.OnChangeEpoch(registry.Epoch{})
+
+			for i := range notifications {
+
+			}
 		})
 
 		It("should be able to sync confirming order events", func() {
@@ -91,10 +75,10 @@ var _ = Describe("Syncer", func() {
 			openOrders(contract, buys, sells)
 
 			// Confirm orders
-			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := contract.ConfirmOrder(buys[i].ID, sells[i].ID)
-				Ω(err).ShouldNot(HaveOccurred())
-			}
+			// for i := 0; i < NumberOfOrderPairs; i++ {
+			// err := contract.ConfirmOrder(buys[i].ID, sells[i].ID)
+			// Ω(err).ShouldNot(HaveOccurred())
+			// }
 			orderbook.OnChangeEpoch(registry.Epoch{})
 
 			var count = 0
@@ -122,12 +106,12 @@ var _ = Describe("Syncer", func() {
 			openOrders(contract, buys, sells)
 
 			// Cancel orders
-			for i := 0; i < NumberOfOrderPairs; i++ {
-				err := contract.CancelOrder([65]byte{}, buys[i].ID)
-				Ω(err).ShouldNot(HaveOccurred())
-				err = contract.CancelOrder([65]byte{}, sells[i].ID)
-				Ω(err).ShouldNot(HaveOccurred())
-			}
+			// for i := 0; i < NumberOfOrderPairs; i++ {
+			// 	err := contract.CancelOrder([65]byte{}, buys[i].ID)
+			// 	Ω(err).ShouldNot(HaveOccurred())
+			// 	err = contract.CancelOrder([65]byte{}, sells[i].ID)
+			// 	Ω(err).ShouldNot(HaveOccurred())
+			// }
 			orderbook.OnChangeEpoch(registry.Epoch{})
 
 			var count = 0
@@ -164,11 +148,11 @@ func generateOrderPairs(n int) ([]order.Order, []order.Order) {
 	return buyOrders, sellOrders
 }
 
-func openOrders(contract *orderbookBinder, buys, sells []order.Order) {
-	for i := 0; i < NumberOfOrderPairs; i++ {
-		err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
-		Ω(err).ShouldNot(HaveOccurred())
-		err = contract.OpenSellOrder([65]byte{}, sells[i].ID)
-		Ω(err).ShouldNot(HaveOccurred())
-	}
+func openOrders(contract *testutils.MockContractBinder, buys, sells []order.Order) {
+	// for i := 0; i < NumberOfOrderPairs; i++ {
+	// 	err := contract.OpenBuyOrder([65]byte{}, buys[i].ID)
+	// 	Ω(err).ShouldNot(HaveOccurred())
+	// 	err = contract.OpenSellOrder([65]byte{}, sells[i].ID)
+	// 	Ω(err).ShouldNot(HaveOccurred())
+	// }
 }
