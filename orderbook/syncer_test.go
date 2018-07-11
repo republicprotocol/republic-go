@@ -55,9 +55,8 @@ var _ = Describe("Syncer", func() {
 			defer close(done)
 
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
-			addr, err := testutils.RandomAddress()
+			_, epoch, err := testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
-			epoch := newEpoch(0, addr)
 
 			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 100)
 			notifications, errs := orderbook.Sync(done)
@@ -78,7 +77,10 @@ var _ = Describe("Syncer", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				fmt.Printf("adding order %d fragments to storer\n", i)
 			}
-			orderbook.OnChangeEpoch(newEpoch(1, addr))
+			_, newEpoch, err := testutils.RandomEpoch(1)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			orderbook.OnChangeEpoch(newEpoch)
 			time.Sleep(time.Second)
 
 			go func() {
