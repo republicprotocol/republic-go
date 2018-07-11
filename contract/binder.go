@@ -1050,6 +1050,13 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 	return err
 }
 
+func (binder *Binder) GetSettlementDetail(buyOrder, sellOrder order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetSettlementDetails(binder.callOpts, buyOrder, sellOrder)
+}
+
 func toByte(id []byte) ([20]byte, error) {
 	twentyByte := [20]byte{}
 	if len(id) != 20 {
