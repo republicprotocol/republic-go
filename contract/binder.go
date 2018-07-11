@@ -229,12 +229,12 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	// Submit orders
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(buy)
-	}); sendTxErr != nil && err == nil {
+	}); sendTxErr != nil {
 		err = fmt.Errorf("cannot settle buy = %v: %v", buy.ID, sendTxErr)
 	}
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(sell)
-	}); sendTxErr != nil && err == nil {
+	}); sendTxErr != nil {
 		err = fmt.Errorf("cannot settle sell = %v: %v", sell.ID, sendTxErr)
 	}
 
@@ -248,7 +248,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	}
 
 	// Wait for last transaction
-	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil && err == nil {
+	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil {
 		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 		return err
 	}
