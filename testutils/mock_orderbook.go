@@ -182,7 +182,12 @@ func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order
 }
 
 func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
-	return &big.Int{}, nil
+	for i, ord := range binder.orders {
+		if ord == orderID {
+			return big.NewInt(int64(i)), nil
+		}
+	}
+	return &big.Int{}, orderbook.ErrOrderNotFound
 }
 
 func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
@@ -193,7 +198,7 @@ func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error)
 }
 
 func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
-	return &big.Int{}, nil
+	return big.NewInt(2), nil
 }
 
 func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
