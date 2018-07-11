@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -298,4 +299,21 @@ func (binder *orderbookBinder) setOrderStatus(orderID order.ID, status order.Sta
 		binder.orderStatus[orderID] = order.Canceled
 	}
 	return nil
+}
+
+// newEpoch returns a new epoch with only one pod and one darknode.
+func newEpoch(i int, node identity.Address) registry.Epoch {
+	return registry.Epoch{
+		Hash: testutils.Random32Bytes(),
+		Pods: []registry.Pod{
+			{
+				Position:  0,
+				Hash:      testutils.Random32Bytes(),
+				Darknodes: []identity.Address{node},
+			},
+		},
+		Darknodes:     []identity.Address{node},
+		BlockNumber:   big.NewInt(int64(i)),
+		BlockInterval: big.NewInt(int64(2)),
+	}
 }
