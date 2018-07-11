@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -170,15 +171,27 @@ func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order
 	statuses := make([]order.Status, 0, len(binder.orders))
 	traders := make([]string, 0, len(binder.orders))
 
-	for id, status := range binder.orderStatus {
-		statuses = append(statuses, status)
+	if offset > len(binder.orders) {
+		return []order.ID{}, []order.Status{}, []string{}, errors.New("index out of range")
+	}
+
+	end := offset + limit
+	if end > len(binder.orders) {
+		end = len(binder.orders)
+	}
+
+	for i := offset; i < end; i++ {
+		id := binder.orders[i]
+		if status, ok := binder.orderStatus[id]; ok {
+			statuses = append(statuses, status)
+		}
 		if trader, ok := binder.traders[id]; ok {
 			traders = append(traders, trader)
 		}
 
 	}
 
-	return binder.orders, statuses, traders, nil
+	return binder.orders[offset:end], statuses, traders, nil
 }
 
 func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
