@@ -127,8 +127,12 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 
 // Sync implements the Orderbook interface.
 func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification, 1)
-	errs := make(chan error, 100)
+	notifications := make(chan Notification)
+	errs := make(chan error, 1)
+
+	// TODO: Close syncerPrevDone, syncerPrevOrderFragments, syncerCurrDone,
+	// and syncerCurrOrderFragments if they are not nil. Remember to acquire a
+	// lock!
 
 	// Check whether the server has already been started
 	orderbook.doneMu.RLock()
@@ -154,20 +158,31 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 		orderbook.doneMu.Unlock()
 	}()
 
-	// Merge all of the channels on the broadcast channel into the output
-	// channel
-	go dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
-	go dispatch.Merge(done, orderbook.broadcastErrs, errs)
+	go func() {
+		// Wait for all goroutines to finish and then cleanup
+		defer close(notifications)
+		defer close(errs)
+
+		// Merge all of the channels on the broadcast channel into the output
+		// channel
+		dispatch.CoBegin(
+			func() {
+				dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
+			}, func() {
+				dispatch.Merge(done, orderbook.broadcastErrs, errs)
+			})
+	}()
 
 	return notifications, errs
 }
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
+	orderbook.doneMu.RLock()
+	defer orderbook.doneMu.RUnlock()
+
 	func() {
-		orderbook.doneMu.RLock()
 		orderbook.syncerMu.Lock()
-		defer orderbook.doneMu.RUnlock()
 		defer orderbook.syncerMu.Unlock()
 
 		// Transition the current epoch into the previous epoch and setup a new

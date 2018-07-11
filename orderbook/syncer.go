@@ -107,6 +107,8 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 			case errs <- fmt.Errorf("cannot delete order: %v", err):
 			}
 		}
+
+		// FIXME: Emit a NotificationConfirmOrder or a NotificationCancelOrder
 	}
 
 	for orderIter.Next() {
