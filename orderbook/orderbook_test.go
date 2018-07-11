@@ -90,7 +90,7 @@ var _ = Describe("Orderbook", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create mock syncer and storer
-			syncer := testutils.NewSyncer(numberOfOrders)
+			// syncer := testutils.NewSyncer(numberOfOrders)
 			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
@@ -100,11 +100,11 @@ var _ = Describe("Orderbook", func() {
 			// Create orderbook
 			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
-			Ω(syncer.HasSynced()).Should(BeFalse())
+			// Ω(syncer.HasSynced()).Should(BeFalse())
 			doneChan := make(<-chan struct{})
 			changeset, _ := orderbook.Sync(doneChan)
 			Ω(len(changeset)).Should(BeZero())
-			Ω(syncer.HasSynced()).Should(BeTrue())
+			// Ω(syncer.HasSynced()).Should(BeTrue())
 		})
 	})
 })

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -15,17 +16,15 @@ import (
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var (
-	NumberOfOrderPairs = 40
-	Limit              = 10
-)
+var ()
 
 var _ = Describe("Syncer", func() {
 	var (
-		orderbook Orderbook
-		contract  *testutils.MockContractBinder
-		storer    *leveldb.Store
-		key       crypto.RsaKey
+		NumberOfOrderPairs = 40
+		orderbook          Orderbook
+		contract           *testutils.MockContractBinder
+		storer             *leveldb.Store
+		key                crypto.RsaKey
 	)
 
 	BeforeEach(func() {
@@ -44,7 +43,7 @@ var _ = Describe("Syncer", func() {
 
 	Context("when syncing", func() {
 
-		FIt("should be able to sync new opened orders", func() {
+		It("should be able to sync new opened orders", func() {
 			// logger.SetFilterLevel(logger.LevelDebug)
 			done := make(chan struct{})
 			defer close(done)
@@ -55,6 +54,7 @@ var _ = Describe("Syncer", func() {
 
 			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 100)
 			notifications, errs := orderbook.Sync(done)
+
 			orderbook.OnChangeEpoch(epoch)
 
 			go func() {
@@ -63,10 +63,13 @@ var _ = Describe("Syncer", func() {
 				}
 			}()
 
+			countMu := new(sync.Mutex)
 			count := 0
 			go func() {
 				for _ = range notifications {
+					countMu.Lock()
 					count++
+					countMu.Unlock()
 				}
 			}()
 
@@ -84,8 +87,9 @@ var _ = Describe("Syncer", func() {
 			orderbook.OnChangeEpoch(newEpoch)
 			time.Sleep(time.Second)
 
+			countMu.Lock()
 			Expect(count).Should(Equal(2 * NumberOfOrderPairs))
-
+			countMu.Unlock()
 		})
 
 		/*
