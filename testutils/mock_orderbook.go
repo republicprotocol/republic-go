@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -149,15 +150,35 @@ func (mock *RandOrderbook) OnChangeEpoch(epoch registry.Epoch) {
 }
 
 type MockContractBinder struct {
+	ordersMu    *sync.Mutex
+	orders      []order.ID
+	orderStatus map[order.ID]order.Status
+	traders     map[order.ID]string
 }
 
 // NewMockContractBinder returns a mockContractBinder
 func NewMockContractBinder() *MockContractBinder {
-	return &MockContractBinder{}
+	return &MockContractBinder{
+		ordersMu:    new(sync.Mutex),
+		orders:      []order.ID{},
+		orderStatus: map[order.ID]order.Status{},
+		traders:     map[order.ID]string{},
+	}
 }
 
 func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
-	return []order.ID{}, []order.Status{}, []string{}, nil
+	statuses := make([]order.Status, 0, len(binder.orders))
+	traders := make([]string, 0, len(binder.orders))
+
+	for id, status := range binder.orderStatus {
+		statuses = append(statuses, status)
+		if trader, ok := binder.traders[id]; ok {
+			traders = append(traders, trader)
+		}
+
+	}
+
+	return binder.orders, statuses, traders, nil
 }
 
 func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
@@ -165,9 +186,35 @@ func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error
 }
 
 func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
-	return order.Open, nil
+	if status, ok := binder.orderStatus[orderID]; ok {
+		return status, nil
+	}
+	return order.Open, orderbook.ErrOrderNotFound
 }
 
 func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
 	return &big.Int{}, nil
+}
+
+func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
+	binder.ordersMu.Lock()
+	defer binder.ordersMu.Unlock()
+
+	orders := []order.Order{}
+	for i := 0; i < n; i++ {
+		buy, sell := RandomOrderMatch()
+		if _, ok := binder.orderStatus[buy.ID]; !ok {
+			binder.orders = append(binder.orders, buy.ID)
+			binder.orderStatus[buy.ID] = order.Open
+			binder.traders[buy.ID] = string(i)
+			orders = append(orders, buy)
+		}
+		if _, ok := binder.orderStatus[sell.ID]; !ok {
+			binder.orders = append(binder.orders, sell.ID)
+			binder.orderStatus[sell.ID] = order.Open
+			binder.traders[sell.ID] = string(i)
+			orders = append(orders, sell)
+		}
+	}
+	return orders
 }
