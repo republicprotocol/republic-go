@@ -53,7 +53,7 @@ type ome struct {
 // NewOme returns an Ome that uses an order.Orderbook to synchronize changes
 // from the Ethereum blockchain, and an smpc.Smpcer to run the secure
 // multi-party computations necessary for the secure order matching engine.
-func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, confirmer Confirmer, settler Settler, computationStore ComputationStorer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epoch registry.Epoch) Ome {
+func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, confirmer Confirmer, settler Settler, computationStore ComputationStorer, orderbook orderbook.Orderbook, smpcer smpc.Smpcer, epochPrev registry.Epoch) Ome {
 	ome := &ome{
 		addr:             addr,
 		gen:              gen,
@@ -71,7 +71,7 @@ func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, co
 		epochCurr: nil,
 		epochPrev: nil,
 	}
-	ome.OnChangeEpoch(epoch)
+	ome.OnChangeEpoch(epochPrev)
 	return ome
 }
 
