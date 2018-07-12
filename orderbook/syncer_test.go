@@ -45,9 +45,6 @@ var _ = Describe("Syncer", func() {
 	Context("when syncing", func() {
 
 		It("should be able generate the correct number of notifications", func() {
-			var wg sync.WaitGroup
-			defer wg.Wait()
-
 			done := make(chan struct{})
 			defer close(done)
 
@@ -64,16 +61,13 @@ var _ = Describe("Syncer", func() {
 			countCancels := 0
 			countConfirms := 0
 
-			wg.Add(2)
 			go dispatch.CoBegin(
 				func() {
-					defer wg.Done()
 					for err := range errs {
 						fmt.Println(err)
 					}
 				},
 				func() {
-					defer wg.Done()
 					for notification := range notifications {
 						countMu.Lock()
 						switch notification.(type) {
@@ -95,7 +89,7 @@ var _ = Describe("Syncer", func() {
 
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all the opened orders
@@ -108,7 +102,7 @@ var _ = Describe("Syncer", func() {
 
 			// Confirm random orders in the contract
 			numConfirms := contract.UpdateStatusRandomly(order.Confirmed)
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
@@ -121,7 +115,7 @@ var _ = Describe("Syncer", func() {
 
 			// Cancel random orders in the contract
 			numCancels := contract.UpdateStatusRandomly(order.Canceled)
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
@@ -136,9 +130,6 @@ var _ = Describe("Syncer", func() {
 	Context("when syncing over multiple epochs", func() {
 
 		It("should not create any open order notifications for orders in a different epoch depth", func() {
-			var wg sync.WaitGroup
-			defer wg.Wait()
-
 			done := make(chan struct{})
 			defer close(done)
 
@@ -155,16 +146,13 @@ var _ = Describe("Syncer", func() {
 			countCancels := 0
 			countConfirms := 0
 
-			wg.Add(2)
 			go dispatch.CoBegin(
 				func() {
-					defer wg.Done()
 					for err := range errs {
 						fmt.Println(err)
 					}
 				},
 				func() {
-					defer wg.Done()
 					for notification := range notifications {
 						countMu.Lock()
 						switch notification.(type) {
@@ -187,7 +175,7 @@ var _ = Describe("Syncer", func() {
 			// Send encrypted order fragments at depth 1 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 1)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// No open order notifications should be created for depth 1
 			// in the first epoch
@@ -205,7 +193,7 @@ var _ = Describe("Syncer", func() {
 			// Send encrypted order fragments at depth 0 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all opened fragments at depth 0 in the second epoch
@@ -219,7 +207,7 @@ var _ = Describe("Syncer", func() {
 			// Send encrypted order fragments at depth 1 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 1)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(15 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all the opened fragments at depth 1 in the second epoch
