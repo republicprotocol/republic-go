@@ -69,7 +69,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			return
 		}
 		buy := order.NewOrder(com.Buy.OrderType, com.Buy.OrderParity, com.Buy.OrderSettlement, com.Buy.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
-		sell := order.NewOrder(com.Sell.OrderType, com.Sell.OrderParity, com.Buy.OrderSettlement, com.Sell.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
+		sell := order.NewOrder(com.Sell.OrderType, com.Sell.OrderParity, com.Sell.OrderSettlement, com.Sell.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
 
 		settler.settleOrderMatch(com, buy, sell)
 
