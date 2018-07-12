@@ -2,6 +2,7 @@ package ome
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -83,12 +84,11 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
 		return
 	}
+	log.Printf("[settle] buy = %v, sell = %v", buy.ID, sell.ID)
 
 	com.State = ComputationStateSettled
 	if err := settler.computationStore.PutComputation(com); err != nil {
 		logger.Error(fmt.Sprintf("cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
 		return
 	}
-
-	logger.Info(fmt.Sprintf("$ settled buy = %v, sell = %v", buy.ID, sell.ID))
 }
