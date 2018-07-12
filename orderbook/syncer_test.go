@@ -14,12 +14,12 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var ()
-
 var _ = Describe("Syncer", func() {
+
 	var (
 		NumberOfOrderPairs = 40
 		orderbook          Orderbook
@@ -44,22 +44,22 @@ var _ = Describe("Syncer", func() {
 
 	Context("when syncing", func() {
 
-		It("should be able to sync new opened orders", func() {
+		It("should be able to sync opening, confirming and canceling order events", func() {
 			done := make(chan struct{})
 			defer close(done)
 
+			// Open matching order pairs
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
-			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
 
-			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 100)
+			// Create and start orderbook
+			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 30)
 			notifications, errs := orderbook.Sync(done)
 
-			orderbook.OnChangeEpoch(epoch)
-
+			// Start reading notifications and errs
 			countMu := new(sync.Mutex)
-			count := 0
-
+			countOpens := 0
+			countCancels := 0
+			countConfirms := 0
 			go dispatch.CoBegin(
 				func() {
 					for err := range errs {
@@ -67,14 +67,27 @@ var _ = Describe("Syncer", func() {
 					}
 				},
 				func() {
-					for _ = range notifications {
+					for notification := range notifications {
 						countMu.Lock()
-						count++
+						switch notification.(type) {
+						case NotificationOpenOrder:
+							countOpens++
+						case NotificationConfirmOrder:
+							countConfirms++
+						case NotificationCancelOrder:
+							countCancels++
+						}
 						countMu.Unlock()
 					}
 				},
 			)
 
+			// Change to first epoch
+			_, epoch, err := testutils.RandomEpoch(0)
+			Ω(err).ShouldNot(HaveOccurred())
+			orderbook.OnChangeEpoch(epoch)
+
+			// Send encrypted order fragments to the orderbook
 			for _, ord := range orders {
 				fragments, err := ord.Split(5, 4)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -83,81 +96,43 @@ var _ = Describe("Syncer", func() {
 				err = orderbook.OpenOrder(context.Background(), encFrag)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
-			_, newEpoch, err := testutils.RandomEpoch(1)
-			Ω(err).ShouldNot(HaveOccurred())
-
-			orderbook.OnChangeEpoch(newEpoch)
 			time.Sleep(time.Second)
 
+			// Notifications channel must have emitted open order notifications
+			// for all the opened orders
 			countMu.Lock()
-			Expect(count).Should(Equal(2 * NumberOfOrderPairs))
+			Expect(countOpens).Should(Equal(2 * NumberOfOrderPairs))
+			Expect(countConfirms).Should(BeZero())
+			Expect(countCancels).Should(BeZero())
+			countOpens = 0
+			countMu.Unlock()
+
+			// Confirm random orders in the contract
+			numConfirms := contract.UpdateStatusesRandomly(order.Confirmed)
+			_, epoch, err = testutils.RandomEpoch(1)
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook.OnChangeEpoch(epoch)
+			time.Sleep(time.Second)
+
+			// Notifications for all the confirmations must be returned
+			// on the notifications channel
+			countMu.Lock()
+			Expect(countConfirms).Should(Equal(numConfirms))
+			countConfirms = 0
+			countMu.Unlock()
+
+			// Cancel random orders in the contract
+			numCancels := contract.UpdateStatusesRandomly(order.Canceled)
+			_, epoch, err = testutils.RandomEpoch(2)
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook.OnChangeEpoch(epoch)
+			time.Sleep(time.Second)
+
+			// Notifications for all the canceled orders must be returned
+			// on the notifications channel
+			countMu.Lock()
+			Expect(countCancels).Should(Equal(numCancels))
 			countMu.Unlock()
 		})
-
-		/*
-			It("should be able to sync confirming order events", func() {
-				// Open orders
-				openOrders(contract, buys, sells)
-
-				// Confirm orders
-				// for i := 0; i < NumberOfOrderPairs; i++ {
-				// err := contract.ConfirmOrder(buys[i].ID, sells[i].ID)
-				// Ω(err).ShouldNot(HaveOccurred())
-				// }
-				orderbook.OnChangeEpoch(registry.Epoch{})
-
-				var count = 0
-
-				go func() {
-					for {
-						select {
-						case <-done:
-							return
-						case _, ok := <-notifications:
-							if !ok {
-								return
-							}
-							count++
-							log.Println(count)
-						case <-errs:
-							return
-						}
-					}
-				}()
-			})
-			/*
-				It("should be able to sync canceling order events", func() {
-					// Open orders
-					openOrders(contract, buys, sells)
-
-					// Cancel orders
-					// for i := 0; i < NumberOfOrderPairs; i++ {
-					// 	err := contract.CancelOrder([65]byte{}, buys[i].ID)
-					// 	Ω(err).ShouldNot(HaveOccurred())
-					// 	err = contract.CancelOrder([65]byte{}, sells[i].ID)
-					// 	Ω(err).ShouldNot(HaveOccurred())
-					// }
-					orderbook.OnChangeEpoch(registry.Epoch{})
-
-					var count = 0
-
-					go func() {
-						for {
-							select {
-							case <-done:
-								return
-							case _, ok := <-notifications:
-								if !ok {
-									return
-								}
-								count++
-								log.Println(count)
-							case <-errs:
-								return
-							}
-						}
-					}()
-				})
-		*/
 	})
 })
