@@ -223,7 +223,7 @@ func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(2), nil
 }
 
-func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
+func (binder *MockContractBinder) OpenMatchingOrders(n int, status order.Status) []order.Order {
 	binder.ordersMu.Lock()
 	defer binder.ordersMu.Unlock()
 
@@ -232,13 +232,13 @@ func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
 		buy, sell := RandomOrderMatch()
 		if _, ok := binder.orderStatus[buy.ID]; !ok {
 			binder.orders = append(binder.orders, buy.ID)
-			binder.orderStatus[buy.ID] = order.Open
+			binder.orderStatus[buy.ID] = status
 			binder.traders[buy.ID] = string(i)
 			orders = append(orders, buy)
 		}
 		if _, ok := binder.orderStatus[sell.ID]; !ok {
 			binder.orders = append(binder.orders, sell.ID)
-			binder.orderStatus[sell.ID] = order.Open
+			binder.orderStatus[sell.ID] = status
 			binder.traders[sell.ID] = string(i)
 			orders = append(orders, sell)
 		}
