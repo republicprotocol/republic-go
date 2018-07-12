@@ -78,7 +78,7 @@ var _ = Describe("Matcher", func() {
 			smpcer := testutils.NewSmpc()
 			matcher := NewMatcher(store, smpcer)
 
-			numTrials := 256
+			numTrials := 1024
 			numMatches := 0
 			for i := 0; i < numTrials; i++ {
 				com := NewComputation([32]byte{byte(i)}, buyFragment, sellFragment, ComputationStateNil, true)
