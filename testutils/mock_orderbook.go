@@ -151,7 +151,7 @@ func (mock *RandOrderbook) OnChangeEpoch(epoch registry.Epoch) {
 }
 
 type MockContractBinder struct {
-	ordersMu    *sync.Mutex
+	ordersMu    *sync.RWMutex
 	orders      []order.ID
 	orderStatus map[order.ID]order.Status
 	traders     map[order.ID]string
@@ -160,7 +160,7 @@ type MockContractBinder struct {
 // NewMockContractBinder returns a mockContractBinder
 func NewMockContractBinder() *MockContractBinder {
 	return &MockContractBinder{
-		ordersMu:    new(sync.Mutex),
+		ordersMu:    new(sync.RWMutex),
 		orders:      []order.ID{},
 		orderStatus: map[order.ID]order.Status{},
 		traders:     map[order.ID]string{},
@@ -168,6 +168,9 @@ func NewMockContractBinder() *MockContractBinder {
 }
 
 func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	if offset > len(binder.orders) {
 		return []order.ID{}, []order.Status{}, []string{}, errors.New("index out of range")
 	}
@@ -195,6 +198,9 @@ func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order
 }
 
 func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	for i, ord := range binder.orders {
 		if ord == orderID {
 			return big.NewInt(int64(i)), nil
@@ -204,6 +210,9 @@ func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error
 }
 
 func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	if status, ok := binder.orderStatus[orderID]; ok {
 		return status, nil
 	}
@@ -235,4 +244,23 @@ func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
 		}
 	}
 	return orders
+}
+
+func (binder *MockContractBinder) UpdateStatusesRandomly(status order.Status) int {
+	binder.ordersMu.Lock()
+	defer binder.ordersMu.Unlock()
+
+	numOrders := 0
+
+	for _, ord := range binder.orders {
+		r := rand.Intn(100)
+		if r < 50 {
+			if _, ok := binder.orderStatus[ord]; ok {
+				binder.orderStatus[ord] = status
+				numOrders++
+			}
+
+		}
+	}
+	return numOrders
 }
