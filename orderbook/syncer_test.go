@@ -44,7 +44,7 @@ var _ = Describe("Syncer", func() {
 
 	Context("when syncing", func() {
 
-		It("should be able to sync opening, confirming and canceling order events", func() {
+		It("should be able generate the correct number of notifications", func() {
 			done := make(chan struct{})
 			defer close(done)
 
@@ -52,7 +52,7 @@ var _ = Describe("Syncer", func() {
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
 
 			// Create and start orderbook
-			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 30)
+			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
 			notifications, errs := orderbook.Sync(done)
 
 			// Start reading notifications and errs
@@ -79,8 +79,7 @@ var _ = Describe("Syncer", func() {
 						}
 						countMu.Unlock()
 					}
-				},
-			)
+				})
 
 			// Change to first epoch
 			_, epoch, err := testutils.RandomEpoch(0)
@@ -96,7 +95,7 @@ var _ = Describe("Syncer", func() {
 				err = orderbook.OpenOrder(context.Background(), encFrag)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
-			time.Sleep(time.Second)
+			time.Sleep(10 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all the opened orders
@@ -109,23 +108,27 @@ var _ = Describe("Syncer", func() {
 
 			// Confirm random orders in the contract
 			numConfirms := contract.UpdateStatusRandomly(order.Confirmed)
-			time.Sleep(time.Second)
+			time.Sleep(10 * time.Millisecond)
 
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
 			countMu.Lock()
 			Expect(countConfirms).Should(Equal(numConfirms))
+			Expect(countOpens).Should(BeZero())
+			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
 			countMu.Unlock()
 
 			// Cancel random orders in the contract
 			numCancels := contract.UpdateStatusRandomly(order.Canceled)
-			time.Sleep(time.Second)
+			time.Sleep(10 * time.Millisecond)
 
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
 			countMu.Lock()
 			Expect(countCancels).Should(Equal(numCancels))
+			Expect(countConfirms).Should(BeZero())
+			Expect(countOpens).Should(BeZero())
 			countMu.Unlock()
 		})
 	})
