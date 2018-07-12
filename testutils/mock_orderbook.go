@@ -256,7 +256,7 @@ func (binder *MockContractBinder) UpdateStatusRandomly(status order.Status) int 
 		r := rand.Intn(100)
 		if r < 50 {
 			if orderStatus, ok := binder.orderStatus[ord]; ok {
-				if orderStatus != order.Open {
+				if orderStatus == order.Open {
 					binder.orderStatus[ord] = status
 					numOrders++
 				}
