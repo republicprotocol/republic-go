@@ -49,7 +49,7 @@ var _ = Describe("Syncer", func() {
 			defer close(done)
 
 			// Open matching order pairs
-			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
+			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
 
 			// Create and start orderbook
 			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
@@ -134,7 +134,7 @@ var _ = Describe("Syncer", func() {
 			defer close(done)
 
 			// Open matching order pairs
-			orders := contract.OpenMatchingOrders(NumberOfOrderPairs)
+			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
 
 			// Create and start orderbook
 			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
@@ -183,6 +183,30 @@ var _ = Describe("Syncer", func() {
 			Expect(countOpens).Should(BeZero())
 			Expect(countConfirms).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
+			countMu.Unlock()
+
+			confirmedOrders := contract.OpenMatchingOrders(NumberOfOrderPairs/2, order.Confirmed)
+			time.Sleep(15 * time.Millisecond)
+
+			// Notifications for all the confirmations must be returned
+			// on the notifications channel
+			countMu.Lock()
+			Expect(countConfirms).Should(Equal(len(confirmedOrders)))
+			Expect(countOpens).Should(BeZero())
+			Expect(countCancels).Should(BeZero())
+			countConfirms = 0
+			countMu.Unlock()
+
+			canceledOrders := contract.OpenMatchingOrders(NumberOfOrderPairs/2, order.Canceled)
+			time.Sleep(15 * time.Millisecond)
+
+			// Notifications for all the cancelations must be returned
+			// on the notifications channel
+			countMu.Lock()
+			Expect(countCancels).Should(Equal(len(canceledOrders)))
+			Expect(countOpens).Should(BeZero())
+			Expect(countConfirms).Should(BeZero())
+			countCancels = 0
 			countMu.Unlock()
 
 			// Change to next epoch
