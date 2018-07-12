@@ -109,10 +109,6 @@ var _ = Describe("Syncer", func() {
 
 			// Confirm random orders in the contract
 			numConfirms := contract.UpdateStatusRandomly(order.Confirmed)
-			_, epoch, err = testutils.RandomEpoch(1)
-			Expect(err).ShouldNot(HaveOccurred())
-			orderbook.OnChangeEpoch(epoch)
-			time.Sleep(time.Second)
 
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
@@ -123,7 +119,6 @@ var _ = Describe("Syncer", func() {
 
 			// Cancel random orders in the contract
 			numCancels := contract.UpdateStatusRandomly(order.Canceled)
-			time.Sleep(time.Second)
 
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
