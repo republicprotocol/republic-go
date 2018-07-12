@@ -54,7 +54,7 @@ type Binder struct {
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
-	renExSettlement  *bindings.RenExSettlement
+	renExSettlement  *bindings.Settlement
 	renExBalance     *bindings.RenExBalances
 	erc20            *bindings.ERC20
 }
@@ -88,7 +88,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
+	renExSettlement, err := bindings.NewSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
 		return Binder{}, err
@@ -196,7 +196,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint32(ord.Settlement), uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
@@ -256,22 +256,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	}
 
 	return err
-}
-
-// SettlementDetail will return settlement details from the smart contract
-func (binder *Binder) SettlementDetail(buy, sell order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
-
-	return binder.settlementDetail(buy, sell)
-}
-
-func (binder *Binder) settlementDetail(buy, sell order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
-	price, lowVolume, highVolume, lowFee, highFee, err := binder.renExSettlement.GetSettlementDetails(binder.callOpts, buy, sell)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	return price, lowVolume, highVolume, lowFee, highFee, nil
 }
 
 // Register a new dark node with the dark node registrar
@@ -1087,13 +1071,6 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
-}
-
-func (binder *Binder) GetSettlementDetail(buyOrder, sellOrder order.ID) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
-
-	return binder.renExSettlement.GetSettlementDetails(binder.callOpts, buyOrder, sellOrder)
 }
 
 func toByte(id []byte) ([20]byte, error) {
