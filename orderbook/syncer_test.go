@@ -108,7 +108,7 @@ var _ = Describe("Syncer", func() {
 			countMu.Unlock()
 
 			// Confirm random orders in the contract
-			numConfirms := contract.UpdateStatusesRandomly(order.Confirmed)
+			numConfirms := contract.UpdateStatusRandomly(order.Confirmed)
 			_, epoch, err = testutils.RandomEpoch(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
@@ -122,7 +122,7 @@ var _ = Describe("Syncer", func() {
 			countMu.Unlock()
 
 			// Cancel random orders in the contract
-			numCancels := contract.UpdateStatusesRandomly(order.Canceled)
+			numCancels := contract.UpdateStatusRandomly(order.Canceled)
 			_, epoch, err = testutils.RandomEpoch(2)
 			Expect(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
