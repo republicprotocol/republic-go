@@ -246,7 +246,7 @@ func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
 	return orders
 }
 
-func (binder *MockContractBinder) UpdateStatusesRandomly(status order.Status) int {
+func (binder *MockContractBinder) UpdateStatusRandomly(status order.Status) int {
 	binder.ordersMu.Lock()
 	defer binder.ordersMu.Unlock()
 
@@ -255,11 +255,12 @@ func (binder *MockContractBinder) UpdateStatusesRandomly(status order.Status) in
 	for _, ord := range binder.orders {
 		r := rand.Intn(100)
 		if r < 50 {
-			if _, ok := binder.orderStatus[ord]; ok {
-				binder.orderStatus[ord] = status
-				numOrders++
+			if orderStatus, ok := binder.orderStatus[ord]; ok {
+				if orderStatus != order.Open {
+					binder.orderStatus[ord] = status
+					numOrders++
+				}
 			}
-
 		}
 	}
 	return numOrders
