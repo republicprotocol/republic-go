@@ -138,7 +138,8 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 		dispatch.CoBegin(
 			func() {
 				dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
-			}, func() {
+			},
+			func() {
 				dispatch.Merge(done, orderbook.broadcastErrs, errs)
 			})
 	}()
@@ -168,8 +169,9 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 		logger.Error(fmt.Sprintf("cannot clone pointer store: %v", err))
 		return
 	}
+	orderbook.pointerStore = pointerStore
 
-	syncer := newSyncer(epoch, pointerStore, orderbook.orderStore, orderbook.orderFragmentStore, orderbook.contractBinder, orderbook.interval, orderbook.limit)
+	syncer := newSyncer(epoch, orderbook.pointerStore, orderbook.orderStore, orderbook.orderFragmentStore, orderbook.contractBinder, orderbook.interval, orderbook.limit)
 	notifications, errs := syncer.sync(orderbook.syncerCurrDone, orderbook.syncerCurrOrderFragments)
 
 	go func() {

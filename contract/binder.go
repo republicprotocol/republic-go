@@ -186,22 +186,17 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	lastGasPrice := binder.transactOpts.GasPrice
 	submissionGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
 	if err == nil {
-		// If no error is returned then it is safe to limit the gas price
-		if binder.transactOpts.GasPrice.Cmp(submissionGasPriceLimit) > 0 {
-			// Set gas price to the appropriate limit
-			binder.transactOpts.GasPrice = submissionGasPriceLimit
-			// Reset gas price
-			defer func() {
-				binder.transactOpts.GasPrice = lastGasPrice
-			}()
-		}
+		// Set gas price to the appropriate limit
+		binder.transactOpts.GasPrice = submissionGasPriceLimit
+		// Reset gas price
+		defer func() {
+			binder.transactOpts.GasPrice = lastGasPrice
+		}()
 	}
 
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
-	tx, err := binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
-
-	return tx, err
+	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
@@ -218,6 +213,13 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 }
 
 func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
+
+	previousGasLimit := binder.transactOpts.GasLimit
+	binder.transactOpts.GasLimit = 200806
+	defer func() {
+		binder.transactOpts.GasLimit = previousGasLimit
+	}()
+
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
@@ -229,12 +231,12 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	// Submit orders
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(buy)
-	}); sendTxErr != nil && err == nil {
+	}); sendTxErr != nil {
 		err = fmt.Errorf("cannot settle buy = %v: %v", buy.ID, sendTxErr)
 	}
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(sell)
-	}); sendTxErr != nil && err == nil {
+	}); sendTxErr != nil {
 		err = fmt.Errorf("cannot settle sell = %v: %v", sell.ID, sendTxErr)
 	}
 
@@ -244,12 +246,15 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	})
 	if sendTxErr != nil {
 		err = fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+		return err
 	}
 
 	// Wait for last transaction
-	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil && err == nil {
-		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil {
+		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+		return err
 	}
+
 	return err
 }
 

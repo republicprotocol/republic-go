@@ -2,7 +2,7 @@ package transact
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"math/big"
 	"strings"
 	"sync"
@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 // Transacter exposes functionality for sending transactions to the Ethereum
@@ -75,16 +74,20 @@ func (transacter *transacter) Transfer(ctx context.Context, to common.Address, v
 	transacter.transactOptsMu.Lock()
 	defer transacter.transactOptsMu.Unlock()
 
-	// Save and restore the current value inside transactOpts
+	// Save the state of the transactOpts
 	oldValue := transacter.transactOpts.Value
+	oldGasLimit := transacter.transactOpts.GasLimit
 	defer func() {
+		// Restore the state of the transactOpts
 		transacter.transactOpts.Value = oldValue
+		transacter.transactOpts.GasLimit = oldGasLimit
 	}()
 	transacter.transactOpts.Value = value
+	transacter.transactOpts.GasLimit = 21000
 
-	empty := bind.NewBoundContract(to, abi.ABI{}, nil, transacter.client, nil)
+	contract := bind.NewBoundContract(to, abi.ABI{}, nil, transacter.client, nil)
 	return transacter.transact(ctx, func(ctx context.Context, transactOpts *bind.TransactOpts) (*types.Transaction, error) {
-		return empty.Transfer(transactOpts)
+		return contract.Transfer(transactOpts)
 	})
 }
 
@@ -111,12 +114,12 @@ func (transacter *transacter) transact(ctx context.Context, buildTx func(context
 		return tx, nil
 	}
 	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced || strings.Contains(err.Error(), "nonce is too low") {
-		log.Info(fmt.Sprintf("[tx error] nonce too low = %v", err))
+		log.Printf("[tx error] nonce too low = %v", err)
 		transacter.transactOpts.Nonce.Add(transacter.transactOpts.Nonce, big.NewInt(1))
 		return transacter.transact(ctx, buildTx)
 	}
 	if err == core.ErrNonceTooHigh {
-		log.Info(fmt.Sprintf("[tx error] nonce too high = %v", err))
+		log.Printf("[tx error] nonce too high = %v", err)
 		transacter.transactOpts.Nonce.Sub(transacter.transactOpts.Nonce, big.NewInt(1))
 		return transacter.transact(ctx, buildTx)
 	}
@@ -125,7 +128,7 @@ func (transacter *transacter) transact(ctx context.Context, buildTx func(context
 	// try again for up to 1 minute
 	var nonce uint64
 	for try := 0; try < 60 && strings.Contains(err.Error(), "nonce"); try++ {
-		log.Error(fmt.Sprintf("[tx error] unknown = %v", err))
+		log.Printf("[tx error] unknown = %v", err)
 
 		// Delay for a second or until the contex is done
 		select {
