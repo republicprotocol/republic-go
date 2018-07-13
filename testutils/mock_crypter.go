@@ -21,7 +21,7 @@ func (crypter *Crypter) Verify(data []byte, signature []byte) error {
 }
 
 // Encrypt will not do nothing and return the plain text directly.
-func (crypter *Crypter) Encrypt(plainText []byte, recipient []byte) ([]byte, error) {
+func (crypter *Crypter) Encrypt(recipient string, plainText []byte) ([]byte, error) {
 	return plainText, nil
 }
 

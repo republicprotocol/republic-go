@@ -58,7 +58,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.DarknodeRegistryAddress = "0x7352e7244899b7cb5d803cc02741c8910d3b75de"
 		case NetworkNightly:
-			config.DarknodeRegistryAddress = "0xc735241f93f87d4dbea499ee6e1d41ec50e3d8ce"
+			config.DarknodeRegistryAddress = "0xb3972e45d16b0942ed34943fdde413190cf5b12a"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -71,7 +71,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.OrderbookAddress = "0x20949251119d77471a40f456a8a9d39b1847db8d"
 		case NetworkNightly:
-			config.OrderbookAddress = "0x42c72b4090ed0627c85ed878f699b2db254beeca"
+			config.OrderbookAddress = "0x8356e57aa32547685149a859293ad83c144b800c"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -84,7 +84,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.RewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
 		case NetworkNightly:
-			config.RewardVaultAddress = "0x65129f15fc0bfd901ce99c71147a93256fa094e6"
+			config.RewardVaultAddress = "0x7214c4584ab01e61355244e2325ab3f40aca4d85"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -97,7 +97,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.RenExBalancesAddress = "0x3083e5ba36c6b42ca93c22c803013a4539eedc7f"
 		case NetworkNightly:
-			config.RenExBalancesAddress = "0x6268002a734edcde6c2111ae339e0d92b1ed2bfa"
+			config.RenExBalancesAddress = "0xc2c126e1eb32e6ad50c611fb92d009b4b4518b00"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -110,7 +110,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.RenExSettlementAddress = "0x038b63c120a7e60946d6ebaa6dcfc3a475108cc9"
 		case NetworkNightly:
-			config.RenExSettlementAddress = "0xd42f9dd5e66627aa836b206edd76025b26a89dea"
+			config.RenExSettlementAddress = "0x4e5ace5afa972366d637a9c387b8494c4129993a"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -178,4 +178,21 @@ func (conn *Conn) TransferEth(ctx context.Context, from *bind.TransactOpts, to c
 	}
 	_, err = conn.PatchedWaitMined(ctx, tx)
 	return err
+}
+
+// SendEth is a helper function for sending ETH to an address
+func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to common.Address, value *big.Int) (*types.Transaction, error) {
+	transactor := &bind.TransactOpts{
+		From:     from.From,
+		Nonce:    from.Nonce,
+		Signer:   from.Signer,
+		Value:    value,
+		GasPrice: from.GasPrice,
+		GasLimit: 30000,
+		Context:  from.Context,
+	}
+
+	// Why is there no ethclient.Transfer?
+	bound := bind.NewBoundContract(to, abi.ABI{}, nil, conn.Client, nil)
+	return bound.Transfer(transactor)
 }

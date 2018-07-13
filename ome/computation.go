@@ -7,7 +7,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
 )
 
 // ComputationID is used to distinguish between different combinations of
@@ -67,38 +66,39 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	ID        ComputationID      `json:"id"`
-	Buy       order.ID           `json:"buy"`
-	Sell      order.ID           `json:"sell"`
-	EpochHash [32]byte           `json:"epochHash"`
-	Priority  orderbook.Priority `json:"priority"`
+	Epoch     [32]byte       `json:"epoch"`
+	Timestamp time.Time      `json:"timestamp"`
+	ID        ComputationID  `json:"id"`
+	Buy       order.Fragment `json:"buy"`
+	Sell      order.Fragment `json:"sell"`
 
-	Match     bool             `json:"match"`
-	State     ComputationState `json:"state"`
-	Timestamp time.Time        `json:"timestamp"`
+	State ComputationState `json:"state"`
+	Match bool             `json:"match"`
 }
 
 // NewComputation returns a pending Computation between a buy order.Order and a
 // sell order.Order. It initialized the ComputationID to the Keccak256 hash of
 // the buy order.ID and the sell order.ID.
-func NewComputation(buy, sell order.ID, epochHash [32]byte) Computation {
+func NewComputation(epoch [32]byte, buy, sell order.Fragment, state ComputationState, match bool) Computation {
 	com := Computation{
-		Buy:       buy,
-		Sell:      sell,
-		EpochHash: epochHash,
+		Epoch: epoch,
+		Buy:   buy,
+		Sell:  sell,
+		State: state,
+		Match: match,
 	}
-	com.ID = NewComputationID(buy, sell)
+	com.Timestamp = time.Now()
+	com.ID = NewComputationID(buy.OrderID, sell.OrderID)
 	return com
 }
 
 // Equal returns true when Computations are equal in value and state, and
 // returns false otherwise.
 func (com *Computation) Equal(arg *Computation) bool {
-	return bytes.Equal(com.ID[:], arg.ID[:]) &&
+	return com.Timestamp.Equal(arg.Timestamp) &&
+		bytes.Equal(com.ID[:], arg.ID[:]) &&
+		com.Buy.Equal(&arg.Buy) &&
+		com.Sell.Equal(&arg.Sell) &&
 		com.State == arg.State &&
-		com.Priority == arg.Priority &&
-		com.Match == arg.Match &&
-		com.Timestamp.Equal(arg.Timestamp) &&
-		com.Buy.Equal(arg.Buy) &&
-		com.Sell.Equal(arg.Sell)
+		com.Match == arg.Match
 }

@@ -1,213 +1,127 @@
 package leveldb
 
 import (
-	"bytes"
-	"encoding/binary"
-	"encoding/json"
 	"path"
+	"time"
 
 	"github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// Key prefixes to partition data into tables.
+// Constants for use in the OrderbookOrderTable. Keys in the
+// OrderbookOrderTable have a length of 32 bytes, and so 32 bytes of padding is
+// needed to ensure that keys are 64 bytes.
 var (
-	TableOrderbookPointers  = []byte{0x01, 0x0, 0x0, 0x0}
-	TableOrderbookChanges   = []byte{0x02, 0x0, 0x0, 0x0}
-	TableOrderbookFragments = []byte{0x03, 0x0, 0x0, 0x0}
-	TableOmeComputations    = []byte{0x04, 0x0, 0x0, 0x0}
+	OrderbookOrderTableBegin   = []byte{0x01, 0x00}
+	OrderbookOrderTablePadding = paddingBytes(0x00, 32)
+	OrderbookOrderIterBegin    = paddingBytes(0x00, 32)
+	OrderbookOrderIterEnd      = paddingBytes(0xFF, 32)
 )
 
-// Key postfixes used by iterators to define table ranges.
+// Constants for use in the OrderbookOrderFragmentTable. Keys in the
+// OrderbookOrderFragmentTable have a length of 64 bytes, 32 bytes for the
+// epoch and 32 bytes for the order ID, and so no padding is needed to ensure
+// that keys are 64 bytes.
 var (
-	TableIterStart = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	TableIterEnd   = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+	OrderbookOrderFragmentTableBegin   = []byte{0x02, 0x00}
+	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
+	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
+	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 )
 
-// Store is an implementation of storage interfaces using LevelDB to load and
-// store data to persistent storage. It uses a single database instance and
-// high-order bytes for separating data into tables. All keys are 40 bytes
-// long, 8 table prefix bytes and a 32 byte key. LevelDB provides a basic type
-// type of in-memory caching but has no optimisations that are specific to the
-// data.
+// Constants for use in the SomerComputationTable. Keys in the
+// SomerComputationTable have a length of 32 bytes, and so 32 bytes of padding
+// is needed to ensure that keys are 64 bytes.
+var (
+	SomerComputationTableBegin   = []byte{0x03, 0x00}
+	SomerComputationTablePadding = paddingBytes(0x00, 32)
+	SomerComputationIterBegin    = paddingBytes(0x00, 32)
+	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
+)
+
+// Store is an aggregate of all tables that implement storage interfaces. It
+// provides access to all of these storage interfaces using different
+// underlying LevelDB instances, ensuring that data is shared where possible
+// and isolated where needed. For this reason, it is recommended to access all
+// storage interfaces through the creation of a Store instance.
 type Store struct {
 	db *leveldb.DB
+
+	orderbookOrderTable         *OrderbookOrderTable
+	orderbookOrderFragmentTable *OrderbookOrderFragmentTable
+	orderbookPointerTable       *OrderbookPointerTable
+
+	somerComputationTable *SomerComputationTable
 }
 
-// NewStore returns a LevelDB implementation of storage interfaces. A call to
-// Store.Close is required to free resources allocated by the Store.
-func NewStore(dir string) (*Store, error) {
+// NewStore returns a new Store with a new LevelDB instances that use the
+// the given directory as the root for all LevelDB instances. A call to
+// Store.Release is needed to ensure that no resources are leaked when
+// the Store is no longer needed. Each Store must have a unique directory.
+func NewStore(dir string, expiry time.Duration) (*Store, error) {
 	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return nil, err
 	}
 	return &Store{
 		db: db,
+
+		orderbookOrderTable:         NewOrderbookOrderTable(db, expiry),
+		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, expiry),
+		orderbookPointerTable:       NewOrderbookPointerTable(expiry),
+
+		somerComputationTable: NewSomerComputationTable(db),
 	}, nil
 }
 
-// Close the internal LevelDB database.
-func (store *Store) Close() error {
+// Release the resources required by the Store.
+func (store *Store) Release() error {
 	return store.db.Close()
 }
 
-// PutBuyPointer implements the orderbook.PointerStorer interface.
-func (store *Store) PutBuyPointer(pointer orderbook.Pointer) error {
-	buy := [32]byte{0}
-	data := [4]byte{}
-	binary.PutVarint(data[:], int64(pointer))
-	return store.db.Put(append(TableOrderbookPointers, buy[:]...), data[:], nil)
-}
-
-// BuyPointer implements the orderbook.PointerStorer interface.
-func (store *Store) BuyPointer() (orderbook.Pointer, error) {
-	buy := [32]byte{0}
-	data, err := store.db.Get(append(TableOrderbookPointers, buy[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return 0, nil
-		}
-		return 0, err
+// Prune the Store by deleting expired data.
+func (store *Store) Prune() (err error) {
+	if localErr := store.orderbookOrderTable.Prune(); localErr != nil {
+		err = localErr
 	}
-	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
-	if err != nil {
-		return 0, err
+	if localErr := store.orderbookOrderFragmentTable.Prune(); localErr != nil {
+		err = localErr
 	}
-	return orderbook.Pointer(pointer), nil
-}
-
-// PutSellPointer implements the orderbook.PointerStorer interface.
-func (store *Store) PutSellPointer(pointer orderbook.Pointer) error {
-	sell := [32]byte{1}
-	data := [4]byte{}
-	binary.PutVarint(data[:], int64(pointer))
-	return store.db.Put(append(TableOrderbookPointers, sell[:]...), data[:], nil)
-}
-
-// SellPointer implements the orderbook.PointerStorer interface.
-func (store *Store) SellPointer() (orderbook.Pointer, error) {
-	sell := [32]byte{1}
-	data, err := store.db.Get(append(TableOrderbookPointers, sell[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return 0, nil
-		}
-		return 0, err
+	if localErr := store.somerComputationTable.Prune(); localErr != nil {
+		err = localErr
 	}
-	pointer, err := binary.ReadVarint(bytes.NewBuffer(data))
-	if err != nil {
-		return 0, err
+	return err
+}
+
+// OrderbookOrderStore returns the OrderbookOrderTable used by the Store. It
+// implements the orderbook.OrderStorer interface.
+func (store *Store) OrderbookOrderStore() orderbook.OrderStorer {
+	return store.orderbookOrderTable
+}
+
+// OrderbookOrderFragmentStore returns the OrderbookOrderFragmentTable used by
+// the Store. It implements the orderbook.OrderFragmentStorer interface.
+func (store *Store) OrderbookOrderFragmentStore() orderbook.OrderFragmentStorer {
+	return store.orderbookOrderFragmentTable
+}
+
+// OrderbookPointerStore returns the OrderbookPointerTable used by the Store.
+// It implements the orderbook.PointerStorer interface.
+func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
+	return store.orderbookPointerTable
+}
+
+// SomerComputationStore returns the SomerComputationTable used by the Store.
+// It implements the ome.ComputationStorer interface.
+func (store *Store) SomerComputationStore() ome.ComputationStorer {
+	return store.somerComputationTable
+}
+
+func paddingBytes(value byte, num int) []byte {
+	padding := make([]byte, num)
+	for i := range padding {
+		padding[i] = value
 	}
-	return orderbook.Pointer(pointer), nil
-}
-
-// PutChange implements the orderbook.ChangeStorer interface.
-func (store *Store) PutChange(change orderbook.Change) error {
-	data, err := json.Marshal(change)
-	if err != nil {
-		return err
-	}
-	return store.db.Put(append(TableOrderbookChanges, change.OrderID[:]...), data, nil)
-}
-
-// DeleteChange implements the orderbook.ChangeStorer interface.
-func (store *Store) DeleteChange(id order.ID) error {
-	return store.db.Delete(append(TableOrderbookChanges, id[:]...), nil)
-}
-
-// Change implements the orderbook.ChangeStorer interface.
-func (store *Store) Change(id order.ID) (orderbook.Change, error) {
-	change := orderbook.Change{}
-	data, err := store.db.Get(append(TableOrderbookChanges, id[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = orderbook.ErrChangeNotFound
-		}
-		return change, err
-	}
-	if err := json.Unmarshal(data, &change); err != nil {
-		return change, err
-	}
-	return change, nil
-}
-
-// Changes implements the orderbook.ChangeStorer interface.
-func (store *Store) Changes() (orderbook.ChangeIterator, error) {
-	iter := store.db.NewIterator(&util.Range{Start: append(TableOrderbookChanges, TableIterStart...), Limit: append(TableOrderbookChanges, TableIterEnd...)}, nil)
-	return newChangeIterator(iter), nil
-}
-
-// PutOrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (store *Store) PutOrderFragment(fragment order.Fragment) error {
-	data, err := json.Marshal(fragment)
-	if err != nil {
-		return err
-	}
-	return store.db.Put(append(TableOrderbookFragments, fragment.OrderID[:]...), data, nil)
-}
-
-// DeleteOrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (store *Store) DeleteOrderFragment(id order.ID) error {
-	return store.db.Delete(append(TableOrderbookFragments, id[:]...), nil)
-}
-
-// OrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (store *Store) OrderFragment(id order.ID) (order.Fragment, error) {
-	change := order.Fragment{}
-	data, err := store.db.Get(append(TableOrderbookFragments, id[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = orderbook.ErrOrderFragmentNotFound
-		}
-		return change, err
-	}
-	if err := json.Unmarshal(data, &change); err != nil {
-		return change, err
-	}
-	return change, nil
-}
-
-// OrderFragments implements the orderbook.OrderFragmentStorer interface.
-func (store *Store) OrderFragments() (orderbook.OrderFragmentIterator, error) {
-	iter := store.db.NewIterator(&util.Range{Start: append(TableOrderbookFragments, TableIterStart...), Limit: append(TableOrderbookFragments, TableIterEnd...)}, nil)
-	return newOrderFragmentIterator(iter), nil
-}
-
-// PutComputation implements the ome.Storer interface.
-func (store *Store) PutComputation(computation ome.Computation) error {
-	data, err := json.Marshal(computation)
-	if err != nil {
-		return err
-	}
-	return store.db.Put(append(TableOmeComputations, computation.ID[:]...), data, nil)
-}
-
-// DeleteComputation implements the ome.Storer interface.
-func (store *Store) DeleteComputation(id ome.ComputationID) error {
-	return store.db.Delete(append(TableOmeComputations, id[:]...), nil)
-}
-
-// Computation implements the ome.Storer interface.
-func (store *Store) Computation(id ome.ComputationID) (ome.Computation, error) {
-	computation := ome.Computation{}
-	data, err := store.db.Get(append(TableOmeComputations, id[:]...), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = ome.ErrComputationNotFound
-		}
-		return computation, err
-	}
-	if err := json.Unmarshal(data, &computation); err != nil {
-		return computation, err
-	}
-	return computation, nil
-}
-
-// Computations implements the ome.Storer interface.
-func (store *Store) Computations() (ome.ComputationIterator, error) {
-	iter := store.db.NewIterator(&util.Range{Start: append(TableOmeComputations, TableIterStart...), Limit: append(TableOmeComputations, TableIterEnd...)}, nil)
-	return newComputationIterator(iter), nil
+	return padding
 }

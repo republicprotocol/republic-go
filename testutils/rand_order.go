@@ -1,17 +1,9 @@
 package testutils
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
-	"github.com/republicprotocol/republic-go/contract"
-
-	"github.com/republicprotocol/republic-go/cmd/darknode/config"
-	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/order"
 )
 
@@ -42,6 +34,14 @@ func RandomBuyOrder() order.Order {
 	return ord
 }
 
+// RandomBuyOrderFragments will generate order fragments for a random buy
+// order.
+func RandomBuyOrderFragments(n, k int64) ([]order.Fragment, error) {
+	ord := RandomBuyOrder()
+	frags, err := ord.Split(n, k)
+	return frags, err
+}
+
 // RandomSellOrder will generate a random sell order.
 func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
@@ -53,6 +53,14 @@ func RandomSellOrder() order.Order {
 
 	ord := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
 	return ord
+}
+
+// RandomSellOrderFragments will generate order fragments for a random buy
+// order.
+func RandomSellOrderFragments(n, k int64) ([]order.Fragment, error) {
+	ord := RandomSellOrder()
+	frags, err := ord.Split(n, k)
+	return frags, err
 }
 
 // RandomOrderMatch will generate a random order and its match.
@@ -87,79 +95,4 @@ func LessRandomCoExp(coExp order.CoExp) order.CoExp {
 		Co:  co,
 		Exp: exp,
 	}
-}
-
-// RandomConfigs will generate n configs and b of them are bootstrap node.
-func RandomConfigs(n int, b int) ([]config.Config, error) {
-	configs := []config.Config{}
-
-	for i := 0; i < n; i++ {
-		keystore, err := crypto.RandomKeystore()
-		if err != nil {
-			return configs, err
-		}
-
-		addr := identity.Address(keystore.Address())
-		configs = append(configs, config.Config{
-			Keystore:                keystore,
-			Host:                    "0.0.0.0",
-			Port:                    fmt.Sprintf("%d", 18514+i),
-			Address:                 addr,
-			BootstrapMultiAddresses: identity.MultiAddresses{},
-			Logs: logger.Options{
-				Plugins: []logger.PluginOptions{
-					{
-						File: &logger.FilePluginOptions{
-							Path: fmt.Sprintf("%v.out", addr),
-						},
-					},
-				},
-			},
-			Ethereum: contract.Config{
-				Network: contract.NetworkLocal,
-				URI:     "http://localhost:8545",
-			},
-		})
-	}
-
-	for i := 0; i < n; i++ {
-		for j := 0; j < b; j++ {
-			if i == j {
-				continue
-			}
-			bootstrapMultiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/%v/tcp/%v/republic/%v", configs[j].Host, configs[j].Port, configs[j].Address))
-			if err != nil {
-				return configs, err
-			}
-			configs[i].BootstrapMultiAddresses = append(configs[i].BootstrapMultiAddresses, bootstrapMultiAddr)
-		}
-	}
-
-	return configs, nil
-}
-
-// Random32Bytes creates a random [32]byte.
-func Random32Bytes() [32]byte {
-	var res [32]byte
-	i := fmt.Sprintf("%d", rand.Int())
-	hash := crypto.Keccak256([]byte(i))
-	copy(res[:], hash)
-
-	return res
-}
-
-// RandomNetworkID generates a random [32]byte array
-func RandomNetworkID() [32]byte {
-	return Random32Bytes()
-}
-
-// RandomComputation generates a random computation with empty epoch hash.
-func RandomComputation() ome.Computation {
-	buy, sell := RandomBuyOrder(), RandomSellOrder()
-	comp := ome.Computation{
-		Buy:  buy.ID,
-		Sell: sell.ID,
-	}
-	copy(comp.ID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
-	return comp
 }
