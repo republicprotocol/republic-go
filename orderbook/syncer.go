@@ -126,10 +126,11 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		}
 	}
 
+	currentBlockNumber, err := syncer.contractBinder.CurrentBlockNumber()
 	for orderIter.Next() {
 		// Get the next order, and its status, and mark it for deltion if it is
 		// not open
-		orderID, orderStatus, err := orderIter.Cursor()
+		orderID, orderStatus, blockNumber, err := orderIter.Cursor()
 		if err != nil {
 			logger.Info(fmt.Sprintf("error getting cursor from store, %v", err))
 			select {
@@ -141,6 +142,10 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		}
 		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
+			continue
+		}
+		if currentBlockNumber.Int64()-blockNumber > 2*syncer.epoch.BlockInterval.Int64() {
+			deleteOrder(orderID, order.Canceled)
 			continue
 		}
 
@@ -217,7 +222,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 	}()
 
-	blockInterval := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
+	blockIntervalTimes2 := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for i, orderID := range orderIDs {
 
 		// Ignore orders that are outside the considered block range
@@ -231,10 +236,10 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 			}
 		}
 		if blockNumber.Cmp(syncer.epoch.BlockNumber) == -1 {
-			// continue
+			continue
 		}
-		if blockNumber.Sub(blockNumber, blockInterval).Cmp(syncer.epoch.BlockNumber) == 1 {
-			// continue
+		if blockNumber.Sub(blockNumber, blockIntervalTimes2).Cmp(syncer.epoch.BlockNumber) == 1 {
+			continue
 		}
 
 		// Synchronise the status of this order and generate the appropriate

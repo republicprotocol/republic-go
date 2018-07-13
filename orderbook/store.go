@@ -37,7 +37,7 @@ type OrderIterator interface {
 
 	// Cursor returns the order.Order at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (order.ID, order.Status, error)
+	Cursor() (order.ID, order.Status, int64, error)
 
 	// Collect all order.IDs and order.Statuses in the iterator into slices.
 	Collect() ([]order.ID, []order.Status, error)

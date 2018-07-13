@@ -1066,6 +1066,17 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 	return err
 }
 
+func (binder *Binder) CurrentBlockNumber() (*big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	block, err := binder.conn.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return block.Number(), err
+}
+
 func toByte(id []byte) ([20]byte, error) {
 	twentyByte := [20]byte{}
 	if len(id) != 20 {
