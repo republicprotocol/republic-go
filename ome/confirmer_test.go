@@ -89,4 +89,41 @@ var _ = Describe("Confirmer", func() {
 
 		Ω(len(orderIDs)).Should(Equal(0))
 	}, 100)
+
+	It("should return error for invalid computations", func() {
+		done := make(chan struct{})
+		orderMatches := make(chan Computation)
+		orderIDs := map[[32]byte]struct{}{}
+		computations := make([]Computation, numberOfComputationsToTest)
+
+		var err error
+		for i := 0; i < numberOfComputationsToTest; i++ {
+			computations[i], err = testutils.RandomComputation()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderIDs[computations[i].Buy.OrderID] = struct{}{}
+			orderIDs[computations[i].Sell.OrderID] = struct{}{}
+			storer.PutComputation(computations[i])
+		}
+
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+
+			for i := 0; i < numberOfComputationsToTest; i++ {
+				orderMatches <- computations[i]
+			}
+			time.Sleep(5 * time.Second)
+		}()
+
+		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
+		go func() {
+			defer GinkgoRecover()
+
+			for err := range errs {
+				Ω(err).Should(HaveOccurred())
+			}
+		}()
+
+		Ω(len(confirmedMatches)).Should(BeZero())
+	})
 })
