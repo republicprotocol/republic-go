@@ -207,7 +207,7 @@ var _ = Describe("LevelDB storage", func() {
 			ordersIter, err = db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
 			ordersIter.Next()
-			ordersCur, _, err := ordersIter.Cursor()
+			ordersID, _, _, err := ordersIter.Cursor()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fragmentsIter, err = db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
@@ -227,7 +227,7 @@ var _ = Describe("LevelDB storage", func() {
 				foundFragment := false
 				foundCom := false
 				for j := 0; j < 100; j++ {
-					if foundChange || ordersCur.Equal(orders[j].ID) {
+					if foundChange || ordersID.Equal(orders[j].ID) {
 						foundChange = true
 					}
 					if foundFragment || fragmentsCur.Equal(&orderFragments[j]) {

@@ -102,7 +102,7 @@ var _ = Describe("Orderbook storage", func() {
 			defer orderFragmentsIter.Release()
 
 			for ordersIter.Next() {
-				_, _, err = ordersIter.Cursor()
+				_, _, _, err = ordersIter.Cursor()
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -112,7 +112,7 @@ var _ = Describe("Orderbook storage", func() {
 			}
 
 			// These are out of range so we should expect errors
-			_, _, err = ordersIter.Cursor()
+			_, _, _, err = ordersIter.Cursor()
 			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
 			_, err = orderFragmentsIter.Cursor()
 			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
