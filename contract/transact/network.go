@@ -60,7 +60,7 @@ func defaultNetwork(id string) (network Network) {
 			ID:               "falcon",
 			RepublicToken:    common.HexToAddress("0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"),
 			DarknodeRegistry: common.HexToAddress("0x7352e7244899b7cb5d803cc02741c8910d3b75de"),
-			Orderbook:        common.HexToAddress("0x20949251119d77471a40f456a8a9d39b1847db8d"),
+			Orderbook:        common.HexToAddress("0x044b08eec761c39ac32aee1d6ef0583812f21699"),
 			RewardVault:      common.HexToAddress("0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"),
 			RenExBalances:    common.HexToAddress("0x3083e5ba36c6b42ca93c22c803013a4539eedc7f"),
 			RenExSettlement:  common.HexToAddress("0x038b63c120a7e60946d6ebaa6dcfc3a475108cc9"),
