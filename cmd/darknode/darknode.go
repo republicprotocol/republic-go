@@ -106,7 +106,7 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, time.Second*4, 1024)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -177,7 +177,7 @@ func main() {
 		}
 		gen := ome.NewComputationGenerator()
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
-		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 14*time.Second, 1)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, time.Second, 1)
 		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
