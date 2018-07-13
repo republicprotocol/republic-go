@@ -105,15 +105,17 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	mat := newComputationMatrix(epoch)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
-	select {
-	case <-gen.done:
-	case gen.broadcastComputations <- computations:
-	}
+	go func() {
+		select {
+		case <-gen.done:
+		case gen.broadcastComputations <- computations:
+		}
 
-	select {
-	case <-gen.done:
-	case gen.broadcastErrs <- errs:
-	}
+		select {
+		case <-gen.done:
+		case gen.broadcastErrs <- errs:
+		}
+	}()
 }
 
 func (gen *computationGenerator) routeNotification(notification orderbook.Notification, done <-chan struct{}) {
