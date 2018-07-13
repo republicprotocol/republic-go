@@ -48,8 +48,8 @@ func newSyncer(epoch registry.Epoch, pointerStore PointerStorer, orderStore Orde
 // All changes are produced as Notifications. Notifications of the
 // NotificationOpenOrder type will not have an associated order.Fragment.
 func (syncer *syncer) sync(done <-chan struct{}, orderFragments <-chan order.Fragment) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification, 100)
-	errs := make(chan error, 100)
+	notifications := make(chan Notification)
+	errs := make(chan error)
 
 	go func() {
 		defer close(notifications)
