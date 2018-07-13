@@ -271,7 +271,6 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 }
 
 func (syncer *syncer) insertOrder(orderID order.ID, orderStatus order.Status, trader string, blockNumber uint64, done <-chan struct{}, notifications chan<- Notification, errs chan<- error) {
-
 	// Store the order
 	if err := syncer.orderStore.PutOrder(orderID, orderStatus, trader, blockNumber); err != nil {
 		select {

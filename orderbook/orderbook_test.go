@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -89,7 +90,7 @@ var _ = Describe("Orderbook", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			// Create mock syncer and storer
-			syncer := testutils.NewSyncer(numberOfOrders)
+			// syncer := testutils.NewSyncer(numberOfOrders)
 			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
@@ -99,11 +100,11 @@ var _ = Describe("Orderbook", func() {
 			// Create orderbook
 			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
-			Ω(syncer.HasSynced()).Should(BeFalse())
+			// Ω(syncer.HasSynced()).Should(BeFalse())
 			doneChan := make(<-chan struct{})
 			changeset, _ := orderbook.Sync(doneChan)
 			Ω(len(changeset)).Should(BeZero())
-			Ω(syncer.HasSynced()).Should(BeTrue())
+			// Ω(syncer.HasSynced()).Should(BeTrue())
 		})
 	})
 })
@@ -298,4 +299,21 @@ func (binder *orderbookBinder) setOrderStatus(orderID order.ID, status order.Sta
 		binder.orderStatus[orderID] = order.Canceled
 	}
 	return nil
+}
+
+// newEpoch returns a new epoch with only one pod and one darknode.
+func newEpoch(i int, node identity.Address) registry.Epoch {
+	return registry.Epoch{
+		Hash: testutils.Random32Bytes(),
+		Pods: []registry.Pod{
+			{
+				Position:  0,
+				Hash:      testutils.Random32Bytes(),
+				Darknodes: []identity.Address{node},
+			},
+		},
+		Darknodes:     []identity.Address{node},
+		BlockNumber:   big.NewInt(int64(i)),
+		BlockInterval: big.NewInt(int64(2)),
+	}
 }

@@ -3,7 +3,6 @@ package ome_test
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"sync"
 	"time"
@@ -49,9 +48,8 @@ var _ = Describe("Ome", func() {
 
 		BeforeEach(func() {
 			done = make(chan struct{})
-			addr, err = testutils.RandomAddress()
+			addr, epoch, err = testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
-			epoch = newEpoch(0, addr)
 
 			computationsGenerator = NewComputationGenerator()
 			rsaKey, err := crypto.RandomRsaKey()
@@ -88,22 +86,23 @@ var _ = Describe("Ome", func() {
 			}()
 		})
 
-		// It("should be able to listen for epoch change event", func() {
-		// 	done := make(chan struct{})
-		// 	ome := NewOme(ranker, computer, book, smpcer)
-		// 	go func() {
-		// 		defer close(done)
+		It("should be able to listen for epoch change event", func() {
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			errs := ome.Run(done)
+			
+			go func() {
+				defer GinkgoRecover()
 
-		// 		time.Sleep(3 * time.Second)
-		// 		epoch := Epoch{}
-		// 		ome.OnChangeEpoch(epoch)
-		// 		time.Sleep(3 * time.Second)
-		// 	}()
-		// 	errs := ome.Run(done)
-		// 	for err := range errs {
-		// 		Ω(err).ShouldNot(HaveOccurred())
-		// 	}
-		// })
+				for err := range errs {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
+			
+			_, epoch, err := testutils.RandomEpoch(0)
+			Ω(err).ShouldNot(HaveOccurred())
+			
+			ome.OnChangeEpoch(epoch)
+		})
 	})
 })
 
@@ -269,20 +268,4 @@ func (binder *omeBinder) setOrderStatus(orderID order.ID, status order.Status) e
 	}
 
 	return nil
-}
-
-// newEpoch returns a new epoch with only one pod and one darknode.
-func newEpoch(i int, node identity.Address) registry.Epoch {
-	return registry.Epoch{
-		Hash: testutils.Random32Bytes(),
-		Pods: []registry.Pod{
-			{
-				Position:  0,
-				Hash:      testutils.Random32Bytes(),
-				Darknodes: []identity.Address{node},
-			},
-		},
-		Darknodes:   []identity.Address{node},
-		BlockNumber: big.NewInt(int64(i)),
-	}
 }

@@ -156,8 +156,8 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 // cascading changes throughout the Ome, most notably it will connect to a new
 // Smpc network that will handle future Computations.
 func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
-	ome.epochMu.Lock()
-	defer ome.epochMu.Unlock()
+	ome.epochMu.RLock()
+	defer ome.epochMu.RUnlock()
 
 	// Do not update if the epoch has not actually changed
 	if ome.epochCurr != nil && bytes.Equal(epoch.Hash[:], ome.epochCurr.Hash[:]) {
@@ -165,6 +165,9 @@ func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
 	}
 
 	go func() {
+		ome.epochMu.Lock()
+		defer ome.epochMu.Unlock()
+
 		// Connect to the new network
 		pod, err := epoch.Pod(ome.addr)
 		if err != nil {
