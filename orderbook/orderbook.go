@@ -199,6 +199,7 @@ func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragmen
 		if orderbook.syncerCurrDone == nil {
 			return nil
 		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

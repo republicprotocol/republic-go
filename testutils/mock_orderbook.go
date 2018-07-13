@@ -151,7 +151,7 @@ func (mock *RandOrderbook) OnChangeEpoch(epoch registry.Epoch) {
 }
 
 type MockContractBinder struct {
-	ordersMu    *sync.Mutex
+	ordersMu    *sync.RWMutex
 	orders      []order.ID
 	orderStatus map[order.ID]order.Status
 	traders     map[order.ID]string
@@ -160,7 +160,7 @@ type MockContractBinder struct {
 // NewMockContractBinder returns a mockContractBinder
 func NewMockContractBinder() *MockContractBinder {
 	return &MockContractBinder{
-		ordersMu:    new(sync.Mutex),
+		ordersMu:    new(sync.RWMutex),
 		orders:      []order.ID{},
 		orderStatus: map[order.ID]order.Status{},
 		traders:     map[order.ID]string{},
@@ -168,6 +168,9 @@ func NewMockContractBinder() *MockContractBinder {
 }
 
 func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order.Status, []string, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	if offset > len(binder.orders) {
 		return []order.ID{}, []order.Status{}, []string{}, errors.New("index out of range")
 	}
@@ -195,6 +198,9 @@ func (binder *MockContractBinder) Orders(offset, limit int) ([]order.ID, []order
 }
 
 func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	for i, ord := range binder.orders {
 		if ord == orderID {
 			return big.NewInt(int64(i)), nil
@@ -204,17 +210,20 @@ func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error
 }
 
 func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
+	binder.ordersMu.RLock()
+	defer binder.ordersMu.RUnlock()
+
 	if status, ok := binder.orderStatus[orderID]; ok {
 		return status, nil
 	}
-	return order.Open, orderbook.ErrOrderNotFound
+	return order.Nil, orderbook.ErrOrderNotFound
 }
 
 func (binder *MockContractBinder) MinimumEpochInterval() (*big.Int, error) {
 	return big.NewInt(2), nil
 }
 
-func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
+func (binder *MockContractBinder) OpenMatchingOrders(n int, status order.Status) []order.Order {
 	binder.ordersMu.Lock()
 	defer binder.ordersMu.Unlock()
 
@@ -223,16 +232,36 @@ func (binder *MockContractBinder) OpenMatchingOrders(n int) []order.Order {
 		buy, sell := RandomOrderMatch()
 		if _, ok := binder.orderStatus[buy.ID]; !ok {
 			binder.orders = append(binder.orders, buy.ID)
-			binder.orderStatus[buy.ID] = order.Open
+			binder.orderStatus[buy.ID] = status
 			binder.traders[buy.ID] = string(i)
 			orders = append(orders, buy)
 		}
 		if _, ok := binder.orderStatus[sell.ID]; !ok {
 			binder.orders = append(binder.orders, sell.ID)
-			binder.orderStatus[sell.ID] = order.Open
+			binder.orderStatus[sell.ID] = status
 			binder.traders[sell.ID] = string(i)
 			orders = append(orders, sell)
 		}
 	}
 	return orders
+}
+
+func (binder *MockContractBinder) UpdateStatusRandomly(status order.Status) int {
+	binder.ordersMu.Lock()
+	defer binder.ordersMu.Unlock()
+
+	numOrders := 0
+
+	for _, ord := range binder.orders {
+		r := rand.Intn(100)
+		if r < 50 {
+			if orderStatus, ok := binder.orderStatus[ord]; ok {
+				if orderStatus == order.Open {
+					binder.orderStatus[ord] = status
+					numOrders++
+				}
+			}
+		}
+	}
+	return numOrders
 }
