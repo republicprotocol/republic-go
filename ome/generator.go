@@ -67,15 +67,20 @@ func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-
 		}
 	}()
 
-	// Merge all of the channels on the broadcast channel into the output
-	// channel
 	go func() {
+		// Wait for all goroutines to finish and then cleanup
 		defer close(computations)
-		dispatch.Merge(done, gen.broadcastComputations, computations)
-	}()
-	go func() {
 		defer close(errs)
-		dispatch.Merge(done, gen.broadcastErrs, errs)
+
+		// Merge all of the channels on the broadcast channel into the output
+		// channel
+		dispatch.CoBegin(
+			func() {
+				dispatch.Merge(done, gen.broadcastComputations, computations)
+			},
+			func() {
+				dispatch.Merge(done, gen.broadcastErrs, errs)
+			})
 	}()
 
 	return computations, errs

@@ -86,22 +86,23 @@ var _ = Describe("Ome", func() {
 			}()
 		})
 
-		// It("should be able to listen for epoch change event", func() {
-		// 	done := make(chan struct{})
-		// 	ome := NewOme(ranker, computer, book, smpcer)
-		// 	go func() {
-		// 		defer close(done)
+		It("should be able to listen for epoch change event", func() {
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			errs := ome.Run(done)
+			
+			go func() {
+				defer GinkgoRecover()
 
-		// 		time.Sleep(3 * time.Second)
-		// 		epoch := Epoch{}
-		// 		ome.OnChangeEpoch(epoch)
-		// 		time.Sleep(3 * time.Second)
-		// 	}()
-		// 	errs := ome.Run(done)
-		// 	for err := range errs {
-		// 		Ω(err).ShouldNot(HaveOccurred())
-		// 	}
-		// })
+				for err := range errs {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
+			
+			_, epoch, err := testutils.RandomEpoch(0)
+			Ω(err).ShouldNot(HaveOccurred())
+			
+			ome.OnChangeEpoch(epoch)
+		})
 	})
 })
 
