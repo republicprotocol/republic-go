@@ -126,11 +126,10 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		}
 	}
 
-	currentBlockNumber, err := syncer.contractBinder.CurrentBlockNumber()
 	for orderIter.Next() {
 		// Get the next order, and its status, and mark it for deltion if it is
 		// not open
-		orderID, orderStatus, blockNumber, err := orderIter.Cursor()
+		orderID, orderStatus, _, err := orderIter.Cursor()
 		if err != nil {
 			logger.Info(fmt.Sprintf("error getting cursor from store, %v", err))
 			select {
@@ -142,10 +141,6 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 		}
 		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
-			continue
-		}
-		if currentBlockNumber.Uint64()-blockNumber > 2*syncer.epoch.BlockInterval.Uint64() {
-			deleteOrder(orderID, order.Canceled)
 			continue
 		}
 
