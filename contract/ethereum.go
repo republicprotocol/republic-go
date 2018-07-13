@@ -108,7 +108,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.RenExSettlementAddress = "0xc53abbc5713e606a86533088707e80fcae33eff8"
 		case NetworkFalcon:
-			config.RenExSettlementAddress = "0x038b63c120a7e60946d6ebaa6dcfc3a475108cc9"
+			config.RenExSettlementAddress = "0x3b6bcd5770e4cc7d687a8e7f2e2f46ffe2c29b36"
 		case NetworkNightly:
 			config.RenExSettlementAddress = "0x4e5ace5afa972366d637a9c387b8494c4129993a"
 		case NetworkLocal:
