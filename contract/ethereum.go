@@ -56,7 +56,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRegistryAddress = "0x5d09eb34ce084bece690651f147dbd8ff41007bf"
 		case NetworkFalcon:
-			config.DarknodeRegistryAddress = "0x7352e7244899b7cb5d803cc02741c8910d3b75de"
+			config.DarknodeRegistryAddress = "0xfafd5c83d1e21763b79418c4ecb5d62b4970df8e"
 		case NetworkNightly:
 			config.DarknodeRegistryAddress = "0xb3972e45d16b0942ed34943fdde413190cf5b12a"
 		case NetworkLocal:
