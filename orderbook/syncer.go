@@ -144,7 +144,7 @@ func (syncer *syncer) syncClosures(done <-chan struct{}, notifications chan<- No
 			deleteOrder(orderID, orderStatus)
 			continue
 		}
-		if currentBlockNumber.Int64()-blockNumber > 2*syncer.epoch.BlockInterval.Int64() {
+		if currentBlockNumber.Uint64()-blockNumber > 2*syncer.epoch.BlockInterval.Uint64() {
 			deleteOrder(orderID, order.Canceled)
 			continue
 		}

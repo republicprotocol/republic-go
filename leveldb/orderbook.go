@@ -41,10 +41,10 @@ func (iter *OrderbookOrderIterator) Next() bool {
 }
 
 // Cursor implements the orderbook.OrderIterator interface.
-func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, error) {
+func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, uint64, error) {
 	orderID := order.ID{}
 	if !iter.inner.Valid() {
-		return orderID, order.Nil, orderbook.ErrCursorOutOfRange
+		return orderID, order.Nil, 0, orderbook.ErrCursorOutOfRange
 	}
 
 	// Copy the key into the order ID making sure to ignore the table prefix
@@ -54,9 +54,9 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, error) {
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
-		return orderID, order.Nil, err
+		return orderID, order.Nil, 0, err
 	}
-	return orderID, value.Status, iter.inner.Error()
+	return orderID, value.Status, value.BlockNumber, iter.inner.Error()
 }
 
 // Collect implements the orderbook.OrderIterator interface.
@@ -64,7 +64,7 @@ func (iter *OrderbookOrderIterator) Collect() ([]order.ID, []order.Status, error
 	orderIDs := []order.ID{}
 	orderStatuses := []order.Status{}
 	for iter.Next() {
-		orderID, orderStatus, err := iter.Cursor()
+		orderID, orderStatus, _, err := iter.Cursor()
 		if err != nil {
 			return orderIDs, orderStatuses, err
 		}
