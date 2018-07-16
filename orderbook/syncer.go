@@ -3,7 +3,6 @@ package orderbook
 import (
 	"encoding/base64"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -217,7 +216,7 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 		}
 	}()
 
-	blockIntervalTimes2 := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
+	// blockIntervalTimes2 := big.NewInt(0).Mul(big.NewInt(2), syncer.epoch.BlockInterval)
 	for i, orderID := range orderIDs {
 
 		// Ignore orders that are outside the considered block range
@@ -230,12 +229,12 @@ func (syncer *syncer) syncOpens(done <-chan struct{}, notifications chan<- Notif
 				continue
 			}
 		}
-		if blockNumber.Cmp(syncer.epoch.BlockNumber) == -1 {
-			continue
-		}
-		if blockNumber.Sub(blockNumber, blockIntervalTimes2).Cmp(syncer.epoch.BlockNumber) == 1 {
-			continue
-		}
+		// if blockNumber.Cmp(syncer.epoch.BlockNumber) == -1 {
+		// 	continue
+		// }
+		// if blockNumber.Sub(blockNumber, blockIntervalTimes2).Cmp(syncer.epoch.BlockNumber) == 1 {
+		// 	continue
+		// }
 
 		// Synchronise the status of this order and generate the appropriate
 		// notification
