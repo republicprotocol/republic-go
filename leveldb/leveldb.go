@@ -6,6 +6,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/swarm"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -40,6 +41,16 @@ var (
 	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
 )
 
+// Constants for use in the MultiAddress. Keys in the
+// MultiAddressTable have a length of 32 bytes, and so 32 bytes of padding is
+// needed to ensure that keys are 64 bytes.
+var (
+	MultiAddressTableBegin   = []byte{0x04, 0x00}
+	MultiAddressTablePadding = paddingBytes(0x00, 32)
+	MultiAddressIterBegin    = paddingBytes(0x00, 32)
+	MultiAddressIterEnd      = paddingBytes(0xFF, 32)
+)
+
 // Store is an aggregate of all tables that implement storage interfaces. It
 // provides access to all of these storage interfaces using different
 // underlying LevelDB instances, ensuring that data is shared where possible
@@ -53,6 +64,8 @@ type Store struct {
 	orderbookPointerTable       *OrderbookPointerTable
 
 	somerComputationTable *SomerComputationTable
+
+	multiAddressTable *MultiAddressTable
 }
 
 // NewStore returns a new Store with a new LevelDB instances that use the
@@ -72,6 +85,8 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 		orderbookPointerTable:       NewOrderbookPointerTable(expiry),
 
 		somerComputationTable: NewSomerComputationTable(db),
+
+		multiAddressTable: NewMultiAddressTable(db),
 	}, nil
 }
 
@@ -91,6 +106,7 @@ func (store *Store) Prune() (err error) {
 	if localErr := store.somerComputationTable.Prune(); localErr != nil {
 		err = localErr
 	}
+	// TODO: multiaddress table needs to be pruned
 	return err
 }
 
@@ -116,6 +132,12 @@ func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
 // It implements the ome.ComputationStorer interface.
 func (store *Store) SomerComputationStore() ome.ComputationStorer {
 	return store.somerComputationTable
+}
+
+// MultiAddressStore returns the MultiAddressTable used by the Store.
+// It implements the swarm.MultiAddressStorer interface.
+func (store *Store) MultiAddressStore() swarm.MultiAddressStorer {
+	return store.multiAddressTable
 }
 
 func paddingBytes(value byte, num int) []byte {
