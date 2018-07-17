@@ -45,7 +45,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		return nil, nil
 	}
 	// Store the order
-	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader, 0); err != nil {
+	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader); err != nil {
 		return nil, err
 	}
 	// Fetch the order fragment
@@ -73,7 +73,7 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		return nil, err
 	}
 	// Fetch the order
-	orderStatus, trader, _, err := agg.orderStore.Order(orderFragment.OrderID)
+	orderStatus, trader, err := agg.orderStore.Order(orderFragment.OrderID)
 	if err != nil {
 		if err == ErrOrderNotFound {
 			// No order was found

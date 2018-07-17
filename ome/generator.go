@@ -177,7 +177,6 @@ type computationMatrix struct {
 	buyOrderFragments  []order.Fragment
 	sellOrderFragments []order.Fragment
 	traders            map[order.ID]string
-	blockNumbers       map[order.ID]uint64
 }
 
 func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
@@ -186,7 +185,6 @@ func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
 		buyOrderFragments:  []order.Fragment{},
 		sellOrderFragments: []order.Fragment{},
 		traders:            map[order.ID]string{},
-		blockNumbers:       map[order.ID]uint64{},
 	}
 }
 
@@ -248,7 +246,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		cmpOrderFragments = mat.buyOrderFragments
 	}
 	mat.traders[notification.OrderID] = notification.Trader
-	mat.blockNumbers[notification.OrderID] = notification.BlockNumber
 
 	// Iterate through the opposing list and generate computations
 	for _, cmpOrderFragment := range cmpOrderFragments {
