@@ -6,6 +6,10 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+// ErrMultiAddressNotFound is returned from a query when no
+// identity.MultiAddress can be found for the identity.Address.
+var ErrMultiAddressNotFound = errors.New("multiaddress not found")
+
 // ErrCursorOutOfRange is returned when an iterator cursor is used to read a
 // value outside the range of the iterator.
 var ErrCursorOutOfRange = errors.New("cursor out of range")
@@ -14,7 +18,7 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // the dark node registry.
 type MultiAddressStorer interface {
 	PutMultiAddress(address identity.Address, multiaddress identity.MultiAddress, nonce uint64) (bool, error)
-	MultiAddress(address identity.Address) (identity.MultiAddress, error)
+	MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error)
 	MultiAddresses() (MultiAddressIterator, error)
 }
 
