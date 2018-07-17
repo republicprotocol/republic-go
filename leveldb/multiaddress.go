@@ -22,7 +22,7 @@ var ErrNonceTooLow = errors.New("nonce too low")
 type MultiAddressValue struct {
 	Nonce        uint64
 	MultiAddress identity.MultiAddress
-	LastPing     time.Time
+	Timestamp    time.Time
 }
 
 // MultiAddressesIterator implements the swarm.MultiAddressStorer using a
@@ -79,8 +79,8 @@ func (iter *MultiAddressesIterator) Release() {
 // MultiAddressTable implements the swarm.MultiAddressStorer interface using
 // LevelDB.
 type MultiAddressTable struct {
-	db *leveldb.DB
-	// expiry time.Duration
+	db     *leveldb.DB
+	expiry time.Duration
 }
 
 // NewMultiAddressTable returns a new MultiAddressTable that uses the
@@ -95,7 +95,7 @@ func (table *MultiAddressTable) PutMultiAddress(address identity.Address, multia
 	value := MultiAddressValue{
 		Nonce:        nonce,
 		MultiAddress: multiaddress,
-		LastPing:     time.Now(),
+		Timestamp:    time.Now(),
 	}
 
 	oldMultiAddr, oldNonce, err := table.MultiAddress(multiaddress.Address())
@@ -144,4 +144,24 @@ func (table *MultiAddressTable) key(k []byte) []byte {
 	return append(append(MultiAddressTableBegin, k...), MultiAddressTablePadding...)
 }
 
-// TODO: Pruning and deleting entries must be implemented if last ping has exceeded time limit
+// Prune iterates over all multiaddresses and deletes those that have expired.
+func (table *MultiAddressTable) Prune() (err error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key(MultiAddressIterBegin), Limit: table.key(MultiAddressIterEnd)}, nil)
+	defer iter.Release()
+
+	now := time.Now()
+	for iter.Next() {
+		key := iter.Key()
+		value := MultiAddressValue{}
+		if localErr := json.Unmarshal(iter.Value(), &value); localErr != nil {
+			err = localErr
+			continue
+		}
+		if value.Timestamp.Add(table.expiry).Before(now) {
+			if localErr := table.db.Delete(key, nil); localErr != nil {
+				err = localErr
+			}
+		}
+	}
+	return err
+}

@@ -106,7 +106,9 @@ func (store *Store) Prune() (err error) {
 	if localErr := store.somerComputationTable.Prune(); localErr != nil {
 		err = localErr
 	}
-	// TODO: multiaddress table needs to be pruned
+	if localErr := store.multiAddressTable.Prune(); localErr != nil {
+		err = localErr
+	}
 	return err
 }
 
