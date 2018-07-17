@@ -37,6 +37,13 @@ func NewAggregator(epoch registry.Epoch, orderStore OrderStorer, orderFragmentSt
 
 // InsertOrder implements the Aggregator interface.
 func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error) {
+	if orderStatus != order.Open {
+		// The order is no longer open
+		if err := agg.orderStore.DeleteOrder(orderID); err != nil {
+			log.Printf("[error] (sync) cannot delete order: %v", err)
+		}
+		return nil, nil
+	}
 	// Store the order
 	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader, 0); err != nil {
 		return nil, err
@@ -56,7 +63,6 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
-		BlockNumber:   0,
 	}, nil
 }
 
@@ -77,6 +83,12 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 	}
 	if orderStatus != order.Open {
 		// The order was found but is no longer open
+		if err := agg.orderStore.DeleteOrder(orderFragment.OrderID); err != nil {
+			log.Printf("[error] (sync) cannot delete order: %v", err)
+		}
+		if err := agg.orderFragmentStore.DeleteOrderFragment(agg.epoch, orderFragment.OrderID); err != nil {
+			log.Printf("[error] (sync) cannot delete order fragment: %v", err)
+		}
 		return nil, nil
 	}
 	// Produce notification
@@ -85,6 +97,5 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
-		BlockNumber:   0,
 	}, nil
 }

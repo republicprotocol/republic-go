@@ -3,7 +3,7 @@ package orderbook
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -69,16 +69,14 @@ type orderbook struct {
 	orderFragmentStore OrderFragmentStorer
 	contractBinder     ContractBinder
 	interval           time.Duration
-	limit              int
 
-	syncerMu                 *sync.RWMutex
-	syncerCurrDone           chan struct{}
-	syncerCurrOrderFragments chan order.Fragment
-	syncerPrevDone           chan struct{}
-	syncerPrevOrderFragments chan order.Fragment
+	aggMu   *sync.RWMutex
+	aggCurr Aggregator
+	aggPrev Aggregator
 
-	broadcastNotifications chan (<-chan Notification)
-	broadcastErrs          chan (<-chan error)
+	syncer        Syncer
+	notifications chan Notification
+	errs          chan error
 }
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
@@ -91,16 +89,14 @@ func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore O
 		orderFragmentStore: orderFragmentStore,
 		contractBinder:     contractBinder,
 		interval:           interval,
-		limit:              limit,
 
-		syncerMu:                 new(sync.RWMutex),
-		syncerCurrDone:           nil,
-		syncerCurrOrderFragments: nil,
-		syncerPrevDone:           nil,
-		syncerPrevOrderFragments: nil,
+		aggMu:   new(sync.RWMutex),
+		aggCurr: nil,
+		aggPrev: nil,
 
-		broadcastNotifications: make(chan (<-chan Notification)),
-		broadcastErrs:          make(chan (<-chan error)),
+		syncer:        NewSyncer(pointerStore, orderStore, contractBinder, limit),
+		notifications: make(chan Notification),
+		errs:          make(chan error),
 	}
 }
 
@@ -115,32 +111,27 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 	} else {
 		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
 	}
-
-	return orderbook.routeOrderFragment(ctx, orderFragment)
+	return orderbook.routeOrderFragment(ctx.Done(), orderFragment)
 }
 
 // Sync implements the Orderbook interface.
 func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification, 100)
-	errs := make(chan error, 100)
-
-	// TODO: Close syncerPrevDone, syncerPrevOrderFragments, syncerCurrDone,
-	// and syncerCurrOrderFragments if they are not nil. Remember to acquire a
-	// lock!
+	notifications := make(chan Notification)
+	errs := make(chan error)
 
 	go func() {
-		// Wait for all goroutines to finish and then cleanup
 		defer close(notifications)
 		defer close(errs)
 
-		// Merge all of the channels on the broadcast channel into the output
-		// channel
 		dispatch.CoBegin(
 			func() {
-				dispatch.Merge(done, orderbook.broadcastNotifications, notifications)
+				dispatch.Forward(done, orderbook.notifications, notifications)
 			},
 			func() {
-				dispatch.Merge(done, orderbook.broadcastErrs, errs)
+				dispatch.Forward(done, orderbook.errs, errs)
+			},
+			func() {
+				orderbook.sync(done)
 			})
 	}()
 
@@ -149,35 +140,85 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
-	orderbook.syncerMu.Lock()
-	defer orderbook.syncerMu.Unlock()
+	orderbook.aggMu.Lock()
+	defer orderbook.aggMu.Unlock()
 
-	// Transition the current epoch into the previous epoch and setup a new
-	// current epoch
-	if orderbook.syncerPrevDone != nil {
-		close(orderbook.syncerPrevDone)
-		close(orderbook.syncerPrevOrderFragments)
+	orderbook.aggPrev = orderbook.aggCurr
+	orderbook.aggCurr = NewAggregator(epoch, orderbook.orderStore, orderbook.orderFragmentStore)
+}
+
+func (orderbook *orderbook) sync(done <-chan struct{}) {
+	ticker := time.NewTicker(orderbook.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			notifications, err := orderbook.syncer.Sync()
+			if err != nil {
+				select {
+				case <-done:
+					return
+				case orderbook.errs <- err:
+				}
+			}
+			if notifications != nil {
+				for _, notification := range notifications {
+					if err := orderbook.routeNotification(done, notification); err != nil {
+						select {
+						case <-done:
+							return
+						case orderbook.errs <- err:
+						}
+					}
+				}
+			}
+		}
 	}
-	orderbook.syncerPrevDone = orderbook.syncerCurrDone
-	orderbook.syncerPrevOrderFragments = orderbook.syncerCurrOrderFragments
-	orderbook.syncerCurrDone = make(chan struct{})
-	orderbook.syncerCurrOrderFragments = make(chan order.Fragment)
+}
 
-	// Clone a new PointerStorer for the new syncer
-	pointerStore, err := orderbook.pointerStore.Clone()
-	if err != nil {
-		logger.Error(fmt.Sprintf("cannot clone pointer store: %v", err))
+func (orderbook *orderbook) routeNotification(done <-chan struct{}, notification Notification) error {
+	switch n := notification.(type) {
+	case NotificationOpenOrder:
+		return orderbook.routeOrder(done, n.OrderID, order.Open, n.Trader)
+	default:
+		select {
+		case <-done:
+		case orderbook.notifications <- notification:
+		}
+	}
+	return nil
+}
+
+func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, orderStatus order.Status, trader string) error {
+
+	ns, err := func() (ns [2]Notification, err error) {
+		orderbook.aggMu.RLock()
+		defer orderbook.aggMu.RUnlock()
+
+		if orderbook.aggCurr == nil {
+			return
+		}
+		ns[0], err = orderbook.aggCurr.InsertOrder(orderID, orderStatus, trader)
+		if orderbook.aggPrev == nil {
+			return
+		}
+		ns[1], err = orderbook.aggPrev.InsertOrder(orderID, orderStatus, trader)
 		return
-	}
-	orderbook.pointerStore = pointerStore
-
-	syncer := newSyncer(epoch, orderbook.pointerStore, orderbook.orderStore, orderbook.orderFragmentStore, orderbook.contractBinder, orderbook.interval, orderbook.limit)
-	notifications, errs := syncer.sync(orderbook.syncerCurrDone, orderbook.syncerCurrOrderFragments)
-
-	go func() {
-		orderbook.broadcastNotifications <- notifications
-		orderbook.broadcastErrs <- errs
 	}()
+
+	for _, n := range ns {
+		if n == nil {
+			continue
+		}
+		select {
+		case <-done:
+		case orderbook.notifications <- n:
+		}
+	}
+	return err
 }
 
 // TODO: Using the block number of the order, the orderbook should infer
@@ -188,40 +229,35 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 // with robust acceptance of order fragments at the turn of an epoch where
 // the Darknode and the trader might briefly have different ideas about the
 // "current" epoch.
-func (orderbook *orderbook) routeOrderFragment(ctx context.Context, orderFragment order.Fragment) error {
-	logger.Network(logger.LevelInfo, fmt.Sprintf("routing order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
+func (orderbook *orderbook) routeOrderFragment(done <-chan struct{}, orderFragment order.Fragment) error {
 
-	orderbook.syncerMu.RLock()
-	defer orderbook.syncerMu.RUnlock()
+	n, err := func() (Notification, error) {
+		orderbook.aggMu.RLock()
+		defer orderbook.aggMu.RUnlock()
 
-	switch orderFragment.EpochDepth {
-	case 0:
-		if orderbook.syncerCurrDone == nil {
-			return nil
+		switch orderFragment.EpochDepth {
+		case 0:
+			if orderbook.aggCurr == nil {
+				return nil, nil
+			}
+			return orderbook.aggCurr.InsertOrderFragment(orderFragment)
+		case 1:
+			if orderbook.aggPrev == nil {
+				return nil, nil
+			}
+			return orderbook.aggPrev.InsertOrderFragment(orderFragment)
+		default:
+			log.Printf("[error] (sync) unexpected depth = %v", orderFragment.EpochDepth)
+			return nil, nil
 		}
+	}()
 
+	if n != nil {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-orderbook.syncerCurrDone:
-			return nil
-		case orderbook.syncerCurrOrderFragments <- orderFragment:
-			return nil
+		case <-done:
+		case orderbook.notifications <- n:
 		}
-	case 1:
-		if orderbook.syncerPrevDone == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-orderbook.syncerPrevDone:
-			return nil
-		case orderbook.syncerPrevOrderFragments <- orderFragment:
-			return nil
-		}
-	default:
-		logger.Network(logger.LevelWarn, fmt.Sprintf("cannot route order %v to depth = %v", orderFragment.OrderID, orderFragment.EpochDepth))
-		return nil
 	}
+
+	return err
 }
