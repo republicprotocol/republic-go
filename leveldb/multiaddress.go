@@ -2,6 +2,8 @@ package leveldb
 
 import (
 	"encoding/json"
+	"errors"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -10,12 +12,17 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+// ErrNonceTooLow is returned if the nonce of the multiaddress is lower than the
+// one present in the local store.
+var ErrNonceTooLow = errors.New("nonce too low")
+
 // MultiAddressValue is the storage format for multiaddresses being stored in
 // LevelDB. It contains additional timestamping information so that LevelDB can
 // provide pruning.
 type MultiAddressValue struct {
-	MultiAddress identity.MultiAddress
 	Nonce        uint64
+	MultiAddress identity.MultiAddress
+	LastPing     time.Time
 }
 
 // MultiAddressesIterator implements the swarm.MultiAddressStorer using a
@@ -84,33 +91,47 @@ func NewMultiAddressTable(db *leveldb.DB) *MultiAddressTable {
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
 func (table *MultiAddressTable) PutMultiAddress(address identity.Address, multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
-
-	// TODO: check if nonce is lower or equal and also if there is any change in the data
+	isNew := false
 	value := MultiAddressValue{
-		MultiAddress: multiaddress,
 		Nonce:        nonce,
+		MultiAddress: multiaddress,
+		LastPing:     time.Now(),
 	}
+
+	oldMultiAddr, oldNonce, err := table.MultiAddress(multiaddress.Address())
+	if err != nil {
+		isNew = true
+	}
+	// Return err if nonce is too low
+	if oldNonce > nonce {
+		return isNew, ErrNonceTooLow
+	}
+	// If there is a change in the multiaddress stored, then return true
+	if oldMultiAddr.String() != multiaddress.String() {
+		isNew = true
+	}
+
 	data, err := json.Marshal(value)
 	if err != nil {
-		return false, err
+		return isNew, err
 	}
-	return true, table.db.Put(table.key([]byte(address.String())), data, nil)
+	return isNew, table.db.Put(table.key(address.Hash()), data, nil)
 }
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *MultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, error) {
-	data, err := table.db.Get(table.key([]byte(address.String())), nil)
+func (table *MultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
+	data, err := table.db.Get(table.key(address.Hash()), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = swarm.ErrMultiAddressNotFound
 		}
-		return identity.MultiAddress{}, err
+		return identity.MultiAddress{}, 0, err
 	}
 	value := MultiAddressValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return identity.MultiAddress{}, err
+		return identity.MultiAddress{}, 0, err
 	}
-	return value.MultiAddress, nil
+	return value.MultiAddress, value.Nonce, nil
 }
 
 // MultiAddresses implements the swarm.MultiAddressStorer interface.
@@ -123,4 +144,4 @@ func (table *MultiAddressTable) key(k []byte) []byte {
 	return append(append(MultiAddressTableBegin, k...), MultiAddressTablePadding...)
 }
 
-// TODO: Pruning and deleting entries must be implemented
+// TODO: Pruning and deleting entries must be implemented if last ping has exceeded time limit
