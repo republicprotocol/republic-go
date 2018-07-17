@@ -30,11 +30,19 @@ var (
 	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 )
 
+// Constants for use in the OrderbookPointerTable. Keys in the
+// OrderbookPointerTable have a length of 0 bytes, and so 64 bytes of padding
+// is needed to ensure that keys are 64 bytes.
+var (
+	OrderbookPointerTableBegin   = []byte{0x03, 0x00}
+	OrderbookPointerTablePadding = paddingBytes(0x00, 64)
+)
+
 // Constants for use in the SomerComputationTable. Keys in the
 // SomerComputationTable have a length of 32 bytes, and so 32 bytes of padding
 // is needed to ensure that keys are 64 bytes.
 var (
-	SomerComputationTableBegin   = []byte{0x03, 0x00}
+	SomerComputationTableBegin   = []byte{0x10, 0x00}
 	SomerComputationTablePadding = paddingBytes(0x00, 32)
 	SomerComputationIterBegin    = paddingBytes(0x00, 32)
 	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
@@ -69,7 +77,7 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 
 		orderbookOrderTable:         NewOrderbookOrderTable(db, expiry),
 		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, expiry),
-		orderbookPointerTable:       NewOrderbookPointerTable(expiry),
+		orderbookPointerTable:       NewOrderbookPointerTable(db),
 
 		somerComputationTable: NewSomerComputationTable(db),
 	}, nil
