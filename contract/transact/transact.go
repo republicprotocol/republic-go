@@ -31,6 +31,12 @@ type Transacter interface {
 	// and retries if an error occurs. This method should not wait until the
 	// transaction is mined.
 	Transact(ctx context.Context, buildTx func(context.Context, *bind.TransactOpts) (*types.Transaction, error)) (*types.Transaction, error)
+
+	// Transact builds and sends a transaction using given values and the
+	// builder function provided. It ensures that the correct nonce is used
+	// for the transaction and retries if an error occurs. This method should
+	// not wait until the transaction is mined.
+	TransactWithValue(ctx context.Context, nonce, value, gasPrice *big.Int, gasLimit uint64, buildTx func(context.Context, *bind.TransactOpts) (*types.Transaction, error)) (*types.Transaction, error)
 }
 
 type transacter struct {
