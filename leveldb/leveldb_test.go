@@ -184,7 +184,7 @@ var _ = Describe("LevelDB storage", func() {
 			ordersIter, err := db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer ordersIter.Release()
-			orderIDs, _, err := ordersIter.Collect()
+			orderIDs, _, _, err := ordersIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fragmentsIter, err := db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
