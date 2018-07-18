@@ -105,7 +105,6 @@ func (mock *RandOrderbook) Sync(done <-chan struct{}) (<-chan orderbook.Notifica
 						OrderID:       mock.orderFragmentsQueue[i].OrderID,
 						OrderFragment: mock.orderFragmentsQueue[i],
 						Trader:        mock.traders[rand.Intn(len(mock.traders))],
-						BlockNumber:   blockNumber,
 					}
 					select {
 					case <-done:

@@ -159,57 +159,6 @@ var _ = Describe("Orderbook storage", func() {
 		})
 	})
 
-	Context("when cloning pointer tables", func() {
-		It("should have the same pointer as the original", func() {
-			orderbookPointerTable := NewOrderbookPointerTable(expiry)
-			err := orderbookPointerTable.PutPointer(42)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			clonedTable, err := orderbookPointerTable.Clone()
-			Expect(err).ShouldNot(HaveOccurred())
-			op, err := orderbookPointerTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			cp, err := clonedTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(op).Should(Equal(cp))
-		})
-
-		It("should not propagate changes from the original to the clone", func() {
-			orderbookPointerTable := NewOrderbookPointerTable(expiry)
-			err := orderbookPointerTable.PutPointer(42)
-			Expect(err).ShouldNot(HaveOccurred())
-			clonedTable, err := orderbookPointerTable.Clone()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = orderbookPointerTable.PutPointer(10)
-			Expect(err).ShouldNot(HaveOccurred())
-			op, err := orderbookPointerTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(op).Should(BeEquivalentTo(10))
-			cp, err := clonedTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(cp).Should(BeEquivalentTo(42))
-		})
-
-		It("should not propagate changes from the clone to the original", func() {
-			orderbookPointerTable := NewOrderbookPointerTable(expiry)
-			err := orderbookPointerTable.PutPointer(42)
-			Expect(err).ShouldNot(HaveOccurred())
-			clonedTable, err := orderbookPointerTable.Clone()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = clonedTable.PutPointer(10)
-			Expect(err).ShouldNot(HaveOccurred())
-			cp, err := clonedTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(cp).Should(BeEquivalentTo(10))
-			op, err := orderbookPointerTable.Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(op).Should(BeEquivalentTo(42))
-		})
-
-	})
-
 })
 
 func newDB(path string) *leveldb.DB {
@@ -220,7 +169,7 @@ func newDB(path string) *leveldb.DB {
 
 func putAndExpectOrders(table *OrderbookOrderTable) {
 	for i := 0; i < len(orderFragments); i++ {
-		err := table.PutOrder(orders[i].ID, orderStatus, "", uint64(i))
+		err := table.PutOrder(orders[i].ID, orderStatus, "")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(err).ShouldNot(HaveOccurred())
 	}
@@ -229,7 +178,7 @@ func putAndExpectOrders(table *OrderbookOrderTable) {
 
 func expectOrders(table *OrderbookOrderTable) {
 	for i := 0; i < 100; i++ {
-		status, _, _, err := table.Order(orders[i].ID)
+		status, _, err := table.Order(orders[i].ID)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status).Should(Equal(orderStatus))
 	}
@@ -237,7 +186,7 @@ func expectOrders(table *OrderbookOrderTable) {
 
 func expectMissingOrders(table *OrderbookOrderTable) {
 	for i := 0; i < 100; i++ {
-		_, _, _, err := table.Order(orders[i].ID)
+		_, _, err := table.Order(orders[i].ID)
 		Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
 	}
 }

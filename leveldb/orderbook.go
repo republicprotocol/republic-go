@@ -2,7 +2,6 @@ package leveldb
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/republicprotocol/republic-go/order"
@@ -17,10 +16,9 @@ import (
 // LevelDB. It contains additional timestamping information so that LevelDB can
 // provide pruning.
 type OrderbookOrderValue struct {
-	Timestamp   time.Time    `json:"timestamp"`
-	Status      order.Status `json:"status"`
-	Trader      string       `json:"trader"`
-	BlockNumber uint64       `json:"blockNumber"`
+	Timestamp time.Time    `json:"timestamp"`
+	Status    order.Status `json:"status"`
+	Trader    string       `json:"trader"`
 }
 
 // OrderbookOrderIterator implements the orderbook.OrderIterator using a
@@ -95,12 +93,11 @@ func NewOrderbookOrderTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrde
 }
 
 // PutOrder implements the orderbook.OrderStorer interface.
-func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, trader string, blockNumber uint64) error {
+func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, trader string) error {
 	value := OrderbookOrderValue{
-		Timestamp:   time.Now(),
-		Status:      status,
-		Trader:      trader,
-		BlockNumber: blockNumber,
+		Timestamp: time.Now(),
+		Status:    status,
+		Trader:    trader,
 	}
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -115,20 +112,20 @@ func (table *OrderbookOrderTable) DeleteOrder(id order.ID) error {
 }
 
 // Order implements the orderbook.OrderStorer interface.
-func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint64, error) {
+func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, error) {
 	data, err := table.db.Get(table.key(id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
 		}
-		return order.Nil, "", 0, err
+		return order.Nil, "", err
 	}
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Nil, "", 0, err
+		return order.Nil, "", err
 	}
-	return value.Status, value.Trader, value.BlockNumber, nil
+	return value.Status, value.Trader, nil
 }
 
 // Orders implements the orderbook.OrderStorer interface.
@@ -301,48 +298,53 @@ func (table *OrderbookOrderFragmentTable) key(epoch, orderID []byte) []byte {
 	return append(append(append(OrderbookOrderFragmentTableBegin, epoch...), orderID...), OrderbookOrderFragmentTablePadding...)
 }
 
+type OrderbookPointerValue struct {
+	Pointer int `json:"pointer"`
+}
+
 // OrderbookPointerTable implements the orderbook.PointerStorer using in-memory
 // storage. Data stored is not persistent across reboots.
 type OrderbookPointerTable struct {
-	pointerMu *sync.RWMutex
-	pointer   orderbook.Pointer
-	expiry    time.Duration
+	db *leveldb.DB
 }
 
 // NewOrderbookPointerTable returns a new OrderbookPointerTable with the
 // orderbook.Pointer initialised to zero.
-func NewOrderbookPointerTable(expiry time.Duration) *OrderbookPointerTable {
+func NewOrderbookPointerTable(db *leveldb.DB) *OrderbookPointerTable {
 	return &OrderbookPointerTable{
-		pointerMu: new(sync.RWMutex),
-		pointer:   orderbook.Pointer(0),
-		expiry:    expiry,
+		db: db,
 	}
 }
 
 // PutPointer implements the orderbook.PointerStorer interface.
-func (store *OrderbookPointerTable) PutPointer(pointer orderbook.Pointer) error {
-	store.pointerMu.Lock()
-	defer store.pointerMu.Unlock()
-
-	store.pointer = pointer
-	return nil
+func (table *OrderbookPointerTable) PutPointer(pointer orderbook.Pointer) error {
+	value := OrderbookPointerValue{
+		Pointer: int(pointer),
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return table.db.Put(table.key(), data, nil)
 }
 
 // Pointer implements the orderbook.PointerStorer interface.
-func (store *OrderbookPointerTable) Pointer() (orderbook.Pointer, error) {
-	store.pointerMu.RLock()
-	defer store.pointerMu.RUnlock()
+func (table *OrderbookPointerTable) Pointer() (orderbook.Pointer, error) {
+	data, err := table.db.Get(table.key(), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = orderbook.ErrPointerNotFound
+		}
+		return orderbook.Pointer(0), nil
+	}
 
-	return store.pointer, nil
+	value := OrderbookPointerValue{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return orderbook.Pointer(0), err
+	}
+	return orderbook.Pointer(value.Pointer), nil
 }
 
-// Clone implements the orderbook.PointerStorer interface.
-func (store *OrderbookPointerTable) Clone() (orderbook.PointerStorer, error) {
-	store.pointerMu.Lock()
-	defer store.pointerMu.Unlock()
-
-	return &OrderbookPointerTable{
-		pointerMu: new(sync.RWMutex),
-		pointer:   store.pointer,
-	}, nil
+func (table *OrderbookPointerTable) key() []byte {
+	return append(OrderbookPointerTableBegin, OrderbookPointerTablePadding...)
 }
