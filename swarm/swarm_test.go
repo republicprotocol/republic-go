@@ -3,15 +3,17 @@ package swarm_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
-	"strings"
+	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/swarm"
 
-	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/testutils"
@@ -19,19 +21,24 @@ import (
 
 var _ = Describe("Swarm", func() {
 
+	AfterEach(func() {
+		os.RemoveAll("./tmp")
+	})
+
 	Context("when bootstrapping", func() {
 
 		It("should be able to query any peer after bootstrapping", func() {
-			numberOfClients := 50
+			numberOfClients := 100
 			numberOfBootstrapClients := 5
+			α := 10
 
-			// Creating clients
-			dhts := make([]dht.DHT, numberOfClients)
+			// Creating clients.
+			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
 			multiAddrs := make(identity.MultiAddresses, numberOfClients)
-			bootstrapMultiaddrs := make(identity.MultiAddresses, numberOfBootstrapClients)
+			swarmers := make([]Swarmer, numberOfClients)
 
-			// Creating a common server hub for all clients to use
+			// Creating a common server hub for all clients to use.
 			serverHub := &mockServerHub{
 				connsMu: new(sync.Mutex),
 				conns:   map[identity.Address]Server{},
@@ -44,13 +51,15 @@ var _ = Describe("Swarm", func() {
 				clients[i] = &client
 				multiAddrs[i] = clients[i].MultiAddress()
 
-				// Store bootstrap multiAddresses
-				if i < numberOfBootstrapClients {
-					bootstrapMultiaddrs[i] = multiAddrs[i]
-				}
+				// Create leveldb store and store own multiaddress.
+				db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
+				Expect(err).ShouldNot(HaveOccurred())
+				stores[i] = db.MultiAddressStore()
+				stores[i].PutMultiAddress(multiAddrs[i], 1)
 
-				dhts[i] = dht.NewDHT(multiAddrs[i].Address(), numberOfClients)
-				server := NewServer(testutils.NewCrypter(), clients[i], &dhts[i])
+				// Creating swarmer for the client.
+				swarmers[i] = NewSwarmer(clients[i], stores[i], α, 5*time.Second)
+				server := NewServer(swarmers[i], stores[i], α)
 				serverHub.Register(multiAddrs[i].Address(), server)
 			}
 
@@ -61,17 +70,12 @@ var _ = Describe("Swarm", func() {
 			dispatch.CoForAll(numberOfClients, func(i int) {
 				defer GinkgoRecover()
 
-				// Creating swarmer for the client
-				swarmer := NewSwarmer(clients[i], &dhts[i])
-				err := swarmer.Bootstrap(ctx, bootstrapMultiaddrs)
-				if err != nil && strings.Contains(err.Error(), dht.ErrFullBucket.Error()) {
-					// Deregister clients randomly to make space in the DHT
-					for j := 0; j < numberOfClients/10; j++ {
-						isDeregistered := serverHub.Deregister(multiAddrs[rand.Intn(numberOfClients)].Address())
-						if !isDeregistered {
-							j--
-						}
-					}
+				for j := 0; j < numberOfBootstrapClients; j++ {
+					stores[i].PutMultiAddress(multiAddrs[j], 1)
+				}
+				err := swarmers[i].Ping(ctx)
+				if err != nil {
+					Expect(err).ShouldNot(HaveOccurred())
 				}
 			})
 
@@ -81,11 +85,11 @@ var _ = Describe("Swarm", func() {
 					if i == j {
 						continue
 					}
-					multiAddr, err := NewSwarmer(clients[i], &dhts[i]).Query(ctx, multiAddrs[j].Address(), -1)
+					multiAddr, err := swarmers[i].Query(ctx, multiAddrs[j].Address())
 					if err != nil && serverHub.IsRegistered(multiAddrs[j].Address()) {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					Expect(multiAddr).To(Equal(multiAddrs[j]))
+					Expect(multiAddr.String()).To(Equal(multiAddrs[j].String()))
 				}
 			}
 		})
@@ -144,7 +148,7 @@ func newMockClientToServer(mockServerHub *mockServerHub) (mockClientToServer, er
 	}, nil
 }
 
-func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
+func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress, nonce uint64) error {
 	var clientAddr Server
 	isActive := false
 
@@ -155,44 +159,52 @@ func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAdd
 	client.serverHub.connsMu.Unlock()
 
 	if isActive {
-		return clientAddr.Ping(ctx, client.multiAddr)
+		randomSleep()
+		return clientAddr.Ping(ctx, multiAddr, nonce)
 	}
-	return identity.MultiAddress{}, errors.New("address not active")
+	return errors.New("address not active")
+}
+
+func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
+	var clientAddr Server
+	isActive := false
+
+	client.serverHub.connsMu.Lock()
+	if isActive, _ = client.serverHub.active[multiAddr.Address()]; isActive {
+		clientAddr = client.serverHub.conns[multiAddr.Address()]
+	}
+	client.serverHub.connsMu.Unlock()
+
+	if isActive {
+		randomSleep()
+		return clientAddr.Pong(ctx, client.multiAddr, nonce)
+	}
+	return errors.New("pong address not active")
 }
 
 func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
-	return client.serverHub.conns[to.Address()].Query(ctx, query, querySig)
+	var clientAddr Server
+	isActive := false
+
+	client.serverHub.connsMu.Lock()
+	if isActive, _ = client.serverHub.active[to.Address()]; isActive {
+		clientAddr = client.serverHub.conns[to.Address()]
+	}
+	client.serverHub.connsMu.Unlock()
+
+	if isActive {
+		randomSleep()
+		return clientAddr.Query(ctx, query, querySig)
+	}
+	return identity.MultiAddresses{}, errors.New("server not active")
 }
 
 func (client *mockClientToServer) MultiAddress() identity.MultiAddress {
 	return client.multiAddr
 }
 
-type mockClient struct {
-	multiAddr   identity.MultiAddress
-	storedAddrs identity.MultiAddresses
-}
-
-func newMockClient(multiAddrs identity.MultiAddresses) (Client, error) {
-	multiAddr, err := testutils.RandomMultiAddress()
-	if err != nil {
-		return nil, err
-	}
-
-	return &mockClient{
-		multiAddr:   multiAddr,
-		storedAddrs: multiAddrs,
-	}, nil
-}
-
-func (client *mockClient) Ping(ctx context.Context, to identity.MultiAddress) (identity.MultiAddress, error) {
-	return to, nil
-}
-
-func (client *mockClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
-	return client.storedAddrs, nil
-}
-
-func (client *mockClient) MultiAddress() identity.MultiAddress {
-	return client.multiAddr
+func randomSleep() {
+	rand.Seed(time.Now().UnixNano())
+	r := rand.Intn(120)
+	time.Sleep(time.Duration(r) * time.Millisecond)
 }
