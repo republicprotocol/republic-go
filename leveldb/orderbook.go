@@ -335,7 +335,7 @@ func (table *OrderbookPointerTable) Pointer() (orderbook.Pointer, error) {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrPointerNotFound
 		}
-		return orderbook.Pointer(0), err
+		return orderbook.Pointer(0), nil
 	}
 
 	value := OrderbookPointerValue{}
