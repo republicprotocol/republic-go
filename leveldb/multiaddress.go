@@ -90,7 +90,7 @@ func NewMultiAddressTable(db *leveldb.DB) *MultiAddressTable {
 }
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *MultiAddressTable) PutMultiAddress(address identity.Address, multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
+func (table *MultiAddressTable) PutMultiAddress(multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
 	isNew := false
 	value := MultiAddressValue{
 		Nonce:        nonce,
@@ -107,7 +107,7 @@ func (table *MultiAddressTable) PutMultiAddress(address identity.Address, multia
 		return isNew, ErrNonceTooLow
 	}
 	// If there is a change in the multiaddress stored, then return true
-	if oldMultiAddr.String() != multiaddress.String() {
+	if err == nil && oldMultiAddr.String() != multiaddress.String() {
 		isNew = true
 	}
 
@@ -115,7 +115,7 @@ func (table *MultiAddressTable) PutMultiAddress(address identity.Address, multia
 	if err != nil {
 		return isNew, err
 	}
-	return isNew, table.db.Put(table.key(address.Hash()), data, nil)
+	return isNew, table.db.Put(table.key(multiaddress.Address().Hash()), data, nil)
 }
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
