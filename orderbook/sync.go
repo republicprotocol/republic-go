@@ -143,7 +143,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 
 	for orderIter.Next() {
 
-		orderID, orderStatus, err := orderIter.Cursor()
+		orderID, orderStatus, _, err := orderIter.Cursor()
 		if err != nil {
 			log.Printf("[error] (sync) cannot load cursor: %v", err)
 			continue

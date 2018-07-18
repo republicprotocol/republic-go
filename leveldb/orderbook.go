@@ -39,10 +39,10 @@ func (iter *OrderbookOrderIterator) Next() bool {
 }
 
 // Cursor implements the orderbook.OrderIterator interface.
-func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, uint64, error) {
+func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, string, error) {
 	orderID := order.ID{}
 	if !iter.inner.Valid() {
-		return orderID, order.Nil, 0, orderbook.ErrCursorOutOfRange
+		return orderID, order.Nil, "", orderbook.ErrCursorOutOfRange
 	}
 
 	// Copy the key into the order ID making sure to ignore the table prefix
@@ -52,24 +52,26 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, uint64, er
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
-		return orderID, order.Nil, 0, err
+		return orderID, order.Nil, "", err
 	}
-	return orderID, value.Status, value.BlockNumber, iter.inner.Error()
+	return orderID, value.Status, value.Trader, iter.inner.Error()
 }
 
 // Collect implements the orderbook.OrderIterator interface.
-func (iter *OrderbookOrderIterator) Collect() ([]order.ID, []order.Status, error) {
+func (iter *OrderbookOrderIterator) Collect() ([]order.ID, []order.Status, []string, error) {
 	orderIDs := []order.ID{}
 	orderStatuses := []order.Status{}
+	traders := []string{}
 	for iter.Next() {
-		orderID, orderStatus, _, err := iter.Cursor()
+		orderID, orderStatus, trader, err := iter.Cursor()
 		if err != nil {
-			return orderIDs, orderStatuses, err
+			return orderIDs, orderStatuses, traders, err
 		}
 		orderIDs = append(orderIDs, orderID)
 		orderStatuses = append(orderStatuses, orderStatus)
+		traders = append(traders, trader)
 	}
-	return orderIDs, orderStatuses, iter.inner.Error()
+	return orderIDs, orderStatuses, traders, iter.inner.Error()
 }
 
 // Release implements the orderbook.OrderIterator interface.
