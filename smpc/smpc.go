@@ -198,7 +198,7 @@ func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	multiAddr, err := smpc.swarmer.Query(ctx, addr, -1)
+	multiAddr, err := smpc.swarmer.Query(ctx, addr)
 	if err != nil {
 		return multiAddr, fmt.Errorf("cannot query smpcer node %v: %v", addr, err)
 	}
