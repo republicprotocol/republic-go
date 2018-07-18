@@ -58,7 +58,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		return nil, err
 	}
 	// Produce notification
-	log.Printf("[sync] order = %v", orderID)
+	log.Printf("[info] (sync) order = %v", orderID)
 	return NotificationOpenOrder{
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
