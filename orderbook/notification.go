@@ -21,6 +21,9 @@ type Notification interface {
 	IsNotification()
 }
 
+// Notifications is a slice.
+type Notifications []Notification
+
 // NotificationOpenOrder is used to signal the opening of an order.Order. This
 // happens when a rader opens an order.Order and the order.Fragment has been
 // received.
@@ -28,7 +31,6 @@ type NotificationOpenOrder struct {
 	OrderID       order.ID
 	OrderFragment order.Fragment
 	Trader        string
-	BlockNumber   uint64
 }
 
 // IsNotification implements the Notification interface.

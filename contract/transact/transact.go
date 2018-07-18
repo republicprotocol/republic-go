@@ -31,6 +31,12 @@ type Transacter interface {
 	// and retries if an error occurs. This method should not wait until the
 	// transaction is mined.
 	Transact(ctx context.Context, buildTx func(context.Context, *bind.TransactOpts) (*types.Transaction, error)) (*types.Transaction, error)
+
+	// Transact builds and sends a transaction using given values and the
+	// builder function provided. It ensures that the correct nonce is used
+	// for the transaction and retries if an error occurs. This method should
+	// not wait until the transaction is mined.
+	TransactWithValue(ctx context.Context, nonce, value, gasPrice *big.Int, gasLimit uint64, buildTx func(context.Context, *bind.TransactOpts) (*types.Transaction, error)) (*types.Transaction, error)
 }
 
 type transacter struct {
@@ -148,4 +154,38 @@ func (transacter *transacter) transact(ctx context.Context, buildTx func(context
 		}
 	}
 	return tx, err
+}
+
+// TransactWithValue sends the transaction with given parameters.
+// It will reset everything after the tx goes through.
+func (transacter *transacter) TransactWithValue(ctx context.Context, nonce, value, gasPrice *big.Int, gasLimit uint64, buildTx func(context.Context, *bind.TransactOpts) (*types.Transaction, error)) (*types.Transaction, error) {
+	transacter.transactOptsMu.Lock()
+	defer transacter.transactOptsMu.Unlock()
+
+	oldNonce := transacter.transactOpts.Nonce
+	oldValue := transacter.transactOpts.Value
+	oldGasPrice := transacter.transactOpts.GasPrice
+	oldGasLimit := transacter.transactOpts.GasLimit
+
+	defer func() {
+		transacter.transactOpts.Nonce = oldNonce
+		transacter.transactOpts.Value = oldValue
+		transacter.transactOpts.GasPrice = oldGasPrice
+		transacter.transactOpts.GasLimit = oldGasLimit
+	}()
+
+	if nonce != nil {
+		transacter.transactOpts.Nonce = nonce
+	}
+	if value != nil {
+		transacter.transactOpts.Value = value
+	}
+	if gasPrice != nil {
+		transacter.transactOpts.GasPrice = gasPrice
+	}
+	if gasLimit != 0 {
+		transacter.transactOpts.GasLimit = gasLimit
+	}
+
+	return transacter.transact(ctx, buildTx)
 }
