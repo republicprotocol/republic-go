@@ -17,7 +17,7 @@ type Client interface {
 
 	// An implementation of Client's Pong should pass its own identity.MultiAddress
 	// to the node during the pong.
-	Pong(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error
+	Pong(ctx context.Context, to identity.MultiAddress) error
 
 	// Query a node for the identity.MultiAddress of an identity.Address.
 	// Returns a list of identity.MultiAddresses that are closer to the query
@@ -49,6 +49,10 @@ type Swarmer interface {
 
 	// MultiAddress of the Swarmer.
 	MultiAddress() identity.MultiAddress
+
+	// GetConnectedPeers will return the multiaddresses of all the darknodes that
+	// are connected to the swarmer.
+	GetConnectedPeers() (identity.MultiAddresses, error)
 }
 
 type swarmer struct {
@@ -82,7 +86,7 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 
 // Broadcast implements the Swarmer interface.
 func (swarmer *swarmer) Broadcast(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	if err := swarmer.client.Pong(ctx, multiAddr, nonce); err != nil {
+	if err := swarmer.client.Pong(ctx, multiAddr); err != nil {
 		return err
 	}
 
@@ -101,6 +105,18 @@ func (swarmer *swarmer) Query(ctx context.Context, query identity.Address) (iden
 // MultiAddress implements the Swarmer interface.
 func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
 	return swarmer.client.MultiAddress()
+}
+
+func (swarmer *swarmer) GetConnectedPeers() (identity.MultiAddresses, error) {
+	multiaddressesIterator, err := swarmer.storer.MultiAddresses()
+	if err != nil {
+		return nil, err
+	}
+	multiAddrs, _, err := multiaddressesIterator.Collect()
+	if err != nil {
+		return nil, err
+	}
+	return multiAddrs, nil
 }
 
 func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (identity.MultiAddress, error) {
@@ -188,22 +204,12 @@ func (swarmer *swarmer) retrieveAndUpdateNonce() (uint64, error) {
 
 // pingNodes will ping α random nodes in the storer using the client to gossip about the multiaddress and nonce seen.
 func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	multiaddressesIterator, err := swarmer.storer.MultiAddresses()
+	multiAddrs, err := swarmer.GetConnectedPeers()
 	if err != nil {
 		return err
 	}
 
-	multiAddrs := identity.MultiAddresses{}
-	for multiaddressesIterator.Next() {
-		multiAddr, _, err := multiaddressesIterator.Cursor()
-		if err != nil {
-			return err
-		}
-		multiAddrs = append(multiAddrs, multiAddr)
-	}
-
 	keys := map[int]struct{}{}
-
 	for len(keys) < int(math.Min(float64(swarmer.α), float64(len(multiAddrs)))) {
 		i := rand.Intn(len(multiAddrs))
 		if _, ok := keys[i]; ok {
