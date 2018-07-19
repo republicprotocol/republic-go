@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -174,13 +175,12 @@ func (table *SwarmMultiAddressTable) Self() (identity.MultiAddress, uint64, erro
 // PutSelf implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutSelf(multiAddr identity.MultiAddress, nonce uint64) (uint64, error) {
 	var err error
-	multiAddr, nonce, err = table.MultiAddress(identity.Address(0))
+	_, oldNonce, err := table.MultiAddress(identity.Address(0))
 	if err != nil && err != swarm.ErrMultiAddressNotFound {
 		return 0, err
 	}
-
 	value := SwarmMultiAddressValue{
-		Nonce:        nonce + 1,
+		Nonce:        uint64(math.Max(float64(nonce), float64(oldNonce)) + 1),
 		MultiAddress: multiAddr,
 		Timestamp:    time.Now(),
 	}
