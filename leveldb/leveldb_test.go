@@ -47,7 +47,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "")
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -62,7 +62,7 @@ var _ = Describe("LevelDB storage", func() {
 			db.Prune()
 
 			for i := 0; i < 100; i++ {
-				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				_, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
 				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
@@ -82,9 +82,8 @@ var _ = Describe("LevelDB storage", func() {
 		It("should return a default value when loading pointers before storing them", func() {
 			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
-			buyPointer, err := db.OrderbookPointerStore().Pointer()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(buyPointer).Should(Equal(orderbook.Pointer(0)))
+			pointer, err := db.OrderbookPointerStore().Pointer()
+			Expect(pointer).Should(Equal(orderbook.Pointer(0)))
 			err = db.Release()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -94,7 +93,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
-				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				_, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
 				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orderFragments[i].OrderID)
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
@@ -132,7 +131,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "")
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -143,7 +142,7 @@ var _ = Describe("LevelDB storage", func() {
 			}
 
 			for i := 0; i < 100; i++ {
-				status, _, _, err := db.OrderbookOrderStore().Order(orders[i].ID)
+				status, _, err := db.OrderbookOrderStore().Order(orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				orderFragment, err := db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -172,7 +171,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "")
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -185,7 +184,7 @@ var _ = Describe("LevelDB storage", func() {
 			ordersIter, err := db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer ordersIter.Release()
-			orderIDs, _, err := ordersIter.Collect()
+			orderIDs, _, _, err := ordersIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fragmentsIter, err := db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
@@ -207,7 +206,7 @@ var _ = Describe("LevelDB storage", func() {
 			ordersIter, err = db.OrderbookOrderStore().Orders()
 			Expect(err).ShouldNot(HaveOccurred())
 			ordersIter.Next()
-			ordersCur, _, err := ordersIter.Cursor()
+			ordersID, _, _, err := ordersIter.Cursor()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fragmentsIter, err = db.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
@@ -227,7 +226,7 @@ var _ = Describe("LevelDB storage", func() {
 				foundFragment := false
 				foundCom := false
 				for j := 0; j < 100; j++ {
-					if foundChange || ordersCur.Equal(orders[j].ID) {
+					if foundChange || ordersID.Equal(orders[j].ID) {
 						foundChange = true
 					}
 					if foundFragment || fragmentsCur.Equal(&orderFragments[j]) {
@@ -257,7 +256,7 @@ var _ = Describe("LevelDB storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "")
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -279,7 +278,7 @@ var _ = Describe("LevelDB storage", func() {
 			}
 
 			for i := 0; i < 100; i++ {
-				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
+				_, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
 				_, err = db.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
@@ -301,7 +300,7 @@ var _ = Describe("LevelDB storage", func() {
 			db, err := NewStore("./tmp", expiry)
 			Expect(err).ShouldNot(HaveOccurred())
 			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint64(i))
+				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "")
 				Expect(err).ShouldNot(HaveOccurred())
 				err = db.OrderbookOrderFragmentStore().PutOrderFragment(registry.Epoch{}, orderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -319,7 +318,7 @@ var _ = Describe("LevelDB storage", func() {
 				nextDb, err := NewStore("./tmp", expiry)
 				Expect(err).ShouldNot(HaveOccurred())
 				for j := 0; j < 100; j++ {
-					status, _, _, err := nextDb.OrderbookOrderStore().Order(orders[i].ID)
+					status, _, err := nextDb.OrderbookOrderStore().Order(orders[i].ID)
 					Expect(err).ShouldNot(HaveOccurred())
 					orderFragment, err := nextDb.OrderbookOrderFragmentStore().OrderFragment(registry.Epoch{}, orders[i].ID)
 					Expect(err).ShouldNot(HaveOccurred())
@@ -332,7 +331,7 @@ var _ = Describe("LevelDB storage", func() {
 					Expect(orderFragment.Equal(&orderFragments[i])).Should(BeTrue())
 
 				}
-				pointer, err := db.OrderbookPointerStore().Pointer()
+				pointer, err := nextDb.OrderbookPointerStore().Pointer()
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(pointer).Should(Equal(orderbook.Pointer(42)))
 				err = nextDb.Release()

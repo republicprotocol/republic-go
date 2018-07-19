@@ -213,6 +213,11 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 }
 
 func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
+	previousGasLimit := binder.transactOpts.GasLimit
+	binder.transactOpts.GasLimit = 300000
+	defer func() {
+		binder.transactOpts.GasLimit = previousGasLimit
+	}()
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
@@ -1064,6 +1069,17 @@ func (binder *Binder) Withdraw(tokenAddress common.Address, value *big.Int) erro
 
 	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
 	return err
+}
+
+func (binder *Binder) CurrentBlockNumber() (*big.Int, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	block, err := binder.conn.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return nil, err
+	}
+	return block.Number(), err
 }
 
 func toByte(id []byte) ([20]byte, error) {

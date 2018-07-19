@@ -23,4 +23,6 @@ type ContractBinder interface {
 	// MinimumEpochInterval returns the minimum number of blocks between
 	// epochs.
 	MinimumEpochInterval() (*big.Int, error)
+
+	CurrentBlockNumber() (*big.Int, error)
 }

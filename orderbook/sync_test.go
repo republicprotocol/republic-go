@@ -186,7 +186,7 @@ var _ = Describe("Syncer", func() {
 			countMu.Unlock()
 
 			confirmedOrders := contract.OpenMatchingOrders(NumberOfOrderPairs/2, order.Confirmed)
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
@@ -198,7 +198,7 @@ var _ = Describe("Syncer", func() {
 			countMu.Unlock()
 
 			canceledOrders := contract.OpenMatchingOrders(NumberOfOrderPairs/2, order.Canceled)
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			// Notifications for all the cancelations must be returned
 			// on the notifications channel
@@ -217,7 +217,7 @@ var _ = Describe("Syncer", func() {
 			// Send encrypted order fragments at depth 0 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all opened fragments at depth 0 in the second epoch
@@ -231,7 +231,7 @@ var _ = Describe("Syncer", func() {
 			// Send encrypted order fragments at depth 1 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 1)
 			Ω(err).ShouldNot(HaveOccurred())
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
 			// for all the opened fragments at depth 1 in the second epoch

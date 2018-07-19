@@ -15,6 +15,10 @@ var ErrOrderNotFound = errors.New("order not found")
 // cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
+// ErrPointerNotFound is returned when attempting to read a pointer that cannot
+// be found.
+var ErrPointerNotFound = errors.New("pointer not found")
+
 // ErrCursorOutOfRange is returned when an iterator cursor is used to read a
 // value outside the range of the iterator.
 var ErrCursorOutOfRange = errors.New("cursor out of range")
@@ -22,9 +26,9 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // OrderStorer for the order.Orders that are synchronised from the Ethereum
 // blockchain.
 type OrderStorer interface {
-	PutOrder(id order.ID, status order.Status, trader string, blockNumber uint64) error
+	PutOrder(id order.ID, status order.Status, trader string) error
 	DeleteOrder(id order.ID) error
-	Order(id order.ID) (order.Status, string, uint64, error)
+	Order(id order.ID) (order.Status, string, error)
 	Orders() (OrderIterator, error)
 }
 
@@ -37,10 +41,10 @@ type OrderIterator interface {
 
 	// Cursor returns the order.Order at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (order.ID, order.Status, error)
+	Cursor() (order.ID, order.Status, string, error)
 
 	// Collect all order.IDs and order.Statuses in the iterator into slices.
-	Collect() ([]order.ID, []order.Status, error)
+	Collect() ([]order.ID, []order.Status, []string, error)
 
 	// Release the resources allocated by the iterator.
 	Release()
@@ -77,7 +81,6 @@ type OrderFragmentIterator interface {
 type PointerStorer interface {
 	PutPointer(pointer Pointer) error
 	Pointer() (Pointer, error)
-	Clone() (PointerStorer, error)
 }
 
 // Pointer points to the last order.Order that was successfully synchronised.

@@ -60,7 +60,7 @@ func defaultNetwork(id string) (network Network) {
 			ID:               "falcon",
 			RepublicToken:    common.HexToAddress("0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"),
 			DarknodeRegistry: common.HexToAddress("0x7352e7244899b7cb5d803cc02741c8910d3b75de"),
-			Orderbook:        common.HexToAddress("0x20949251119d77471a40f456a8a9d39b1847db8d"),
+			Orderbook:        common.HexToAddress("0x044b08eec761c39ac32aee1d6ef0583812f21699"),
 			RewardVault:      common.HexToAddress("0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"),
 			RenExBalances:    common.HexToAddress("0x3083e5ba36c6b42ca93c22c803013a4539eedc7f"),
 			RenExSettlement:  common.HexToAddress("0x038b63c120a7e60946d6ebaa6dcfc3a475108cc9"),
@@ -75,7 +75,7 @@ func defaultNetwork(id string) (network Network) {
 			Orderbook:        common.HexToAddress("0x8356e57aa32547685149a859293ad83c144b800c"),
 			RewardVault:      common.HexToAddress("0x7214c4584ab01e61355244e2325ab3f40aca4d85"),
 			RenExBalances:    common.HexToAddress("0xc2c126e1eb32e6ad50c611fb92d009b4b4518b00"),
-			RenExSettlement:  common.HexToAddress("0x4e5ace5afa972366d637a9c387b8494c4129993a"),
+			RenExSettlement:  common.HexToAddress("0xaa14f741b8dc7fc9166807144d881b016f0ee92f"),
 		}
 
 	case "local":
