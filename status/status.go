@@ -43,12 +43,15 @@ type Provider interface {
 }
 
 type provider struct {
-	mu              *sync.Mutex
-	dht             *dht.DHT
-	network         string
-	multiAddress    identity.MultiAddress
-	ethereumAddress string
-	publicKey       []byte
+	mu                      *sync.Mutex
+	dht                     *dht.DHT
+	network                 string
+	multiAddress            identity.MultiAddress
+	ethereumAddress         string
+	darknodeRegistryAddress string
+	orderbookAddress        string
+	rewardVaultAddress      string
+	publicKey               []byte
 }
 
 // NewProvider returns a new provider
@@ -94,6 +97,45 @@ func (sp *provider) WriteEthereumAddress(ethAddr string) error {
 // EthereumAddress gets the ethereum address
 func (sp *provider) EthereumAddress() (string, error) {
 	return sp.ethereumAddress, nil
+}
+
+// WriteDarknodeRegistryAddress writes darknodeRegistryAddress to the provider
+func (sp *provider) WriteDarknodeRegistryAddress(darknodeRegistryAddress string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.darknodeRegistryAddress = darknodeRegistryAddress
+	return nil
+}
+
+// DarknodeRegistryAddress gets the DarknodeRegistry contract address
+func (sp *provider) DarknodeRegistryAddress() (string, error) {
+	return sp.darknodeRegistryAddress, nil
+}
+
+// WriteOrderbookAddress writes orderbookAddress to the provider
+func (sp *provider) WriteOrderbookAddress(orderbookAddress string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.orderbookAddress = orderbookAddress
+	return nil
+}
+
+// OrderbookAddress gets the Orderbook contract address
+func (sp *provider) OrderbookAddress() (string, error) {
+	return sp.ethereumAddress, nil
+}
+
+// WriteRewardVaultAddress writes rewardVaultAddress to the provider
+func (sp *provider) WriteRewardVaultAddress(rewardVaultAddress string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.rewardVaultAddress = rewardVaultAddress
+	return nil
+}
+
+// RewardVaultAddress gets the RewardVault contract address
+func (sp *provider) RewardVaultAddress() (string, error) {
+	return sp.rewardVaultAddress, nil
 }
 
 // WritePublicKey writes the dark node's public key to the provider
