@@ -123,14 +123,14 @@ func main() {
 
 	// Populate status information
 	statusProvider := status.NewProvider(&dht)
-	statusProvider.WriteNetwork(string(config.Ethereum.Network))
+	statusProvider.WriteNetwork(string(conn.Config.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumNetwork(ethNetwork)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
-	statusProvider.WriteDarknodeRegistryAddress(config.Ethereum.DarknodeRegistryAddress)
-	statusProvider.WriteRewardVaultAddress(config.Ethereum.RewardVaultAddress)
-	statusProvider.WriteInfuraURL(config.Ethereum.URI)
-	statusProvider.WriteTokens(contract.TokenAddresses(config.Ethereum.Network))
+	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
+	statusProvider.WriteRewardVaultAddress(conn.Config.RewardVaultAddress)
+	statusProvider.WriteInfuraURL(conn.Config.URI)
+	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
 	if err != nil {
