@@ -11,11 +11,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/swarm"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -35,7 +35,7 @@ var _ = Describe("Swarm", func() {
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
-			multiAddrs := make(identity.MultiAddresses, numberOfClients)
+			multiAddresses := make(identity.MultiAddresses, numberOfClients)
 			swarmers := make([]Swarmer, numberOfClients)
 
 			// Creating a common server hub for all clients to use.
@@ -49,18 +49,17 @@ var _ = Describe("Swarm", func() {
 				client, err := newMockClientToServer(serverHub)
 				Expect(err).ShouldNot(HaveOccurred())
 				clients[i] = &client
-				multiAddrs[i] = clients[i].MultiAddress()
+				multiAddresses[i] = clients[i].MultiAddress()
 
 				// Create leveldb store and store own multiaddress.
-				db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
+				db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour, multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 				stores[i] = db.MultiAddressStore()
-				stores[i].PutMultiAddress(multiAddrs[i], 1)
 
 				// Creating swarmer for the client.
-				swarmers[i] = NewSwarmer(clients[i], stores[i], α, 5*time.Second)
+				swarmers[i] = NewSwarmer(clients[i], stores[i], α)
 				server := NewServer(swarmers[i], stores[i], α)
-				serverHub.Register(multiAddrs[i].Address(), server)
+				serverHub.Register(multiAddresses[i].Address(), server)
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
@@ -71,7 +70,7 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				for j := 0; j < numberOfBootstrapClients; j++ {
-					stores[i].PutMultiAddress(multiAddrs[j], 1)
+					stores[i].PutMultiAddress(multiAddresses[j], 1)
 				}
 				err := swarmers[i].Ping(ctx)
 				if err != nil {
@@ -85,11 +84,11 @@ var _ = Describe("Swarm", func() {
 					if i == j {
 						continue
 					}
-					multiAddr, err := swarmers[i].Query(ctx, multiAddrs[j].Address())
-					if err != nil && serverHub.IsRegistered(multiAddrs[j].Address()) {
+					multiAddr, err := swarmers[i].Query(ctx, multiAddresses[j].Address())
+					if err != nil && serverHub.IsRegistered(multiAddresses[j].Address()) {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
-					Expect(multiAddr.String()).To(Equal(multiAddrs[j].String()))
+					Expect(multiAddr.String()).To(Equal(multiAddresses[j].String()))
 				}
 			}
 		})
@@ -165,7 +164,7 @@ func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAdd
 	return errors.New("address not active")
 }
 
-func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
+func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.MultiAddress) error {
 	var clientAddr Server
 	isActive := false
 
@@ -177,7 +176,7 @@ func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.M
 
 	if isActive {
 		randomSleep()
-		return clientAddr.Pong(ctx, client.multiAddr, nonce)
+		return clientAddr.Pong(ctx, client.multiAddr, 1)
 	}
 	return errors.New("pong address not active")
 }

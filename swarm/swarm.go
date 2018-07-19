@@ -5,7 +5,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -56,32 +55,36 @@ type Swarmer interface {
 }
 
 type swarmer struct {
-	client         Client
-	storer         MultiAddressStorer
-	α              int
-	updateInterval time.Duration
+	client Client
+	storer MultiAddressStorer
+	α      int
+	nonce  uint64
 }
 
 // NewSwarmer will return an object that implements the Swarmer interface.
-func NewSwarmer(client Client, storer MultiAddressStorer, α int, updateInterval time.Duration) Swarmer {
-	return &swarmer{
-		client:         client,
-		storer:         storer,
-		α:              α,
-		updateInterval: updateInterval,
+func NewSwarmer(client Client, storer MultiAddressStorer, α int) (Swarmer, error) {
+	nonce, err := storer.PutSelf(client.MultiAddress(), uint64(0))
+	if err != nil {
+		return nil, err
 	}
+	return &swarmer{
+		client: client,
+		storer: storer,
+		α:      α,
+		nonce:  nonce,
+	}, nil
 }
 
 // Ping will update the multiaddress and nonce in the storer and send
 // the swarmer's multiaddress to α randomly selected nodes.
 func (swarmer *swarmer) Ping(ctx context.Context) error {
-
-	nonce, err := swarmer.retrieveAndUpdateNonce()
+	var err error
+	swarmer.nonce, err = swarmer.storer.PutSelf(swarmer.MultiAddress(), swarmer.nonce)
 	if err != nil {
 		return err
 	}
 
-	return swarmer.pingNodes(ctx, swarmer.MultiAddress(), nonce)
+	return swarmer.pingNodes(ctx, swarmer.MultiAddress(), swarmer.nonce)
 }
 
 // Broadcast implements the Swarmer interface.
@@ -185,21 +188,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		}
 	}
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
-}
-
-// retrieveAndUpdateNonce will retrieve the multiaddress (if present) in the storer and
-// keep the data in the storer updated. Every call to this method will increase nonce by 1
-func (swarmer *swarmer) retrieveAndUpdateNonce() (uint64, error) {
-	multiAddr, nonce, err := swarmer.storer.MultiAddress(swarmer.client.MultiAddress().Address())
-	if err != nil || multiAddr.String() != swarmer.client.MultiAddress().String() {
-		nonce++
-		_, err = swarmer.storer.PutMultiAddress(swarmer.client.MultiAddress(), nonce)
-		if err != nil {
-			log.Printf("cannot store own multiaddress: %v", err)
-			return 0, err
-		}
-	}
-	return nonce, nil
 }
 
 // pingNodes will ping α random nodes in the storer using the client to gossip about the multiaddress and nonce seen.
