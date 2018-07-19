@@ -199,7 +199,7 @@ func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to commo
 
 // TokenAddresses returns the tokens for the provided network
 func TokenAddresses(network Network) map[string]string {
-	var tokens map[string]string
+	tokens := map[string]string{}
 	switch network {
 	case NetworkFalcon:
 		tokens["ABC"] = "0xc96884276d70a1176b2fe102469348d224b0a1fa"
