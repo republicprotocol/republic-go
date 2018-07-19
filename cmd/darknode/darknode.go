@@ -120,7 +120,6 @@ func main() {
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
 	statusProvider.WriteDarknodeRegistryAddress(config.Ethereum.DarknodeRegistryAddress)
-	statusProvider.WriteOrderbookAddress(config.Ethereum.OrderbookAddress)
 	statusProvider.WriteRewardVaultAddress(config.Ethereum.RewardVaultAddress)
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)

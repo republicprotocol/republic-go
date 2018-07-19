@@ -12,7 +12,6 @@ type Status struct {
 	MultiAddress            string `json:"multiAddress"`
 	EthereumAddress         string `json:"ethereumAddress"`
 	DarknodeRegistryAddress string `json:"darknodeRegistryAddress"`
-	OrderbookAddress        string `json:"orderbookAddress"`
 	RewardVaultAddress      string `json:"rewardVaultAddress"`
 	PublicKey               string `json:"publicKey"`
 	Peers                   int    `json:"peers"`
@@ -48,10 +47,6 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	orderbookAddr, err := adapter.OrderbookAddress()
-	if err != nil {
-		return Status{}, err
-	}
 	rewardVaultAddr, err := adapter.RewardVaultAddress()
 	if err != nil {
 		return Status{}, err
@@ -70,7 +65,6 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 		MultiAddress:            multiAddr.String(),
 		EthereumAddress:         ethAddr,
 		DarknodeRegistryAddress: darknodeRegistryAddr,
-		OrderbookAddress:        orderbookAddr,
 		RewardVaultAddress:      rewardVaultAddr,
 		PublicKey:               hexPk,
 		Peers:                   peers,

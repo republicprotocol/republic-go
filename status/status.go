@@ -49,7 +49,6 @@ type provider struct {
 	multiAddress            identity.MultiAddress
 	ethereumAddress         string
 	darknodeRegistryAddress string
-	orderbookAddress        string
 	rewardVaultAddress      string
 	publicKey               []byte
 }
@@ -110,19 +109,6 @@ func (sp *provider) WriteDarknodeRegistryAddress(darknodeRegistryAddress string)
 // DarknodeRegistryAddress gets the DarknodeRegistry contract address
 func (sp *provider) DarknodeRegistryAddress() (string, error) {
 	return sp.darknodeRegistryAddress, nil
-}
-
-// WriteOrderbookAddress writes orderbookAddress to the provider
-func (sp *provider) WriteOrderbookAddress(orderbookAddress string) error {
-	sp.mu.Lock()
-	defer sp.mu.Unlock()
-	sp.orderbookAddress = orderbookAddress
-	return nil
-}
-
-// OrderbookAddress gets the Orderbook contract address
-func (sp *provider) OrderbookAddress() (string, error) {
-	return sp.ethereumAddress, nil
 }
 
 // WriteRewardVaultAddress writes rewardVaultAddress to the provider
