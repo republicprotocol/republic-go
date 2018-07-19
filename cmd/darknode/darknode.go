@@ -119,6 +119,8 @@ func main() {
 	statusProvider.WriteNetwork(string(config.Ethereum.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
+	statusProvider.WriteDarknodeRegistryAddress(config.Ethereum.DarknodeRegistryAddress)
+	statusProvider.WriteRewardVaultAddress(config.Ethereum.RewardVaultAddress)
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
 	if err != nil {
