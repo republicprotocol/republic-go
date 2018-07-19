@@ -3,8 +3,8 @@ package status
 import (
 	"sync"
 
-	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/swarm"
 )
 
 // Writer will write the address
@@ -44,18 +44,18 @@ type Provider interface {
 
 type provider struct {
 	mu              *sync.Mutex
-	dht             *dht.DHT
 	network         string
+	swarmer         swarm.Swarmer
 	multiAddress    identity.MultiAddress
 	ethereumAddress string
 	publicKey       []byte
 }
 
 // NewProvider returns a new provider
-func NewProvider(dht *dht.DHT) Provider {
+func NewProvider(swarmer swarm.Swarmer) Provider {
 	return &provider{
-		mu:  new(sync.Mutex),
-		dht: dht,
+		mu:      new(sync.Mutex),
+		swarmer: swarmer,
 	}
 }
 
@@ -111,5 +111,9 @@ func (sp *provider) PublicKey() ([]byte, error) {
 
 // Peers returns the number of peers the darknode is connected to
 func (sp *provider) Peers() (int, error) {
-	return len(sp.dht.MultiAddresses()), nil
+	peers, err := sp.swarmer.GetConnectedPeers()
+	if err != nil {
+		return 0, err
+	}
+	return len(peers), nil
 }
