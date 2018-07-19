@@ -11,17 +11,23 @@ import (
 type Writer interface {
 	WriteNetwork(network string) error
 	WriteMultiAddress(multiAddress identity.MultiAddress) error
-	WriteEthereumAddress(ethAddress string) error
 	WritePublicKey(publicKey []byte) error
+
+	WriteEthereumAddress(ethAddress string) error
+	WriteDarknodeRegistryAddress(address string) error
+	WriteRewardVaultAddress(address string) error
 }
 
 // Reader the address
 type Reader interface {
 	Network() (string, error)
 	MultiAddress() (identity.MultiAddress, error)
-	EthereumAddress() (string, error)
 	PublicKey() ([]byte, error)
 	Peers() (int, error)
+
+	EthereumAddress() (string, error)
+	DarknodeRegistryAddress() (string, error)
+	RewardVaultAddress() (string, error)
 }
 
 /*
@@ -43,12 +49,14 @@ type Provider interface {
 }
 
 type provider struct {
-	mu              *sync.Mutex
-	network         string
-	swarmer         swarm.Swarmer
-	multiAddress    identity.MultiAddress
-	ethereumAddress string
-	publicKey       []byte
+	mu                      *sync.Mutex
+	network                 string
+	swarmer                 swarm.Swarmer
+	multiAddress            identity.MultiAddress
+	ethereumAddress         string
+	darknodeRegistryAddress string
+	rewardVaultAddress      string
+	publicKey               []byte
 }
 
 // NewProvider returns a new provider
@@ -94,6 +102,32 @@ func (sp *provider) WriteEthereumAddress(ethAddr string) error {
 // EthereumAddress gets the ethereum address
 func (sp *provider) EthereumAddress() (string, error) {
 	return sp.ethereumAddress, nil
+}
+
+// WriteDarknodeRegistryAddress writes darknodeRegistryAddress to the provider
+func (sp *provider) WriteDarknodeRegistryAddress(darknodeRegistryAddress string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.darknodeRegistryAddress = darknodeRegistryAddress
+	return nil
+}
+
+// DarknodeRegistryAddress gets the DarknodeRegistry contract address
+func (sp *provider) DarknodeRegistryAddress() (string, error) {
+	return sp.darknodeRegistryAddress, nil
+}
+
+// WriteRewardVaultAddress writes rewardVaultAddress to the provider
+func (sp *provider) WriteRewardVaultAddress(rewardVaultAddress string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.rewardVaultAddress = rewardVaultAddress
+	return nil
+}
+
+// RewardVaultAddress gets the RewardVault contract address
+func (sp *provider) RewardVaultAddress() (string, error) {
+	return sp.rewardVaultAddress, nil
 }
 
 // WritePublicKey writes the dark node's public key to the provider
