@@ -11,17 +11,23 @@ import (
 type Writer interface {
 	WriteNetwork(network string) error
 	WriteMultiAddress(multiAddress identity.MultiAddress) error
-	WriteEthereumAddress(ethAddress string) error
 	WritePublicKey(publicKey []byte) error
+
+	WriteEthereumAddress(ethAddress string) error
+	WriteDarknodeRegistryAddress(address string) error
+	WriteRewardVaultAddress(address string) error
 }
 
 // Reader the address
 type Reader interface {
 	Network() (string, error)
 	MultiAddress() (identity.MultiAddress, error)
-	EthereumAddress() (string, error)
 	PublicKey() ([]byte, error)
 	Peers() (int, error)
+
+	EthereumAddress() (string, error)
+	DarknodeRegistryAddress() (string, error)
+	RewardVaultAddress() (string, error)
 }
 
 /*
