@@ -242,10 +242,10 @@ func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Serve
 	}
 }
 
-func (server *server) Ping(ctx context.Context, from identity.MultiAddress, nonce uint64) error {
+func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
 	// FIXME: Verify multi address signature
 
-	changed, err := server.multiAddrStore.PutMultiAddress(from, nonce)
+	changed, err := server.multiAddrStore.PutMultiAddress(multiAddr, nonce)
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func (server *server) Ping(ctx context.Context, from identity.MultiAddress, nonc
 
 	// If the multiaddress is new or has modifications, gossip the new
 	// information to α random nodes in the network.
-	return server.swarmer.Broadcast(ctx, from, nonce)
+	return server.swarmer.Broadcast(ctx, multiAddr, nonce)
 }
 
 // Pong will store unseen multiaddresses in the storer.

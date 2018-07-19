@@ -14,12 +14,14 @@ type MockMultiAddr struct {
 
 // Swarmer is a mock implementation of the swarm.Swarmer interface.
 type Swarmer struct {
+	multiAddr    identity.MultiAddress
 	multiAddrsMu *sync.Mutex
 	multiAddrs   map[identity.Address]MockMultiAddr
 }
 
-func NewMockSwarmer() Swarmer {
+func NewMockSwarmer(multiAddr identity.MultiAddress) Swarmer {
 	return Swarmer{
+		multiAddr:    multiAddr,
 		multiAddrsMu: new(sync.Mutex),
 		multiAddrs:   make(map[identity.Address]MockMultiAddr),
 	}
@@ -38,7 +40,7 @@ func (swarmer *Swarmer) Query(ctx context.Context, query identity.Address) (iden
 }
 
 func (swarmer *Swarmer) MultiAddress() identity.MultiAddress {
-	return identity.MultiAddress{}
+	return swarmer.multiAddr
 }
 
 func (swarmer *Swarmer) GetConnectedPeers() (identity.MultiAddresses, error) {
