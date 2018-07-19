@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -70,6 +71,7 @@ var _ = Describe("Smpcer", func() {
 		})
 
 		AfterEach(func() {
+			os.RemoveAll("./tmp")
 			dispatch.CoForAll(nodes, func(i int) {
 				nodes[i].Stop()
 			})
