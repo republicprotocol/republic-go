@@ -52,12 +52,13 @@ var _ = Describe("Swarm", func() {
 				multiAddresses[i] = clients[i].MultiAddress()
 
 				// Create leveldb store and store own multiaddress.
-				db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour, multiAddresses[i])
+				db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
 				Expect(err).ShouldNot(HaveOccurred())
-				stores[i] = db.MultiAddressStore()
+				stores[i] = db.SwarmMultiAddressStore()
 
 				// Creating swarmer for the client.
-				swarmers[i] = NewSwarmer(clients[i], stores[i], α)
+				swarmers[i], err = NewSwarmer(clients[i], stores[i], α)
+				Expect(err).ShouldNot(HaveOccurred())
 				server := NewServer(swarmers[i], stores[i], α)
 				serverHub.Register(multiAddresses[i].Address(), server)
 			}

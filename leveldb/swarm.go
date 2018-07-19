@@ -90,15 +90,8 @@ type SwarmMultiAddressTable struct {
 
 // NewSwarmMultiAddressTable returns a new SwarmMultiAddressTable that uses the
 // given LevelDB instance to store and load values from the disk.
-func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration, multiAddr identity.MultiAddress) (*SwarmMultiAddressTable, error) {
-	var err error
-	nonce := uint64(1)
-	table := SwarmMultiAddressTable{db: db, expiry: expiry}
-	_, err = table.PutSelf(multiAddr, nonce)
-	if err != nil {
-		return nil, err
-	}
-	return &table, nil
+func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMultiAddressTable {
+	return &SwarmMultiAddressTable{db: db, expiry: expiry}
 }
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
@@ -180,6 +173,7 @@ func (table *SwarmMultiAddressTable) Self() (identity.MultiAddress, uint64, erro
 
 // PutSelf implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutSelf(multiAddr identity.MultiAddress, nonce uint64) (uint64, error) {
+	var err error
 	multiAddr, nonce, err = table.MultiAddress(identity.Address(0))
 	if err != nil && err != swarm.ErrMultiAddressNotFound {
 		return 0, err
