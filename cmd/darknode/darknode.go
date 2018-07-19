@@ -114,13 +114,23 @@ func main() {
 	streamerService := grpc.NewStreamerService(&crypter, &crypter, streamer)
 	streamerService.Register(server)
 
+	var ethNetwork string
+	if config.Ethereum.Network == "mainnet" {
+		ethNetwork = "mainnet"
+	} else {
+		ethNetwork = "kovan"
+	}
+
 	// Populate status information
 	statusProvider := status.NewProvider(swarmer)
-	statusProvider.WriteNetwork(string(config.Ethereum.Network))
+	statusProvider.WriteNetwork(string(conn.Config.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
+	statusProvider.WriteEthereumNetwork(ethNetwork)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
-	statusProvider.WriteDarknodeRegistryAddress(config.Ethereum.DarknodeRegistryAddress)
-	statusProvider.WriteRewardVaultAddress(config.Ethereum.RewardVaultAddress)
+	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
+	statusProvider.WriteRewardVaultAddress(conn.Config.RewardVaultAddress)
+	statusProvider.WriteInfuraURL(conn.Config.URI)
+	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
 	if err != nil {

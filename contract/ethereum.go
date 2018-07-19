@@ -196,3 +196,28 @@ func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to commo
 	bound := bind.NewBoundContract(to, abi.ABI{}, nil, conn.Client, nil)
 	return bound.Transfer(transactor)
 }
+
+// TokenAddresses returns the tokens for the provided network
+func TokenAddresses(network Network) map[string]string {
+	tokens := map[string]string{}
+	switch network {
+	case NetworkFalcon:
+		tokens["ABC"] = "0xc96884276d70a1176b2fe102469348d224b0a1fa"
+		tokens["DGX"] = "0xf4faf1b22cee0a024ad6b12bb29ec0e13f5827c2"
+		tokens["REN"] = "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
+		tokens["XYZ"] = "0x8a4a68db5ad08c215c6078111be8793843a53302"
+	case NetworkTestnet:
+		tokens["ABC"] = "0xc65d2e9c8924d4848935f4f22e3deca78c5217e5"
+		tokens["DGX"] = "0x0798297a11cefef7479e40e67839fee3c025691e"
+		tokens["REN"] = "0x6f429121a3bd3e6c1c17edbc676eec44cf117faf"
+		tokens["XYZ"] = "0x5753addcd942b495b7297cbfc240a24ba7058274"
+	case NetworkNightly:
+		tokens["ABC"] = "0x49fa7a3b9705fa8deb135b7ba64c2ab00ab915a1"
+		tokens["DGX"] = "0x092ece29781777604afac04887af30042c3bc5df"
+		tokens["REN"] = "0x15f692d6b9ba8cec643c7d16909e8acdec431bf6"
+		tokens["XYZ"] = "0x6662449d05312afe0ca147db6eb155641077883f"
+	default:
+		panic("unknown network")
+	}
+	return tokens
+}

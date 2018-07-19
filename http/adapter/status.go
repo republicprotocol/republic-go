@@ -8,13 +8,16 @@ import (
 
 // Status defines a structure for JSON marshalling
 type Status struct {
-	Network                 string `json:"network"`
-	MultiAddress            string `json:"multiAddress"`
-	EthereumAddress         string `json:"ethereumAddress"`
-	DarknodeRegistryAddress string `json:"darknodeRegistryAddress"`
-	RewardVaultAddress      string `json:"rewardVaultAddress"`
-	PublicKey               string `json:"publicKey"`
-	Peers                   int    `json:"peers"`
+	Network                 string            `json:"network"`
+	MultiAddress            string            `json:"multiAddress"`
+	EthereumNetwork         string            `json:"ethereumNetwork"`
+	EthereumAddress         string            `json:"ethereumAddress"`
+	DarknodeRegistryAddress string            `json:"darknodeRegistryAddress"`
+	RewardVaultAddress      string            `json:"rewardVaultAddress"`
+	PublicKey               string            `json:"publicKey"`
+	InfuraURL               string            `json:"infura"`
+	Tokens                  map[string]string `json:"tokens"`
+	Peers                   int               `json:"peers"`
 }
 
 // StatusAdapter defines a struct which has status reading capability
@@ -43,6 +46,10 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	ethNetwork, err := adapter.EthereumNetwork()
+	if err != nil {
+		return Status{}, err
+	}
 	darknodeRegistryAddr, err := adapter.DarknodeRegistryAddress()
 	if err != nil {
 		return Status{}, err
@@ -55,6 +62,14 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	infuraURL, err := adapter.InfuraURL()
+	if err != nil {
+		return Status{}, err
+	}
+	tokens, err := adapter.Tokens()
+	if err != nil {
+		return Status{}, err
+	}
 	pk, err := adapter.PublicKey()
 	if err != nil {
 		return Status{}, err
@@ -63,10 +78,13 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	return Status{
 		Network:                 network,
 		MultiAddress:            multiAddr.String(),
+		EthereumNetwork:         ethNetwork,
 		EthereumAddress:         ethAddr,
 		DarknodeRegistryAddress: darknodeRegistryAddr,
 		RewardVaultAddress:      rewardVaultAddr,
 		PublicKey:               hexPk,
+		InfuraURL:               infuraURL,
+		Tokens:                  tokens,
 		Peers:                   peers,
 	}, nil
 }

@@ -13,9 +13,12 @@ type Writer interface {
 	WriteMultiAddress(multiAddress identity.MultiAddress) error
 	WritePublicKey(publicKey []byte) error
 
+	WriteEthereumNetwork(ethNetwork string) error
 	WriteEthereumAddress(ethAddress string) error
 	WriteDarknodeRegistryAddress(address string) error
 	WriteRewardVaultAddress(address string) error
+	WriteInfuraURL(url string) error
+	WriteTokens(tokens map[string]string) error
 }
 
 // Reader the address
@@ -25,9 +28,12 @@ type Reader interface {
 	PublicKey() ([]byte, error)
 	Peers() (int, error)
 
+	EthereumNetwork() (string, error)
 	EthereumAddress() (string, error)
 	DarknodeRegistryAddress() (string, error)
 	RewardVaultAddress() (string, error)
+	InfuraURL() (string, error)
+	Tokens() (map[string]string, error)
 }
 
 /*
@@ -53,10 +59,13 @@ type provider struct {
 	network                 string
 	swarmer                 swarm.Swarmer
 	multiAddress            identity.MultiAddress
+	ethereumNetwork         string
 	ethereumAddress         string
 	darknodeRegistryAddress string
 	rewardVaultAddress      string
 	publicKey               []byte
+	infuraURL               string
+	tokens                  map[string]string
 }
 
 // NewProvider returns a new provider
@@ -89,6 +98,19 @@ func (sp *provider) WriteMultiAddress(multiAddr identity.MultiAddress) error {
 
 func (sp *provider) MultiAddress() (identity.MultiAddress, error) {
 	return sp.multiAddress, nil
+}
+
+// WriteEthereumNetwork writes ethAddr to the provider
+func (sp *provider) WriteEthereumNetwork(ethNetwork string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.ethereumNetwork = ethNetwork
+	return nil
+}
+
+// EthereumNetwork gets the ethereum address
+func (sp *provider) EthereumNetwork() (string, error) {
+	return sp.ethereumNetwork, nil
 }
 
 // WriteEthereumAddress writes ethAddr to the provider
@@ -141,6 +163,32 @@ func (sp *provider) WritePublicKey(publicKey []byte) error {
 // PublicKey gets the public key
 func (sp *provider) PublicKey() ([]byte, error) {
 	return sp.publicKey, nil
+}
+
+// WriteInfuraURL writes the dark node's public key to the provider
+func (sp *provider) WriteInfuraURL(infuraURL string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.infuraURL = infuraURL
+	return nil
+}
+
+// InfuraURL gets the public key
+func (sp *provider) InfuraURL() (string, error) {
+	return sp.infuraURL, nil
+}
+
+// WriteTokens writes the dark node's public key to the provider
+func (sp *provider) WriteTokens(tokens map[string]string) error {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.tokens = tokens
+	return nil
+}
+
+// Tokens gets the public key
+func (sp *provider) Tokens() (map[string]string, error) {
+	return sp.tokens, nil
 }
 
 // Peers returns the number of peers the darknode is connected to
