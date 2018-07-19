@@ -39,7 +39,7 @@ var _ = Describe("Syncer", func() {
 	})
 
 	AfterEach(func() {
-		os.RemoveAll("./tmp/data.out")
+		os.RemoveAll("./tmp")
 	})
 
 	Context("when syncing", func() {
