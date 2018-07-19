@@ -631,6 +631,14 @@ func (binder *Binder) epoch(epoch struct {
 // the turning of the Epoch failed, the current Epoch is returned.
 func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+
+		// FIXME: Such a low gas price is only appropriate during testnet.
+		previousGasPrice := binder.transactOpts.GasPrice
+		binder.transactOpts.GasPrice = big.NewInt(1000000000)
+		defer func() {
+			binder.transactOpts.GasPrice = previousGasPrice
+		}()
+
 		return binder.nextEpoch()
 	})
 	if err != nil {
