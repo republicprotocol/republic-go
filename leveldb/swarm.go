@@ -1,6 +1,7 @@
 package leveldb
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"time"
@@ -16,38 +17,42 @@ import (
 // one present in the local store.
 var ErrNonceTooLow = errors.New("nonce too low")
 
-// MultiAddressValue is the storage format for multiaddresses being stored in
+// SwarmMultiAddressValue is the storage format for multiaddresses being stored in
 // LevelDB. It contains additional timestamping information so that LevelDB can
 // provide pruning.
-type MultiAddressValue struct {
+type SwarmMultiAddressValue struct {
 	Nonce        uint64
 	MultiAddress identity.MultiAddress
 	Timestamp    time.Time
 }
 
-// MultiAddressesIterator implements the swarm.MultiAddressStorer using a
+// SwarmMultiAddressesIterator implements the swarm.MultiAddressStorer using a
 // LevelDB iterator.
-type MultiAddressesIterator struct {
+type SwarmMultiAddressesIterator struct {
 	inner iterator.Iterator
 }
 
-func newMultiAddressIterator(iter iterator.Iterator) *MultiAddressesIterator {
-	return &MultiAddressesIterator{
+func newSwarmMultiAddressIterator(iter iterator.Iterator) *SwarmMultiAddressesIterator {
+	return &SwarmMultiAddressesIterator{
 		inner: iter,
 	}
 }
 
 // Next implements the swarm.MultiAddressIterator interface.
-func (iter *MultiAddressesIterator) Next() bool {
+func (iter *SwarmMultiAddressesIterator) Next() bool {
 	return iter.inner.Next()
 }
 
 // Cursor implements the swarm.MultiAddressIterator interface.
-func (iter *MultiAddressesIterator) Cursor() (identity.MultiAddress, uint64, error) {
+func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, uint64, error) {
 	if !iter.inner.Valid() {
 		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
 	}
-	value := MultiAddressValue{}
+	if bytes.Equal(iter.inner.Key(), identity.Address(0).Hash()) {
+		iter.Next()
+		return iter.Cursor()
+	}
+	value := SwarmMultiAddressValue{}
 	data := iter.inner.Value()
 	if err := json.Unmarshal(data, &value); err != nil {
 		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
@@ -56,7 +61,7 @@ func (iter *MultiAddressesIterator) Cursor() (identity.MultiAddress, uint64, err
 }
 
 // Collect implements the swarm.MultiAddressIterator interface.
-func (iter *MultiAddressesIterator) Collect() ([]identity.MultiAddress, []uint64, error) {
+func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, []uint64, error) {
 	multiaddresses := []identity.MultiAddress{}
 	nonces := []uint64{}
 	for iter.Next() {
@@ -72,32 +77,38 @@ func (iter *MultiAddressesIterator) Collect() ([]identity.MultiAddress, []uint64
 }
 
 // Release implements the swarm.MultiAddressIterator interface.
-func (iter *MultiAddressesIterator) Release() {
+func (iter *SwarmMultiAddressesIterator) Release() {
 	iter.inner.Release()
 }
 
-// MultiAddressTable implements the swarm.MultiAddressStorer interface using
+// SwarmMultiAddressTable implements the swarm.MultiAddressStorer interface using
 // LevelDB.
-type MultiAddressTable struct {
+type SwarmMultiAddressTable struct {
 	db     *leveldb.DB
 	expiry time.Duration
 }
 
-// NewMultiAddressTable returns a new MultiAddressTable that uses the
+// NewSwarmMultiAddressTable returns a new SwarmMultiAddressTable that uses the
 // given LevelDB instance to store and load values from the disk.
-func NewMultiAddressTable(db *leveldb.DB) *MultiAddressTable {
-	return &MultiAddressTable{db: db}
+func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration, multiAddr identity.MultiAddress) (*SwarmMultiAddressTable, error) {
+	var err error
+	nonce := uint64(1)
+	table := SwarmMultiAddressTable{db: db, expiry: expiry}
+	_, err = table.PutSelf(multiAddr, nonce)
+	if err != nil {
+		return nil, err
+	}
+	return &table, nil
 }
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *MultiAddressTable) PutMultiAddress(multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
+func (table *SwarmMultiAddressTable) PutMultiAddress(multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
 	isNew := false
-	value := MultiAddressValue{
+	value := SwarmMultiAddressValue{
 		Nonce:        nonce,
 		MultiAddress: multiaddress,
 		Timestamp:    time.Now(),
 	}
-
 	oldMultiAddr, oldNonce, err := table.MultiAddress(multiaddress.Address())
 	if err != nil {
 		isNew = true
@@ -119,7 +130,7 @@ func (table *MultiAddressTable) PutMultiAddress(multiaddress identity.MultiAddre
 }
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *MultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
+func (table *SwarmMultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
 	data, err := table.db.Get(table.key(address.Hash()), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
@@ -127,7 +138,7 @@ func (table *MultiAddressTable) MultiAddress(address identity.Address) (identity
 		}
 		return identity.MultiAddress{}, 0, err
 	}
-	value := MultiAddressValue{}
+	value := SwarmMultiAddressValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
 		return identity.MultiAddress{}, 0, err
 	}
@@ -135,24 +146,20 @@ func (table *MultiAddressTable) MultiAddress(address identity.Address) (identity
 }
 
 // MultiAddresses implements the swarm.MultiAddressStorer interface.
-func (table *MultiAddressTable) MultiAddresses() (swarm.MultiAddressIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key(MultiAddressIterBegin), Limit: table.key(MultiAddressIterEnd)}, nil)
-	return newMultiAddressIterator(iter), nil
-}
-
-func (table *MultiAddressTable) key(k []byte) []byte {
-	return append(append(MultiAddressTableBegin, k...), MultiAddressTablePadding...)
+func (table *SwarmMultiAddressTable) MultiAddresses() (swarm.MultiAddressIterator, error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key(SwarmMultiAddressIterBegin), Limit: table.key(SwarmMultiAddressIterEnd)}, nil)
+	return newSwarmMultiAddressIterator(iter), nil
 }
 
 // Prune iterates over all multiaddresses and deletes those that have expired.
-func (table *MultiAddressTable) Prune() (err error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key(MultiAddressIterBegin), Limit: table.key(MultiAddressIterEnd)}, nil)
+func (table *SwarmMultiAddressTable) Prune() (err error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key(SwarmMultiAddressIterBegin), Limit: table.key(SwarmMultiAddressIterEnd)}, nil)
 	defer iter.Release()
 
 	now := time.Now()
 	for iter.Next() {
 		key := iter.Key()
-		value := MultiAddressValue{}
+		value := SwarmMultiAddressValue{}
 		if localErr := json.Unmarshal(iter.Value(), &value); localErr != nil {
 			err = localErr
 			continue
@@ -164,4 +171,33 @@ func (table *MultiAddressTable) Prune() (err error) {
 		}
 	}
 	return err
+}
+
+// Self implements the swarm.MultiAddressStorer interface.
+func (table *SwarmMultiAddressTable) Self() (identity.MultiAddress, uint64, error) {
+	return table.MultiAddress(identity.Address(0))
+}
+
+// PutSelf implements the swarm.MultiAddressStorer interface.
+func (table *SwarmMultiAddressTable) PutSelf(multiAddr identity.MultiAddress, nonce uint64) (uint64, error) {
+	multiAddr, nonce, err = table.MultiAddress(identity.Address(0))
+	if err != nil && err != swarm.ErrMultiAddressNotFound {
+		return 0, err
+	}
+
+	value := SwarmMultiAddressValue{
+		Nonce:        nonce + 1,
+		MultiAddress: multiAddr,
+		Timestamp:    time.Now(),
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return 0, err
+	}
+
+	return nonce, table.db.Put(table.key(identity.Address(0).Hash()), data, nil)
+}
+
+func (table *SwarmMultiAddressTable) key(k []byte) []byte {
+	return append(append(SwarmMultiAddressTableBegin, k...), SwarmMultiAddressTablePadding...)
 }
