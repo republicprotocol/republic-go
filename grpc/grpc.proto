@@ -3,18 +3,27 @@ syntax = "proto3";
 package grpc;
 
 service SwarmService {
-    rpc Ping (PingRequest) returns (PingResponse);
-    rpc Query (QueryRequest) returns (stream QueryResponse);
+    rpc Ping  (PingRequest)  returns (PingResponse);
+    rpc Pong  (PongRequest)  returns (PongResponse);
+    rpc Query (QueryRequest) returns (QueryResponse);
 }
 
 message PingRequest {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+    bytes  signature         = 1;
+    string multiAddress      = 2;
+    uint64 multiAddressNonce = 3;
 }
 
 message PingResponse {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+}
+
+message PongRequest {
+    bytes  signature         = 1;
+    string multiAddress      = 2;
+    uint64 multiAddressNonce = 3;
+}
+
+message PongResponse {
 }
 
 message QueryRequest {
@@ -23,8 +32,8 @@ message QueryRequest {
 }
 
 message QueryResponse {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+    bytes           signature      = 1;
+    repeated string multiAddresses = 2;
 }
 
 service StreamService {

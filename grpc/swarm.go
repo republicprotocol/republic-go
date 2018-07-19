@@ -1,24 +1,23 @@
 package grpc
 
 import (
-	"context"
 	"fmt"
-	"io"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/net/context"
 )
 
 type swarmClient struct {
-	multiAddr identity.MultiAddress
+	store swarm.MultiAddressStorer
 }
 
 // NewSwarmClient returns an implementation of the swarm.Client interface that
 // uses gRPC and a recycled connection pool.
-func NewSwarmClient(multiAddr identity.MultiAddress) swarm.Client {
+func NewSwarmClient(store swarm.MultiAddressStorer) swarm.Client {
 	return &swarmClient{
-		multiAddr: multiAddr,
+		store: store,
 	}
 }
 
@@ -32,8 +31,9 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	defer conn.Close()
 
 	request := &PingRequest{
-		Signature:    multiAddr.Signature,
-		MultiAddress: multiAddr.String(),
+		Signature:         multiAddr.Signature,
+		MultiAddress:      multiAddr.String(),
+		MultiAddressNonce: nonce,
 	}
 
 	return Backoff(ctx, func() error {
@@ -42,18 +42,34 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	})
 }
 
-func (client *swarmClient) Pong(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	return nil
+func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) error {
+	conn, err := Dial(ctx, to)
+	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
+		return fmt.Errorf("cannot dial %v: %v", to, err)
+	}
+	defer conn.Close()
+
+	multiAddr, nonce, err := client.store.Self()
+	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot get self details: %v", err))
+		return fmt.Errorf("cannot get self details: %v", err)
+	}
+
+	request := &PongRequest{
+		Signature:         multiAddr.Signature,
+		MultiAddress:      multiAddr.String(),
+		MultiAddressNonce: nonce,
+	}
+
+	return Backoff(ctx, func() error {
+		_, err = NewSwarmServiceClient(conn).Pong(ctx, request)
+		return err
+	})
 }
 
 // Query implements the swarm.Client interface.
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySignature [65]byte) (identity.MultiAddresses, error) {
-
-	if err := client.Ping(ctx, to, to, 1); err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot ping before query: %v", err))
-		return identity.MultiAddresses{}, fmt.Errorf("cannot ping before query: %v", err)
-	}
-
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -66,36 +82,36 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		Address:   query.String(),
 	}
 
-	var stream SwarmService_QueryClient
+	var response *QueryResponse
 	if err := Backoff(ctx, func() error {
-		stream, err = NewSwarmServiceClient(conn).Query(ctx, request)
+		response, err = NewSwarmServiceClient(conn).Query(ctx, request)
 		return err
 	}); err != nil {
 		return identity.MultiAddresses{}, err
 	}
 
+	//TODO: response.Signature???
 	multiAddrs := identity.MultiAddresses{}
-	for {
-		message, err := stream.Recv()
+	for _, multiAddrStr := range response.MultiAddresses {
+		multiAddr, err := identity.NewMultiAddressFromString(multiAddrStr)
 		if err != nil {
-			if err == io.EOF {
-				return multiAddrs, nil
-			}
-			return multiAddrs, err
-		}
-		multiAddr, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
-		if err != nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", message.GetMultiAddress(), err))
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", multiAddrStr, err))
 			continue
 		}
-		multiAddr.Signature = message.GetSignature()
+		multiAddr.Signature = multiAddr.Hash()
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
+	return multiAddrs, nil
 }
 
 // MultiAddress implements the swarm.Client interface.
 func (client *swarmClient) MultiAddress() identity.MultiAddress {
-	return client.multiAddr
+	multiAddr, _, err := client.store.Self()
+	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot retrieve own multiaddress: %v", err))
+		return identity.MultiAddress{}
+	}
+	return multiAddr
 }
 
 // SwarmService is a Service that implements the gRPC SwarmService defined in
@@ -130,16 +146,40 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
+
 	from.Signature = request.GetSignature()
-	err = service.server.Ping(ctx, from, 1)
+	nonce := request.GetMultiAddressNonce()
+
+	err = service.server.Ping(ctx, from, nonce)
 	if err != nil {
 		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update dht with: %v", err))
 		return &PingResponse{}, fmt.Errorf("cannot update dht: %v", err)
 	}
-	return &PingResponse{
-		Signature:    from.Signature,
-		MultiAddress: from.String(),
-	}, nil
+	return &PingResponse{}, nil
+}
+
+// Pong is an RPC used to notify a SwarmService about the existence of a
+// client. In the PingRequest, the client sends a signed identity.MultiAddress
+// and the SwarmService delegates the responsibility of handling this signed
+// identity.MultiAddress to its swarm.Server. If its swarm.Server accepts the
+// signed identity.MultiAddress of the client it will return its own signed
+// identity.MultiAddress in a PingResponse.
+func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
+	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
+	if err != nil {
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
+		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
+	}
+
+	from.Signature = request.GetSignature()
+	nonce := request.GetMultiAddressNonce()
+
+	err = service.server.Pong(ctx, from, nonce)
+	if err != nil {
+		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update storer with %v: %v", request.GetMultiAddress(), err))
+		return &PongResponse{}, fmt.Errorf("cannot update storer: %v", err)
+	}
+	return &PongResponse{}, nil
 }
 
 // Query is an RPC used to find identity.MultiAddresses. In the QueryRequest,
@@ -147,27 +187,23 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // identity.MultiAddresses to the client. The SwarmService delegates
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
-func (service *SwarmService) Query(request *QueryRequest, stream SwarmService_QueryServer) error {
+func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
 	query := identity.Address(request.GetAddress())
 	querySig := [65]byte{}
 	copy(querySig[:], request.GetSignature())
 
-	multiAddrs, err := service.server.Query(stream.Context(), query, querySig)
+	multiAddrs, err := service.server.Query(ctx, query, querySig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, multiAddr := range multiAddrs {
-		response := &QueryResponse{
-			Signature:    multiAddr.Signature,
-			MultiAddress: multiAddr.String(),
-		}
-		if err := stream.Send(response); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
+	multiAddrsStr := make([]string, len(multiAddrs))
+	for i, multiAddr := range multiAddrs {
+		multiAddrsStr[i] = multiAddr.String()
 	}
-	return nil
+
+	return &QueryResponse{
+		Signature:      []byte{},
+		MultiAddresses: multiAddrsStr,
+	}, nil
 }
