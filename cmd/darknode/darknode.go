@@ -17,7 +17,6 @@ import (
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/dht"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/http"
@@ -92,19 +91,20 @@ func main() {
 	}
 	defer store.Release()
 
-	// New DHT
-	dht := dht.NewDHT(config.Address, 64)
-
 	// New gRPC components
 	server := grpc.NewServer()
 
-	statusService := grpc.NewStatusService(&dht)
-	statusService.Register(server)
+	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore())
+	swarmer, err := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha)
+	if err != nil {
+		log.Fatalf("cannot create swarmer: %v", err)
+	}
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha))
 
-	swarmClient := grpc.NewSwarmClient(multiAddr)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(&crypter, swarmClient, &dht))
-	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
+
+	statusService := grpc.NewStatusService(swarmer)
+	statusService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
@@ -115,7 +115,7 @@ func main() {
 	streamerService.Register(server)
 
 	// Populate status information
-	statusProvider := status.NewProvider(&dht)
+	statusProvider := status.NewProvider(swarmer)
 	statusProvider.WriteNetwork(string(config.Ethereum.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
@@ -159,15 +159,21 @@ func main() {
 		}
 
 		// Bootstrap into the network
+		// TODO: add bootstrap multiaddresses to the MultiAddressStore.
 		fmtStr := "bootstrapping\n"
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			fmtStr += "  " + multiAddr.String() + "\n"
 		}
 		log.Printf(fmtStr)
-		if err := swarmer.Bootstrap(context.Background(), config.BootstrapMultiAddresses); err != nil {
+		// TODO: modify to launch a background goroutine that periodically pings the network.
+		if err := swarmer.Ping(context.Background()); err != nil {
 			log.Printf("bootstrap: %v", err)
 		}
-		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
+		peers, err := swarmer.GetConnectedPeers()
+		if err != nil {
+			logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
+		}
+		log.Printf("connected to %v peers", len(peers))
 
 		// New secure multi-party computer
 		smpcer := smpc.NewSmpcer(swarmer, streamer)

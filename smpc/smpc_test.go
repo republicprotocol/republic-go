@@ -31,6 +31,7 @@ var (
 var _ = Describe("Smpcer", func() {
 
 	var nodes []*mockNode
+	var stores []swarm.MultiAddressStorer
 	var addresses []identity.Address
 
 	Context("when connecting and disconnecting", func() {
@@ -38,7 +39,7 @@ var _ = Describe("Smpcer", func() {
 			var err error
 
 			By("generating nodes")
-			nodes, addresses, err = generateMocknodes(numDarknodes, α)
+			nodes, addresses, stores, err = generateMocknodes(numDarknodes, α)
 			Expect(err).ShouldNot(HaveOccurred())
 			bootstraps := make(identity.MultiAddresses, numBootstrap)
 			for i := 0; i < numBootstrap; i++ {
@@ -56,9 +57,12 @@ var _ = Describe("Smpcer", func() {
 			By("bootstrapping")
 			dispatch.CoForAll(nodes, func(i int) {
 				defer GinkgoRecover()
+				for j := 0; j < numBootstrap; j++ {
+					stores[i].PutMultiAddress(bootstraps[j], 1)
+				}
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				if err := nodes[i].Swarmer.Bootstrap(ctx, bootstraps); err != nil {
+				if err := nodes[i].Swarmer.Ping(ctx); err != nil {
 					log.Println(err)
 				}
 			})
@@ -146,7 +150,7 @@ func (node *mockNode) Stop() {
 	node.Listener.Close()
 }
 
-func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, error) {
+func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.MultiAddressStorer, error) {
 	nodes := make([]*mockNode, n)
 	addresses := make([]identity.Address, n)
 	stores := make([]swarm.MultiAddressStorer, n)
@@ -154,26 +158,34 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, error) {
 	for i := range nodes {
 		keystore, err := crypto.RandomKeystore()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		addr := identity.Address(keystore.Address())
 		multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d/republic/%v", 3000+i, addr))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		// Create leveldb store and store own multiaddress.
-		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 72*time.Hour, multiAddr)
+		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 72*time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
-		stores[i] = db.MultiAddressStore()
+		stores[i] = db.SwarmMultiAddressStore()
 		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
-		// swarmClient := grpc.NewSwarmClient(multiAddr)
-		swarmer := swarm.NewSwarmer(swarmClient, stores[i], α, time.Hour)
-		swarmService := grpc.NewSwarmService(swarm.NewServer(testutils.NewCrypter(), swarmClient, stores[i]))
+		_, err = stores[i].PutSelf(multiAddr, 0)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		swarmClient := grpc.NewSwarmClient(stores[i])
+		swarmer, err := swarm.NewSwarmer(swarmClient, stores[i], α)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α))
 
 		streamer := grpc.NewStreamer(testutils.NewCrypter(), testutils.NewCrypter(), addr)
 		streamerService := grpc.NewStreamerService(testutils.NewCrypter(), testutils.NewCrypter(), streamer)
@@ -197,5 +209,5 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, error) {
 		streamerService.Register(nodes[i].Server)
 	}
 
-	return nodes, addresses, nil
+	return nodes, addresses, stores, nil
 }
