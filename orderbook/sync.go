@@ -165,8 +165,16 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		if err != nil {
 			log.Printf("[error] (sync) cannot load order status: %v", err)
 			continue
+		} else if orderStatus != order.Open {
+			deleteOrder(orderID, orderStatus)
 		}
-		if orderStatus != order.Open {
+
+		orderDepth, err := syncer.contractBinder.Depth(orderID)
+		if err != nil {
+			log.Printf("[error] (sync) cannot load order status: %v", err)
+			continue
+		}
+		if orderDepth > 10000 {
 			deleteOrder(orderID, orderStatus)
 		}
 	}
