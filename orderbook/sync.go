@@ -20,6 +20,7 @@ type syncer struct {
 	// control parameters for customising when to pull changes
 	contractBinder ContractBinder
 	limit          int
+	resyncPointer  int
 }
 
 func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, contractBinder ContractBinder, limit int) Syncer {
@@ -29,6 +30,7 @@ func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, contractBinde
 
 		contractBinder: contractBinder,
 		limit:          limit,
+		resyncPointer:  0,
 	}
 }
 
@@ -113,6 +115,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 	defer orderIter.Release()
 
+	orders, orderStatuses, _, err := orderIter.Collect()
+	if err != nil {
+		return fmt.Errorf("cannot collect orders: %v", err)
+	}
+
 	// Log information about the resync at the end of the function
 	numClosedOrders := 0
 	defer func() {
@@ -141,13 +148,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		}
 	}
 
-	for orderIter.Next() {
+	offset := syncer.resyncPointer
+	for i := 0; i < 2*syncer.limit; i++ {
+		syncer.resyncPointer = (offset + i) % len(orders)
 
-		orderID, orderStatus, _, err := orderIter.Cursor()
-		if err != nil {
-			log.Printf("[error] (sync) cannot load cursor: %v", err)
-			continue
-		}
+		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
 		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
 			continue
