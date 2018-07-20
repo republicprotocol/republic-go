@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -28,9 +29,9 @@ var _ = Describe("Swarm", func() {
 	Context("when bootstrapping", func() {
 
 		It("should be able to query any peer after bootstrapping", func() {
-			numberOfClients := 100
+			numberOfClients := 75
 			numberOfBootstrapClients := 5
-			α := 10
+			α := 4
 
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
@@ -67,12 +68,17 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				for j := 0; j < numberOfBootstrapClients; j++ {
-					stores[i].PutMultiAddress(multiAddresses[j], 1)
+					// Get nonce of the bootstrap multiaddress, if present in the store.
+					_, nonce, err := stores[i].MultiAddress(multiAddresses[j].Address())
+					if err != nil && err != ErrMultiAddressNotFound {
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+					if _, err := stores[i].PutMultiAddress(multiAddresses[j], nonce); err != nil {
+						log.Println(err)
+					}
 				}
 				err := swarmers[i].Ping(ctx)
-				if err != nil {
-					Expect(err).ShouldNot(HaveOccurred())
-				}
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 
 			// Query for clients

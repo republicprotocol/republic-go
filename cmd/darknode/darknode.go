@@ -169,13 +169,20 @@ func main() {
 		}
 
 		// Bootstrap into the network
-		// TODO: add bootstrap multiaddresses to the MultiAddressStore.
 		fmtStr := "bootstrapping\n"
 		for _, multiAddr := range config.BootstrapMultiAddresses {
+			// Get nonce of the bootstrap multiaddress, if present in the store.
+			_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+			if err != nil && err != swarm.ErrMultiAddressNotFound {
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap nonce details from store: %v", err))
+			}
+			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce); err != nil {
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
+			}
 			fmtStr += "  " + multiAddr.String() + "\n"
 		}
 		log.Printf(fmtStr)
-		// TODO: modify to launch a background goroutine that periodically pings the network.
+
 		if err := swarmer.Ping(context.Background()); err != nil {
 			log.Printf("bootstrap: %v", err)
 		}
@@ -232,6 +239,19 @@ func main() {
 			for {
 				store.Prune()
 				time.Sleep(time.Hour)
+			}
+		}, func() {
+			// Periodically update the network with the darknode address
+			for {
+				time.Sleep(time.Hour)
+				if err := swarmer.Ping(context.Background()); err != nil {
+					log.Printf("bootstrap: %v", err)
+				}
+				peers, err := swarmer.GetConnectedPeers()
+				if err != nil {
+					logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
+				}
+				log.Printf("connected to %v peers", len(peers))
 			}
 		})
 	}()
