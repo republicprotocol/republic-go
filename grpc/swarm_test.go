@@ -88,7 +88,7 @@ var _ = Describe("Swarming", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			multiAddrs, _, err := multiAddrIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(multiAddrs).Should(HaveLen(1))
+			Expect(multiAddrs).Should(HaveLen(2))
 		})
 
 	})
@@ -128,7 +128,7 @@ func newSwarmClient(db swarm.MultiAddressStorer) (swarm.Client, error) {
 		return nil, err
 	}
 
-	db.PutSelf(multiAddr, 0)
-	client := NewSwarmClient(db)
+	db.PutMultiAddress(multiAddr, 0)
+	client := NewSwarmClient(db, multiAddr.Address())
 	return client, nil
 }

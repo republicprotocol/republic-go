@@ -149,7 +149,7 @@ func newMockClientToServer(mockServerHub *mockServerHub, i int) (mockClientToSer
 	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
 	Expect(err).ShouldNot(HaveOccurred())
 	store := db.SwarmMultiAddressStore()
-	_, err = store.PutSelf(multiAddr, 0)
+	_, err = store.PutMultiAddress(multiAddr, 0)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return mockClientToServer{
@@ -186,7 +186,7 @@ func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.M
 	}
 	client.serverHub.connsMu.Unlock()
 
-	_, nonce, err := client.store.Self()
+	_, nonce, err := client.store.MultiAddress(client.multiAddr.Address())
 	if err != nil {
 		return err
 	}

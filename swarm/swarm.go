@@ -63,24 +63,21 @@ type swarmer struct {
 
 // NewSwarmer will return an object that implements the Swarmer interface.
 func NewSwarmer(client Client, storer MultiAddressStorer, α int) (Swarmer, error) {
-	nonce, err := storer.PutSelf(client.MultiAddress(), uint64(0))
-	if err != nil {
-		return nil, err
-	}
-	return &swarmer{
+	swarmer := &swarmer{
 		client: client,
 		storer: storer,
 		α:      α,
-		nonce:  nonce,
-	}, nil
+	}
+	if err := swarmer.retrieveAndUpdateSelf(); err != nil {
+		return nil, err
+	}
+	return swarmer, nil
 }
 
 // Ping will update the multiaddress and nonce in the storer and send
 // the swarmer's multiaddress to α randomly selected nodes.
 func (swarmer *swarmer) Ping(ctx context.Context) error {
-	var err error
-	swarmer.nonce, err = swarmer.storer.PutSelf(swarmer.MultiAddress(), swarmer.nonce)
-	if err != nil {
+	if err := swarmer.retrieveAndUpdateSelf(); err != nil {
 		return err
 	}
 
@@ -210,6 +207,19 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		}
 	}
 
+	return nil
+}
+
+func (swarmer *swarmer) retrieveAndUpdateSelf() error {
+	_, nonce, err := swarmer.storer.MultiAddress(swarmer.MultiAddress().Address())
+	if err != nil && err != ErrMultiAddressNotFound {
+		return err
+	}
+	_, err = swarmer.storer.PutMultiAddress(swarmer.MultiAddress(), nonce)
+	if err != nil {
+		return err
+	}
+	swarmer.nonce = nonce
 	return nil
 }
 

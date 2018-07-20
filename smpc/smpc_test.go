@@ -13,11 +13,11 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/smpc"
 
-	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/grpc"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/stream"
 	"github.com/republicprotocol/republic-go/swarm"
 	"github.com/republicprotocol/republic-go/testutils"
@@ -177,12 +177,12 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 
-		_, err = stores[i].PutSelf(multiAddr, 0)
+		_, err = stores[i].PutMultiAddress(multiAddr, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		swarmClient := grpc.NewSwarmClient(stores[i])
+		swarmClient := grpc.NewSwarmClient(stores[i], multiAddr.Address())
 		swarmer, err := swarm.NewSwarmer(swarmClient, stores[i], α)
 		if err != nil {
 			return nil, nil, nil, err

@@ -94,7 +94,7 @@ func main() {
 	// New gRPC components
 	server := grpc.NewServer()
 
-	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore())
+	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
 	swarmer, err := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha)
 	if err != nil {
 		log.Fatalf("cannot create swarmer: %v", err)

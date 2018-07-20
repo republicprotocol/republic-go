@@ -93,36 +93,4 @@ var _ = Describe("Swarm storage", func() {
 			Expect(err).Should(Equal(swarm.ErrCursorOutOfRange))
 		})
 	})
-
-	Context("when updating details about self", func() {
-		It("should not return own multiaddress", func() {
-			db := newDB(dbFile)
-			swarmMultiAddressTable := NewSwarmMultiAddressTable(db, 2*time.Second)
-
-			myMultiAddr, err := testutils.RandomMultiAddress()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			nonce, err := swarmMultiAddressTable.PutSelf(myMultiAddr, 0)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(nonce).Should(Equal(uint64(1)))
-
-			// Put other multiAddresses into the table
-			for i := 0; i < len(multiAddresses); i++ {
-				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i], 1)
-				Expect(err).ShouldNot(HaveOccurred())
-			}
-
-			// Attempt to retrieve my multiaddress using my address.
-			multi, nonce, err := swarmMultiAddressTable.MultiAddress(myMultiAddr.Address())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(multi.String()).Should(Equal(myMultiAddr.String()))
-			Expect(nonce).Should(Equal(uint64(1)))
-
-			multiAddrsIter, err := swarmMultiAddressTable.MultiAddresses()
-			defer multiAddrsIter.Release()
-			multiAddrs, _, err := multiAddrsIter.Collect()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(len(multiAddrs)).Should(Equal(len(multiAddresses)))
-		})
-	})
 })

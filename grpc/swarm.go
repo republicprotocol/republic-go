@@ -10,13 +10,15 @@ import (
 )
 
 type swarmClient struct {
+	addr  identity.Address
 	store swarm.MultiAddressStorer
 }
 
 // NewSwarmClient returns an implementation of the swarm.Client interface that
 // uses gRPC and a recycled connection pool.
-func NewSwarmClient(store swarm.MultiAddressStorer) swarm.Client {
+func NewSwarmClient(store swarm.MultiAddressStorer, addr identity.Address) swarm.Client {
 	return &swarmClient{
+		addr:  addr,
 		store: store,
 	}
 }
@@ -50,7 +52,7 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 	}
 	defer conn.Close()
 
-	multiAddr, nonce, err := client.store.Self()
+	multiAddr, nonce, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot get self details: %v", err))
 		return fmt.Errorf("cannot get self details: %v", err)
@@ -105,7 +107,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 
 // MultiAddress implements the swarm.Client interface.
 func (client *swarmClient) MultiAddress() identity.MultiAddress {
-	multiAddr, _, err := client.store.Self()
+	multiAddr, _, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot retrieve own multiaddress: %v", err))
 		return identity.MultiAddress{}
