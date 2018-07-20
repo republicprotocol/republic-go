@@ -152,8 +152,8 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 
 	err = service.server.Ping(ctx, from, nonce)
 	if err != nil {
-		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update dht with: %v", err))
-		return &PingResponse{}, fmt.Errorf("cannot update dht: %v", err)
+		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update store with: %v", err))
+		return &PingResponse{}, fmt.Errorf("cannot update store: %v", err)
 	}
 	return &PingResponse{}, nil
 }
