@@ -71,7 +71,7 @@ var _ = Describe("Swarming", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		It("should add the client to the service DHT", func(done Done) {
+		It("should add the client to the service storer", func(done Done) {
 			defer close(done)
 
 			go func() {
@@ -84,7 +84,11 @@ var _ = Describe("Swarming", func() {
 
 			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
-			// Expect(serviceDHT.MultiAddresses()).Should(HaveLen(1))
+			multiAddrIter, err := serviceClientDb.MultiAddresses()
+			Expect(err).ShouldNot(HaveOccurred())
+			multiAddrs, _, err := multiAddrIter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(multiAddrs).Should(HaveLen(1))
 		})
 
 	})

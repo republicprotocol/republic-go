@@ -1,7 +1,6 @@
 package leveldb
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"math"
@@ -49,7 +48,8 @@ func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, uint64
 	if !iter.inner.Valid() {
 		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
 	}
-	if bytes.Equal(iter.inner.Key(), identity.Address(0).Hash()) {
+
+	if isEqual(iter.inner.Key(), identity.Address(0).Hash()) {
 		iter.Next()
 		return iter.Cursor()
 	}
@@ -206,4 +206,16 @@ func (table *SwarmMultiAddressTable) multiAddress(address identity.Address) (ide
 
 func (table *SwarmMultiAddressTable) key(k []byte) []byte {
 	return append(append(SwarmMultiAddressTableBegin, k...), SwarmMultiAddressTablePadding...)
+}
+
+func isEqual(key, address []byte) bool {
+	if len(address) != 32 || len(key) != 66 {
+		return false
+	}
+	for i := 0; i < 32; i++ {
+		if address[i] != key[i+2] {
+			return false
+		}
+	}
+	return true
 }
