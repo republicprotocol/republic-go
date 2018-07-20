@@ -24,5 +24,5 @@ type ContractBinder interface {
 	// epochs.
 	MinimumEpochInterval() (*big.Int, error)
 
-	CurrentBlockNumber() (*big.Int, error)
+	Depth(orderID order.ID) (uint, error)
 }
