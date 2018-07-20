@@ -97,6 +97,10 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutMultiAddress(multiaddress identity.MultiAddress, nonce uint64) (bool, error) {
+	selfMultiAddr, _, err := table.Self()
+	if err == nil && selfMultiAddr.String() == multiaddress.String() {
+		return false, nil
+	}
 	isNew := false
 	value := SwarmMultiAddressValue{
 		Nonce:        nonce,
@@ -104,7 +108,7 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiaddress identity.Multi
 		Timestamp:    time.Now(),
 	}
 	oldMultiAddr, oldNonce, err := table.MultiAddress(multiaddress.Address())
-	if err != nil {
+	if err != nil && err == swarm.ErrMultiAddressNotFound {
 		isNew = true
 	}
 	// Return err if nonce is too low
@@ -125,18 +129,12 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiaddress identity.Multi
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
-	data, err := table.db.Get(table.key(address.Hash()), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = swarm.ErrMultiAddressNotFound
-		}
-		return identity.MultiAddress{}, 0, err
+	selfMultiAddr, selfNonce, err := table.Self()
+	if err == nil && selfMultiAddr.Address() == address {
+		return selfMultiAddr, selfNonce, nil
 	}
-	value := SwarmMultiAddressValue{}
-	if err := json.Unmarshal(data, &value); err != nil {
-		return identity.MultiAddress{}, 0, err
-	}
-	return value.MultiAddress, value.Nonce, nil
+
+	return table.multiAddress(address)
 }
 
 // MultiAddresses implements the swarm.MultiAddressStorer interface.
@@ -169,13 +167,12 @@ func (table *SwarmMultiAddressTable) Prune() (err error) {
 
 // Self implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) Self() (identity.MultiAddress, uint64, error) {
-	return table.MultiAddress(identity.Address(0))
+	return table.multiAddress(identity.Address(0))
 }
 
 // PutSelf implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutSelf(multiAddr identity.MultiAddress, nonce uint64) (uint64, error) {
-	var err error
-	_, oldNonce, err := table.MultiAddress(identity.Address(0))
+	_, oldNonce, err := table.Self()
 	if err != nil && err != swarm.ErrMultiAddressNotFound {
 		return 0, err
 	}
@@ -189,7 +186,22 @@ func (table *SwarmMultiAddressTable) PutSelf(multiAddr identity.MultiAddress, no
 		return 0, err
 	}
 
-	return nonce, table.db.Put(table.key(identity.Address(0).Hash()), data, nil)
+	return value.Nonce, table.db.Put(table.key(identity.Address(0).Hash()), data, nil)
+}
+
+func (table *SwarmMultiAddressTable) multiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
+	data, err := table.db.Get(table.key(address.Hash()), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			err = swarm.ErrMultiAddressNotFound
+		}
+		return identity.MultiAddress{}, 0, err
+	}
+	value := SwarmMultiAddressValue{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return identity.MultiAddress{}, 0, err
+	}
+	return value.MultiAddress, value.Nonce, nil
 }
 
 func (table *SwarmMultiAddressTable) key(k []byte) []byte {
