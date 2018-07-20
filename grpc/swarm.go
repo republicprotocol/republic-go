@@ -90,7 +90,6 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		return identity.MultiAddresses{}, err
 	}
 
-	//TODO: response.Signature???
 	multiAddrs := identity.MultiAddresses{}
 	for _, multiAddrStr := range response.MultiAddresses {
 		multiAddr, err := identity.NewMultiAddressFromString(multiAddrStr)

@@ -182,15 +182,7 @@ func main() {
 			fmtStr += "  " + multiAddr.String() + "\n"
 		}
 		log.Printf(fmtStr)
-
-		if err := swarmer.Ping(context.Background()); err != nil {
-			log.Printf("bootstrap: %v", err)
-		}
-		peers, err := swarmer.GetConnectedPeers()
-		if err != nil {
-			logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
-		}
-		log.Printf("connected to %v peers", len(peers))
+		pingNetwork(swarmer)
 
 		// New secure multi-party computer
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
@@ -244,14 +236,7 @@ func main() {
 			// Periodically update the network with the darknode address
 			for {
 				time.Sleep(time.Hour)
-				if err := swarmer.Ping(context.Background()); err != nil {
-					log.Printf("bootstrap: %v", err)
-				}
-				peers, err := swarmer.GetConnectedPeers()
-				if err != nil {
-					logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
-				}
-				log.Printf("connected to %v peers", len(peers))
+				pingNetwork(swarmer)
 			}
 		})
 	}()
@@ -279,4 +264,15 @@ func getIPAddress() (string, error) {
 	}
 
 	return string(out), nil
+}
+
+func pingNetwork(swarmer swarm.Swarmer) {
+	if err := swarmer.Ping(context.Background()); err != nil {
+		log.Printf("bootstrap: %v", err)
+	}
+	peers, err := swarmer.GetConnectedPeers()
+	if err != nil {
+		logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
+	}
+	log.Printf("connected to %v peers", len(peers))
 }
