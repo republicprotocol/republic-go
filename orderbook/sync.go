@@ -119,6 +119,9 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if err != nil {
 		return fmt.Errorf("cannot collect orders: %v", err)
 	}
+	if len(orders) == 0 {
+		return nil
+	}
 
 	// Log information about the resync at the end of the function
 	numClosedOrders := 0
