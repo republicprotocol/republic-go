@@ -76,11 +76,10 @@ func (concurrentStream *concurrentStream) Send(message stream.Message) error {
 	if err != nil {
 		return err
 	}
-	// FIXME: Re-enable encryption.
-	// data, err = concurrentStream.cipher.Encrypt(data)
-	// if err != nil {
-	// 	return err
-	// }
+	data, err = concurrentStream.cipher.Encrypt(data)
+	if err != nil {
+		return err
+	}
 
 	return concurrentStream.grpcStream.SendMsg(&StreamMessage{
 		Data: data,
@@ -100,12 +99,10 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 	if err := concurrentStream.grpcStream.RecvMsg(&secureData); err != nil {
 		return err
 	}
-	// FIXME: Re-enable encryption.
-	// data, err := concurrentStream.cipher.Decrypt(secureData.Data)
-	// if err != nil {
-	// 	return err
-	// }
-	data := secureData.Data
+	data, err := concurrentStream.cipher.Decrypt(secureData.Data)
+	if err != nil {
+		return err
+	}
 
 	return message.UnmarshalBinary(data)
 }
