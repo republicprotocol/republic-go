@@ -3,6 +3,7 @@ package ome
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -37,6 +38,7 @@ type confirmer struct {
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
 	confirmingSellOrders map[order.ID]struct{}
+	computations         map[ComputationID]Computation
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
@@ -55,6 +57,7 @@ func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, o
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
 		confirmingSellOrders: map[order.ID]struct{}{},
+		computations:         map[ComputationID]Computation{},
 	}
 }
 
@@ -94,6 +97,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				confirmer.confirmingMu.Lock()
 				confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
 				confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
+				confirmer.computations[com.ID] = com
 				confirmer.confirmingMu.Unlock()
 			}
 		}
@@ -233,10 +237,16 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 	} else {
 		comID = NewComputationID(ordMatch, ord)
 	}
-	com, err := confirmer.computationStore.Computation(comID)
-	if err != nil {
-		return com, err
+
+	com, ok := confirmer.computations[comID]
+	if !ok {
+		log.Printf("[ERROR] CANNOT FIND COMPUTATION")
+		return com, errors.New("cannot find computation")
 	}
+	// com, err := confirmer.computationStore.Computation(comID)
+	// if err != nil {
+	// 	return com, err
+	// }
 	com.State = ComputationStateAccepted
 	com.Timestamp = time.Now()
 	return com, nil
