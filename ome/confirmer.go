@@ -3,7 +3,6 @@ package ome
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -38,7 +37,6 @@ type confirmer struct {
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
 	confirmingSellOrders map[order.ID]struct{}
-	computations         map[ComputationID]Computation
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
@@ -57,7 +55,6 @@ func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, o
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
 		confirmingSellOrders: map[order.ID]struct{}{},
-		computations:         map[ComputationID]Computation{},
 	}
 }
 
@@ -97,7 +94,6 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				confirmer.confirmingMu.Lock()
 				confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
 				confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
-				confirmer.computations[com.ID] = com
 				confirmer.confirmingMu.Unlock()
 			}
 		}
@@ -231,22 +227,24 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 }
 
 func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord, ordMatch order.ID) (Computation, error) {
-	var comID ComputationID
+	var comIDDepth0 ComputationID
+	var comIDDepth1 ComputationID
 	if orderParity == order.ParityBuy {
-		comID = NewComputationID(ord, ordMatch)
+		comIDDepth0 = NewComputationID(ord, ordMatch, 0)
+		comIDDepth1 = NewComputationID(ord, ordMatch, 1)
 	} else {
-		comID = NewComputationID(ordMatch, ord)
+		comIDDepth0 = NewComputationID(ordMatch, ord, 0)
+		comIDDepth1 = NewComputationID(ordMatch, ord, 1)
 	}
 
-	com, ok := confirmer.computations[comID]
-	if !ok {
-		log.Printf("[ERROR] CANNOT FIND COMPUTATION")
-		return com, errors.New("cannot find computation")
+	com, err := confirmer.computationStore.Computation(comIDDepth0)
+	if err != nil {
+		com, err = confirmer.computationStore.Computation(comIDDepth1)
 	}
-	// com, err := confirmer.computationStore.Computation(comID)
-	// if err != nil {
-	// 	return com, err
-	// }
+	if err != nil {
+		return com, err
+	}
+
 	com.State = ComputationStateAccepted
 	com.Timestamp = time.Now()
 	return com, nil

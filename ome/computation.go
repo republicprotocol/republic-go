@@ -15,9 +15,15 @@ type ComputationID [32]byte
 
 // NewComputationID returns the crypto.Keccak256 of a buy order.ID concatenated
 // with a sell order.ID.
-func NewComputationID(buy, sell order.ID) ComputationID {
+func NewComputationID(buy, sell order.ID, depth order.FragmentEpochDepth) ComputationID {
+	depthBytes := [4]byte{
+		byte(depth >> 24),
+		byte(depth >> 16),
+		byte(depth >> 8),
+		byte(depth),
+	}
 	comID := ComputationID{}
-	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
+	copy(comID[:], crypto.Keccak256(buy[:], sell[:], depthBytes[:]))
 	return comID
 }
 
@@ -66,11 +72,12 @@ type Computations []Computation
 
 // A Computation is a combination of a buy order.Order and a sell order.Order.
 type Computation struct {
-	Epoch     [32]byte       `json:"epoch"`
-	Timestamp time.Time      `json:"timestamp"`
-	ID        ComputationID  `json:"id"`
-	Buy       order.Fragment `json:"buy"`
-	Sell      order.Fragment `json:"sell"`
+	Timestamp  time.Time                `json:"timestamp"`
+	ID         ComputationID            `json:"id"`
+	Buy        order.Fragment           `json:"buy"`
+	Sell       order.Fragment           `json:"sell"`
+	Epoch      [32]byte                 `json:"epoch"`
+	EpochDepth order.FragmentEpochDepth `json:"epochDepth"`
 
 	State ComputationState `json:"state"`
 	Match bool             `json:"match"`
@@ -81,14 +88,15 @@ type Computation struct {
 // the buy order.ID and the sell order.ID.
 func NewComputation(epoch [32]byte, buy, sell order.Fragment, state ComputationState, match bool) Computation {
 	com := Computation{
-		Epoch: epoch,
-		Buy:   buy,
-		Sell:  sell,
-		State: state,
-		Match: match,
+		Buy:        buy,
+		Sell:       sell,
+		Epoch:      epoch,
+		EpochDepth: buy.EpochDepth,
+		State:      state,
+		Match:      match,
 	}
 	com.Timestamp = time.Now()
-	com.ID = NewComputationID(buy.OrderID, sell.OrderID)
+	com.ID = NewComputationID(buy.OrderID, sell.OrderID, com.EpochDepth)
 	return com
 }
 
