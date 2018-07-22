@@ -11,11 +11,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:8f9b74e18924e778026856487123b84687d9d58262590d7bdefb4e99b5e3e257"
+  digest = "1:db2a0b844e5e0d62b7256df9efbe7269addc623ba10f7e0b74cf4a1ad54a14db"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   pruneopts = "T"
-  revision = "f673a4b563b57b9a95832545c878669a7fa801d9"
+  revision = "9a2f9524024889e129a5422aca2cff73cb3eabf6"
 
 [[projects]]
   digest = "1:68ab6afdca4a2b711034ccb97ba084e05de6e4469ae9969ce7a855954db54551"
@@ -385,7 +385,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7dd8427452185e5473848b94e76d181003d5cf25db82f2d760d866557addeedb"
+  digest = "1:3dbd03cb7cb357943e0320fb1a2b871e67b6448159116f5f150d7b42939e6efd"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -393,15 +393,15 @@
     "internal/fastwalk",
   ]
   pruneopts = "T"
-  revision = "99195f4d4ffa6331a9bc856c72697a15d9842950"
+  revision = "60ffea201e66e0d9375dc5bec85245d7b416710f"
 
 [[projects]]
   branch = "master"
-  digest = "1:8d093c040b734e160cbe8291c7b539c36d2c6dd4581c4bb37cff56078c65bd07"
+  digest = "1:6bf6259dfad916727dcf9e148f4258c816071e034fb31ba33152448afa992615"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "T"
-  revision = "fedd2861243fd1a8152376292b921b394c7bef7e"
+  revision = "02b4e95473316948020af0b7a4f0f22c73929b0e"
 
 [[projects]]
   digest = "1:831f433242783a335d6b98d6e576da77e23a4ca376f78c641a79849f8122f627"
