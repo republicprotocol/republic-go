@@ -42,9 +42,6 @@ type ome struct {
 	orderbook        orderbook.Orderbook
 	smpcer           smpc.Smpcer
 
-	computationBacklogMu *sync.RWMutex
-	computationBacklog   map[ComputationID]Computation
-
 	epochMu   *sync.RWMutex
 	epochCurr *registry.Epoch
 	epochPrev *registry.Epoch
@@ -63,9 +60,6 @@ func NewOme(addr identity.Address, gen ComputationGenerator, matcher Matcher, co
 		computationStore: computationStore,
 		orderbook:        orderbook,
 		smpcer:           smpcer,
-
-		computationBacklogMu: new(sync.RWMutex),
-		computationBacklog:   map[ComputationID]Computation{},
 
 		epochMu:   new(sync.RWMutex),
 		epochCurr: nil,
@@ -123,24 +117,6 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	go func() {
 		defer wg.Done()
 		ome.syncConfirmerToSettler(done, matches, errs)
-	}()
-
-	// Retry Computations that failed due to a missing order.Fragment
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		ticker := time.NewTicker(14 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-done:
-			case <-ticker.C:
-			}
-
-			ome.syncOrderFragmentBacklog(done, matches)
-		}
 	}()
 
 	// Cleanup
@@ -211,43 +187,6 @@ func (ome *ome) syncConfirmerToSettler(done <-chan struct{}, matches <-chan Comp
 			select {
 			case <-done:
 			case errs <- err:
-			}
-		}
-	}
-}
-
-func (ome *ome) syncOrderFragmentBacklog(done <-chan struct{}, matches chan<- Computation) {
-	ome.computationBacklogMu.Lock()
-	defer ome.computationBacklogMu.Unlock()
-
-	buffer := [OmeBufferLimit]Computation{}
-	bufferN := 0
-
-	// Build a buffer of Computations that will be retried
-	for _, com := range ome.computationBacklog {
-		delete(ome.computationBacklog, com.ID)
-		// Check for expiry of the Computation
-		if com.Timestamp.Add(ComputationBacklogExpiry).Before(time.Now()) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired backlog computation buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
-			com.State = ComputationStateRejected
-			if err := ome.computationStore.PutComputation(com); err != nil {
-				logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
-			}
-			continue
-		}
-		// Add this Computation to the buffer
-		buffer[bufferN] = com
-		if bufferN++; bufferN >= OmeBufferLimit {
-			break
-		}
-	}
-
-	// Retry each of the Computations in the buffer
-	if bufferN > 0 {
-		logger.Compute(logger.LevelDebugHigh, fmt.Sprintf("retrying %v computations", bufferN))
-		for i := 0; i < bufferN; i++ {
-			if err := ome.sendComputationToMatcher(buffer[i], done, matches); err != nil {
-				ome.computationBacklog[buffer[i].ID] = buffer[i]
 			}
 		}
 	}

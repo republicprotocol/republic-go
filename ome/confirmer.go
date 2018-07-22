@@ -227,16 +227,24 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 }
 
 func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord, ordMatch order.ID) (Computation, error) {
-	var comID ComputationID
+	var comIDDepth0 ComputationID
+	var comIDDepth1 ComputationID
 	if orderParity == order.ParityBuy {
-		comID = NewComputationID(ord, ordMatch)
+		comIDDepth0 = NewComputationID(ord, ordMatch, 0)
+		comIDDepth1 = NewComputationID(ord, ordMatch, 1)
 	} else {
-		comID = NewComputationID(ordMatch, ord)
+		comIDDepth0 = NewComputationID(ordMatch, ord, 0)
+		comIDDepth1 = NewComputationID(ordMatch, ord, 1)
 	}
-	com, err := confirmer.computationStore.Computation(comID)
+
+	com, err := confirmer.computationStore.Computation(comIDDepth0)
+	if err != nil {
+		com, err = confirmer.computationStore.Computation(comIDDepth1)
+	}
 	if err != nil {
 		return com, err
 	}
+
 	com.State = ComputationStateAccepted
 	com.Timestamp = time.Now()
 	return com, nil
