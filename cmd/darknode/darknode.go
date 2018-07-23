@@ -229,8 +229,8 @@ func main() {
 		}, func() {
 			// Prune the database every hour
 			for {
-				store.Prune()
 				time.Sleep(time.Hour)
+				store.Prune()
 			}
 		}, func() {
 			// Periodically update the network with the darknode address
