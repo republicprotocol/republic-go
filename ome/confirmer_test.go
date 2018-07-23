@@ -1,6 +1,7 @@
 package ome_test
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -10,39 +11,45 @@ import (
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var numberOfComputationsToTest = 100
 
 var _ = Describe("Confirmer", func() {
-	var confirmer Confirmer
-	var contract *omeBinder
-	var storer ComputationStorer
-
-	BeforeEach(func() {
-		var err error
-		depth, pollInterval := uint(0), time.Second
-		contract = newOmeBinder()
-		db, err := leveldb.NewStore("./data.out", time.Hour)
-		Expect(err).ShouldNot(HaveOccurred())
-		storer = db.SomerComputationStore()
-		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
-	})
-
-	AfterEach(func() {
-		os.RemoveAll("./data.out")
-	})
 
 	It("should be able to confirm order on the ren ledger", func(d Done) {
 		defer close(d)
+
+		var err error
+		depth, pollInterval := uint(0), time.Second
+		contract := newOmeBinder()
+		db, err := leveldb.NewStore("./data1.out", time.Hour)
+		defer os.RemoveAll("./data1.out")
+		Expect(err).ShouldNot(HaveOccurred())
+		storer := db.SomerComputationStore()
+		confirmer := NewConfirmer(storer, contract, pollInterval, depth)
 
 		done := make(chan struct{})
 		orderMatches := make(chan Computation)
 		orderIDs := map[[32]byte]struct{}{}
 		computations := make([]Computation, numberOfComputationsToTest)
 
-		var err error
+		for i := 0; i < numberOfComputationsToTest; i++ {
+			computations[i], err = testutils.RandomComputation()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderIDs[computations[i].Buy.OrderID] = struct{}{}
+			orderIDs[computations[i].Sell.OrderID] = struct{}{}
+			storer.PutComputation(computations[i])
+
+			// Open the orders
+			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy.OrderID)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell.OrderID)
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+
 		go func() {
 			defer GinkgoRecover()
 			defer close(done)
@@ -53,22 +60,6 @@ var _ = Describe("Confirmer", func() {
 			time.Sleep(5 * time.Second)
 		}()
 
-		for i := 0; i < numberOfComputationsToTest; i++ {
-			computations[i], err = testutils.RandomComputation()
-			Expect(err).ShouldNot(HaveOccurred())
-			orderIDs[computations[i].Buy.OrderID] = struct{}{}
-			orderIDs[computations[i].Sell.OrderID] = struct{}{}
-			storer.PutComputation(computations[i])
-		}
-
-		// Open all the orders
-		for i := 0; i < numberOfComputationsToTest; i++ {
-			err := contract.OpenBuyOrder([65]byte{}, computations[i].Buy.OrderID)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell.OrderID)
-			Expect(err).ShouldNot(HaveOccurred())
-		}
-
 		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
 
 		go dispatch.CoBegin(
@@ -76,7 +67,7 @@ var _ = Describe("Confirmer", func() {
 				defer GinkgoRecover()
 
 				for err := range errs {
-					Ω(err).ShouldNot(HaveOccurred())
+					fmt.Println(err)
 				}
 			},
 			func() {
@@ -96,14 +87,23 @@ var _ = Describe("Confirmer", func() {
 	}, 100)
 
 	It("should return error for invalid computations", func() {
+		var err error
+		depth, pollInterval := uint(0), time.Second
+		contract := newOmeBinder()
+		db, err := leveldb.NewStore("./data2.out", time.Hour)
+		defer os.RemoveAll("./data2.out")
+		Expect(err).ShouldNot(HaveOccurred())
+		storer := db.SomerComputationStore()
+		confirmer := NewConfirmer(storer, contract, pollInterval, depth)
+
 		done := make(chan struct{})
 		orderMatches := make(chan Computation)
 		orderIDs := map[[32]byte]struct{}{}
 		computations := make([]Computation, numberOfComputationsToTest)
 
-		var err error
 		for i := 0; i < numberOfComputationsToTest; i++ {
 			computations[i], err = testutils.RandomComputation()
+			computations[i].EpochDepth = order.FragmentEpochDepth(100)
 			Expect(err).ShouldNot(HaveOccurred())
 			orderIDs[computations[i].Buy.OrderID] = struct{}{}
 			orderIDs[computations[i].Sell.OrderID] = struct{}{}
