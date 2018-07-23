@@ -1,6 +1,7 @@
 package ome_test
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -73,21 +74,23 @@ var _ = Describe("Confirmer", func() {
 			defer GinkgoRecover()
 
 			for err := range errs {
-				Ω(err).ShouldNot(HaveOccurred())
+				fmt.Println(err)
 			}
 		}()
+		go func() {
+			defer GinkgoRecover()
 
-		for match := range confirmedMatches {
-			_, ok := orderIDs[match.Buy.OrderID]
-			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Buy.OrderID)
+			for match := range confirmedMatches {
+				_, ok := orderIDs[match.Buy.OrderID]
+				Ω(ok).Should(BeTrue())
+				delete(orderIDs, match.Buy.OrderID)
 
-			_, ok = orderIDs[match.Sell.OrderID]
-			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Sell.OrderID)
-		}
-
-		Ω(len(orderIDs)).Should(Equal(0))
+				_, ok = orderIDs[match.Sell.OrderID]
+				Ω(ok).Should(BeTrue())
+				delete(orderIDs, match.Sell.OrderID)
+			}
+			Ω(len(orderIDs)).Should(Equal(0))
+		}()
 	}, 100)
 
 	It("should return error for invalid computations", func() {

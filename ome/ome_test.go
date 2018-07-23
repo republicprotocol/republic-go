@@ -28,7 +28,6 @@ const (
 
 var _ = Describe("Ome", func() {
 	var (
-		done     chan struct{}
 		addr     identity.Address
 		err      error
 		epoch    registry.Epoch
@@ -47,7 +46,6 @@ var _ = Describe("Ome", func() {
 	Context("ome should manage everything about order matching ", func() {
 
 		BeforeEach(func() {
-			done = make(chan struct{})
 			addr, epoch, err = testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -70,11 +68,12 @@ var _ = Describe("Ome", func() {
 		})
 
 		AfterEach(func() {
-			close(done)
 			os.RemoveAll("./data.out")
 		})
 
 		It("should be able to sync with the order book ", func() {
+			done := make(chan struct{})
+
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
@@ -84,9 +83,13 @@ var _ = Describe("Ome", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
 			}()
+
+			time.Sleep(5 * time.Second)
+			close(done)
 		})
 
 		It("should be able to listen for epoch change event", func() {
+			done := make(chan struct{})
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 
@@ -98,10 +101,13 @@ var _ = Describe("Ome", func() {
 				}
 			}()
 
-			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
+			epoch.Hash = testutils.Random32Bytes()
+			go func() {
+				ome.OnChangeEpoch(epoch)
+			}()
 
-			ome.OnChangeEpoch(epoch)
+			time.Sleep(5 * time.Second)
+			close(done)
 		})
 	})
 })
