@@ -6,9 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/dispatch"
 	. "github.com/republicprotocol/republic-go/ome"
 
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/testutils"
 )
@@ -43,6 +43,16 @@ var _ = Describe("Confirmer", func() {
 		computations := make([]Computation, numberOfComputationsToTest)
 
 		var err error
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+
+			for i := 0; i < numberOfComputationsToTest; i++ {
+				orderMatches <- computations[i]
+			}
+			time.Sleep(5 * time.Second)
+		}()
+
 		for i := 0; i < numberOfComputationsToTest; i++ {
 			computations[i], err = testutils.RandomComputation()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -58,17 +68,6 @@ var _ = Describe("Confirmer", func() {
 			err = contract.OpenSellOrder([65]byte{}, computations[i].Sell.OrderID)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
-
-		time.Sleep(30 * time.Second)
-		go func() {
-			defer GinkgoRecover()
-			defer close(done)
-
-			for i := 0; i < numberOfComputationsToTest; i++ {
-				orderMatches <- computations[i]
-			}
-			time.Sleep(5 * time.Second)
-		}()
 
 		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
 
