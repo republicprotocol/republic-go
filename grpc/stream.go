@@ -240,8 +240,6 @@ func newConcurrentStreamConnector(client *streamClient) *concurrentStreamConnect
 }
 
 func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
-	log.Printf("[debug] (stream) connecting as client...")
-
 	addr := multiAddr.Address()
 
 	connector.mu.Lock()
@@ -300,8 +298,6 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 }
 
 func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
-	log.Printf("[debug] (stream) listening as server...")
-
 	addr := multiAddr.Address()
 	stream := func() *concurrentStream {
 
