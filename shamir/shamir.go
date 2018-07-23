@@ -105,8 +105,8 @@ func (share *Share) Encrypt(pubKey rsa.PublicKey) ([]byte, error) {
 }
 
 // Decrypt cipher text into Share using an crypto.RsaKey.
-func (share *Share) Decrypt(privKey rsa.PrivateKey, cipherText []byte) error {
-	rsaKey := crypto.RsaKey{PrivateKey: &privKey}
+func (share *Share) Decrypt(privKey *rsa.PrivateKey, cipherText []byte) error {
+	rsaKey := crypto.RsaKey{PrivateKey: privKey}
 	plainText, err := rsaKey.Decrypt(cipherText)
 	if err != nil {
 		return err

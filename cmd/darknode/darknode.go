@@ -86,11 +86,11 @@ func main() {
 	multiAddr.Signature = multiAddrSignature
 
 	// New database for persistent storage
-	store, err := leveldb.NewStore(*dataParam)
+	store, err := leveldb.NewStore(*dataParam, 72*time.Hour)
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
-	defer store.Close()
+	defer store.Release()
 
 	// New DHT
 	dht := dht.NewDHT(config.Address, 64)
@@ -106,19 +106,31 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, &dht)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, orderbook.NewSyncer(store, &contractBinder, 1024), store)
+	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamer := grpc.NewStreamer(&crypter, config.Address)
-	streamerService := grpc.NewStreamerService(&crypter, streamer)
+	streamer := grpc.NewStreamer(&crypter, &crypter, config.Address)
+	streamerService := grpc.NewStreamerService(&crypter, &crypter, streamer)
 	streamerService.Register(server)
+
+	var ethNetwork string
+	if config.Ethereum.Network == "mainnet" {
+		ethNetwork = "mainnet"
+	} else {
+		ethNetwork = "kovan"
+	}
 
 	// Populate status information
 	statusProvider := status.NewProvider(&dht)
-	statusProvider.WriteNetwork(string(config.Ethereum.Network))
+	statusProvider.WriteNetwork(string(conn.Config.Network))
 	statusProvider.WriteMultiAddress(multiAddr)
+	statusProvider.WriteEthereumNetwork(ethNetwork)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
+	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
+	statusProvider.WriteRewardVaultAddress(conn.Config.RewardVaultAddress)
+	statusProvider.WriteInfuraURL(conn.Config.URI)
+	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
 	if err != nil {
@@ -149,7 +161,7 @@ func main() {
 			logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
 		}
 		for !isRegistered {
-			time.Sleep(14 * time.Second)
+			time.Sleep(10 * time.Second)
 			isRegistered, err = contractBinder.IsRegistered(config.Address)
 			if err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot get registration status: %v", err))
@@ -171,18 +183,15 @@ func main() {
 		smpcer := smpc.NewSmpcer(swarmer, streamer)
 
 		// New OME
-		epoch, err := contractBinder.Epoch()
+		epoch, err := contractBinder.PreviousEpoch()
 		if err != nil {
-			log.Fatalf("cannot get current epoch: %v", err)
+			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
-		ranker, err := ome.NewRanker(done, config.Address, store, store, epoch)
-		if err != nil {
-			log.Fatalf("cannot create new ranker: %v", err)
-		}
-		matcher := ome.NewMatcher(store, smpcer)
-		confirmer := ome.NewConfirmer(store, &contractBinder, 14*time.Second, 1)
-		settler := ome.NewSettler(store, smpcer, &contractBinder)
-		ome := ome.NewOme(config.Address, ranker, matcher, confirmer, settler, store, orderbook, smpcer, epoch)
+		gen := ome.NewComputationGenerator()
+		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 1)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
+		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
@@ -191,10 +200,9 @@ func main() {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))
 			}
 		}, func() {
-
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(14 * time.Second)
+				time.Sleep(5 * time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
@@ -204,7 +212,7 @@ func main() {
 				}
 
 				// Check whether or not ξ has changed
-				if epoch.Equal(&nextEpoch) {
+				if nextEpoch.Equal(&epoch) {
 					continue
 				}
 				epoch = nextEpoch
@@ -212,6 +220,12 @@ func main() {
 
 				// Notify the Ome
 				ome.OnChangeEpoch(epoch)
+			}
+		}, func() {
+			// Prune the database every hour
+			for {
+				store.Prune()
+				time.Sleep(time.Hour)
 			}
 		})
 	}()

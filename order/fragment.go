@@ -24,15 +24,20 @@ func (id FragmentID) String() string {
 	return base64.StdEncoding.EncodeToString(id[:8])
 }
 
+// FragmentEpochDepth is the number of epochs in the passed for which a
+// Fragment has been built.
+type FragmentEpochDepth uint32
+
 // A Fragment is a secret share of an Order, created using Shamir's secret
 // sharing on the secure fields in an Order.
 type Fragment struct {
-	OrderID         ID         `json:"orderID"`
-	OrderType       Type       `json:"orderType"`
-	OrderParity     Parity     `json:"orderParity"`
-	OrderSettlement Settlement `json:"orderSettlement"`
-	OrderExpiry     time.Time  `json:"orderExpiry"`
-	ID              FragmentID `json:"id"`
+	OrderID         ID                 `json:"orderID"`
+	OrderType       Type               `json:"orderType"`
+	OrderParity     Parity             `json:"orderParity"`
+	OrderSettlement Settlement         `json:"orderSettlement"`
+	OrderExpiry     time.Time          `json:"orderExpiry"`
+	ID              FragmentID         `json:"id"`
+	EpochDepth      FragmentEpochDepth `json:"epochDepth"`
 
 	Tokens        shamir.Share `json:"tokens"`
 	Price         CoExpShare   `json:"price"`
@@ -138,6 +143,7 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 		OrderSettlement: fragment.OrderSettlement,
 		OrderExpiry:     fragment.OrderExpiry,
 		ID:              fragment.ID,
+		EpochDepth:      fragment.EpochDepth,
 	}
 	encryptedFragment.Tokens, err = fragment.Tokens.Encrypt(pubKey)
 	if err != nil {
@@ -171,6 +177,7 @@ type EncryptedFragment struct {
 	OrderSettlement Settlement          `json:"orderSettlement"`
 	OrderExpiry     time.Time           `json:"orderExpiry"`
 	ID              FragmentID          `json:"id"`
+	EpochDepth      FragmentEpochDepth  `json:"epochDepth"`
 	Tokens          []byte              `json:"tokens"`
 	Price           EncryptedCoExpShare `json:"price"`
 	Volume          EncryptedCoExpShare `json:"volume"`
@@ -179,7 +186,7 @@ type EncryptedFragment struct {
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
-func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, error) {
+func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, error) {
 	var err error
 	decryptedFragment := Fragment{
 		OrderID:         fragment.OrderID,
@@ -188,6 +195,7 @@ func (fragment *EncryptedFragment) Decrypt(privKey rsa.PrivateKey) (Fragment, er
 		OrderSettlement: fragment.OrderSettlement,
 		OrderExpiry:     fragment.OrderExpiry,
 		ID:              fragment.ID,
+		EpochDepth:      fragment.EpochDepth,
 	}
 	if err := decryptedFragment.Tokens.Decrypt(privKey, fragment.Tokens); err != nil {
 		return decryptedFragment, err

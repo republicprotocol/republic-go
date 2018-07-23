@@ -130,14 +130,14 @@ var _ = Describe("Order fragments", func() {
 			Expect(encryptedFragment).ToNot(Equal(fragment))
 
 			// Decrypting an encrypted fragment must return the original fragment
-			decryptedFragment, err := encryptedFragment.Decrypt(*rsaKey.PrivateKey)
+			decryptedFragment, err := encryptedFragment.Decrypt(rsaKey.PrivateKey)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(decryptedFragment).To(Equal(fragment))
 
 			// Decrypting with incorrect private key must return an error
 			newRsaKey, err := rsa.GenerateKey(rand.Reader, 512)
 			Expect(err).ShouldNot(HaveOccurred())
-			decryptedFragment, err = encryptedFragment.Decrypt(*newRsaKey)
+			decryptedFragment, err = encryptedFragment.Decrypt(newRsaKey)
 
 			Expect(err).Should(HaveOccurred())
 			Expect(decryptedFragment).ToNot(Equal(fragment))

@@ -72,6 +72,7 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		OrderExpiry:     orderFragmentIn.OrderExpiry.Unix(),
 
 		Id:            orderFragmentIn.ID[:],
+		EpochDepth:    int32(orderFragmentIn.EpochDepth),
 		Tokens:        orderFragmentIn.Tokens,
 		Price:         marshalEncryptedCoExpShare(orderFragmentIn.Price),
 		Volume:        marshalEncryptedCoExpShare(orderFragmentIn.Volume),
@@ -87,6 +88,7 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		OrderSettlement: order.Settlement(orderFragmentIn.OrderSettlement),
 		OrderExpiry:     time.Unix(orderFragmentIn.OrderExpiry, 0),
 
+		EpochDepth:    order.FragmentEpochDepth(orderFragmentIn.EpochDepth),
 		Tokens:        orderFragmentIn.Tokens,
 		Price:         unmarshalEncryptedCoExpShare(orderFragmentIn.Price),
 		Volume:        unmarshalEncryptedCoExpShare(orderFragmentIn.Volume),

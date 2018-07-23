@@ -1,234 +1,182 @@
 package orderbook
 
 import (
-	"bytes"
 	"fmt"
+	"log"
 
-	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 )
 
-// ChangeSet is an alias type.
-type ChangeSet []Change
-
-// A Priority is an unsigned integer representing logical time priority. The
-// lower the number, the higher the priority.
-type Priority uint64
-
-// Change represents a change found by the Syncer. It stores all the relevant
-// information for the order.Order that was changed.
-type Change struct {
-	OrderID       order.ID     `json:"orderId"`
-	OrderParity   order.Parity `json:"orderParity"`
-	OrderStatus   order.Status `json:"orderStatus"`
-	OrderPriority Priority     `json:"orderPriority"`
-	Trader        string       `json:"trader"`
-	BlockNumber   uint         `json:"blockNumber"`
-}
-
-// NewChange returns a Change object with the respective data stored inside it.
-func NewChange(id order.ID, parity order.Parity, status order.Status, priority Priority, trader string, blockNumber uint) Change {
-	return Change{
-		OrderID:       id,
-		OrderParity:   parity,
-		OrderStatus:   status,
-		OrderPriority: priority,
-		Trader:        trader,
-		BlockNumber:   blockNumber,
-	}
-}
-
-// Equal returns an equality check between two Changes.
-func (change *Change) Equal(other *Change) bool {
-	return bytes.Equal(change.OrderID[:], other.OrderID[:]) &&
-		change.OrderParity == other.OrderParity &&
-		change.OrderStatus == other.OrderStatus &&
-		change.OrderPriority == other.OrderPriority &&
-		change.Trader == other.Trader &&
-		change.BlockNumber == other.BlockNumber
-}
-
-// A Syncer is used to synchronize orders, and changes to orders, to local
-// storage.
 type Syncer interface {
-
-	// Sync orders and order states from the Orderbook to this local
-	// Orderbooker. Returns a list of changes that were made to this local
-	// Orderbooker during the synchronization.
-	Sync() (ChangeSet, error)
+	Sync() (Notifications, error)
 }
 
 type syncer struct {
-	storer   SyncStorer
-	contract ContractBinder
-	limit    int
+	// Stores for storing and loading data
+	pointerStore PointerStorer
+	orderStore   OrderStorer
+
+	// ContractBinder exposes methods to pull changes from Ethereum and the
+	// control parameters for customising when to pull changes
+	contractBinder ContractBinder
+	limit          int
+	resyncPointer  int
 }
 
-// NewSyncer returns a new Syncer that will sync a bounded number of orders
-// from the ContractBinder. It uses a SyncStorer to prevent re-syncing the entire
-// ContractBinder when it reboots.
-func NewSyncer(storer SyncStorer, contract ContractBinder, limit int) Syncer {
+func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, contractBinder ContractBinder, limit int) Syncer {
 	return &syncer{
-		storer: storer,
+		pointerStore: pointerStore,
+		orderStore:   orderStore,
 
-		contract: contract,
-		limit:    limit,
+		contractBinder: contractBinder,
+		limit:          limit,
+		resyncPointer:  0,
 	}
 }
 
 // Sync implements the Syncer interface.
-func (syncer *syncer) Sync() (ChangeSet, error) {
-	changeset := syncer.purge()
-
-	buyPointer, err := syncer.storer.BuyPointer()
-	if err != nil {
-		return changeset, err
+func (syncer *syncer) Sync() (Notifications, error) {
+	notifications := make(Notifications, 0, syncer.limit)
+	if err := syncer.sync(&notifications); err != nil {
+		return notifications, err
 	}
-	sellPointer, err := syncer.storer.SellPointer()
-	if err != nil {
-		return changeset, err
+	if err := syncer.resync(&notifications); err != nil {
+		return notifications, err
 	}
-
-	buyOrderIDs, buyErr := syncer.contract.BuyOrders(int(buyPointer), syncer.limit)
-	if buyErr == nil {
-		for _, ord := range buyOrderIDs {
-			depth, err := syncer.contract.Depth(ord)
-			if err == nil && depth > 6000 {
-				buyPointer++
-				continue
-			}
-			status, err := syncer.contract.Status(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
-				buyErr = err
-				buyPointer++
-				continue
-			}
-			blockNumber, err := syncer.contract.BlockNumber(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
-				buyErr = err
-				buyPointer++
-				continue
-			}
-			trader, err := syncer.contract.Trader(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
-				buyErr = err
-				buyPointer++
-				continue
-			}
-
-			buyPointer++
-			change := NewChange(ord, order.ParityBuy, status, Priority(buyPointer), trader, blockNumber)
-			changeset = append(changeset, change)
-			if err := syncer.storer.PutChange(change); err != nil {
-				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
-			}
-		}
-		if buyErr == nil {
-			syncer.storer.PutBuyPointer(buyPointer)
-		}
-	}
-
-	// Get new sell orders from the ledger
-	sellOrderIDs, sellErr := syncer.contract.SellOrders(int(sellPointer), syncer.limit)
-	if sellErr == nil {
-		for _, ord := range sellOrderIDs {
-			depth, err := syncer.contract.Depth(ord)
-			if err == nil && depth > 6000 {
-				sellPointer++
-				continue
-			}
-			status, err := syncer.contract.Status(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order status: %v", err))
-				sellErr = err
-				sellPointer++
-				continue
-			}
-			blockNumber, err := syncer.contract.BlockNumber(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order block: %v", err))
-				sellErr = err
-				sellPointer++
-				continue
-			}
-			trader, err := syncer.contract.Trader(ord)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync order trader: %v", err))
-				sellErr = err
-				sellPointer++
-				continue
-			}
-
-			sellPointer++
-			change := NewChange(ord, order.ParitySell, status, Priority(sellPointer), trader, blockNumber)
-			changeset = append(changeset, change)
-			if err := syncer.storer.PutChange(change); err != nil {
-				logger.Error(fmt.Sprintf("cannot store synchronised order: %v", err))
-			}
-		}
-		if sellErr == nil {
-			syncer.storer.PutSellPointer(sellPointer)
-		}
-	}
-	if buyErr != nil && sellErr != nil {
-		return changeset, fmt.Errorf("buy err = %v, sell err = %v", buyErr, sellErr)
-	}
-	return changeset, nil
+	return notifications, nil
 }
 
-func (syncer *syncer) purge() ChangeSet {
-	changes := make(chan Change, 128)
+func (syncer *syncer) sync(notifications *Notifications) error {
+	// Load the current pointer
+	pointer, err := syncer.pointerStore.Pointer()
+	if err != nil {
+		return fmt.Errorf("cannot load pointer: %v", err)
+	}
 
-	go func() {
-		defer close(changes)
+	// Synchronise new orders from the ContractBinder
+	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
+	if err != nil {
+		return fmt.Errorf("cannot load orders from contract binder: %v", err)
+	}
+	if len(orderIDs) > 0 {
+		log.Printf("[info] (sync) changed = %v", len(orderIDs))
+	}
 
-		changesIter, err := syncer.storer.Changes()
-		if err != nil {
-			logger.Error(fmt.Sprintf("cannot build changes iterator for purging: %v", err))
-			return
+	// Store the resulting pointer so that we do not re-sync orders next time
+	if err := syncer.pointerStore.PutPointer(pointer + Pointer(len(orderIDs))); err != nil {
+		log.Printf("[error] (sync) cannot store pointer: %v", err)
+	}
+
+	// Logging data
+	numOpenOrders := 0
+	numConfirmedOrders := 0
+	numCanceledOrders := 0
+	numUnknownOrders := 0
+	defer func() {
+		if numOpenOrders > 0 {
+			log.Printf("[info] (sync) opened = %v", numOpenOrders)
 		}
-		defer changesIter.Release()
-		changesCollection, err := changesIter.Collect()
-		if err != nil {
-			logger.Error(fmt.Sprintf("cannot build changes collection for purging: %v", err))
-			return
+		if numConfirmedOrders > 0 {
+			log.Printf("[info] (sync) confirmed = %v", numConfirmedOrders)
 		}
-
-		dispatch.ForAll(changesCollection, func(i int) {
-			change := changesCollection[i]
-
-			status, err := syncer.contract.Status(change.OrderID)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync change status: %v", err))
-				return
-			}
-			if status == order.Open {
-				return
-			}
-
-			blockNumber, err := syncer.contract.BlockNumber(change.OrderID)
-			if err != nil {
-				logger.Error(fmt.Sprintf("cannot sync change block: %v", err))
-				return
-			}
-
-			change.OrderStatus = status
-			change.BlockNumber = blockNumber
-			changes <- change
-
-			if err := syncer.storer.DeleteChange(change.OrderID); err != nil {
-				logger.Error(fmt.Sprintf("cannot delete synchronised change: %v", err))
-			}
-		})
+		if numCanceledOrders > 0 {
+			log.Printf("[info] (sync) canceled = %v", numCanceledOrders)
+		}
+		if numUnknownOrders > 0 {
+			log.Printf("[info] (sync) unknown = %v", numUnknownOrders)
+		}
 	}()
 
-	changeset := make([]Change, 0, 128)
-	for change := range changes {
-		changeset = append(changeset, change)
+	for i, orderID := range orderIDs {
+		switch orderStatuses[i] {
+		case order.Open:
+			numOpenOrders++
+			notification := NotificationOpenOrder{OrderID: orderID, Trader: traders[i]}
+			*notifications = append(*notifications, notification)
+		case order.Confirmed:
+			numConfirmedOrders++
+			notification := NotificationConfirmOrder{OrderID: orderID}
+			*notifications = append(*notifications, notification)
+		case order.Canceled:
+			numCanceledOrders++
+			notification := NotificationCancelOrder{OrderID: orderID}
+			*notifications = append(*notifications, notification)
+		default:
+			numUnknownOrders++
+		}
 	}
-	return changeset
+	return nil
+}
+
+func (syncer *syncer) resync(notifications *Notifications) error {
+	orderIter, err := syncer.orderStore.Orders()
+	if err != nil {
+		return fmt.Errorf("cannot load pointer: %v", err)
+	}
+	defer orderIter.Release()
+
+	orders, orderStatuses, _, err := orderIter.Collect()
+	if err != nil {
+		return fmt.Errorf("cannot collect orders: %v", err)
+	}
+	if len(orders) == 0 {
+		return nil
+	}
+
+	// Log information about the resync at the end of the function
+	numClosedOrders := 0
+	defer func() {
+		if numClosedOrders > 0 {
+			log.Printf("[info] (sync) closed = %v", numClosedOrders)
+		}
+	}()
+
+	// Function for deleting order IDs from storage
+	deleteOrder := func(orderID order.ID, orderStatus order.Status) {
+		numClosedOrders++
+		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
+			log.Printf("[error] (sync) cannot delete order: %v", err)
+			return
+		}
+
+		switch orderStatus {
+		case order.Confirmed:
+			notification := NotificationConfirmOrder{OrderID: orderID}
+			*notifications = append(*notifications, notification)
+		case order.Canceled:
+			notification := NotificationCancelOrder{OrderID: orderID}
+			*notifications = append(*notifications, notification)
+		default:
+			return
+		}
+	}
+
+	offset := syncer.resyncPointer
+	for i := 0; i < 2*syncer.limit; i++ {
+		syncer.resyncPointer = (offset + i) % len(orders)
+
+		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
+		if orderStatus != order.Open {
+			deleteOrder(orderID, orderStatus)
+			continue
+		}
+
+		orderStatus, err = syncer.contractBinder.Status(orderID)
+		if err != nil {
+			log.Printf("[error] (sync) cannot load order status: %v", err)
+			continue
+		} else if orderStatus != order.Open {
+			deleteOrder(orderID, orderStatus)
+		}
+
+		orderDepth, err := syncer.contractBinder.Depth(orderID)
+		if err != nil {
+			log.Printf("[error] (sync) cannot load order status: %v", err)
+			continue
+		}
+		if orderDepth > 10000 {
+			deleteOrder(orderID, orderStatus)
+		}
+	}
+	return nil
 }

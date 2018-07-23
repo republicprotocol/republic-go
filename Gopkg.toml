@@ -38,5 +38,10 @@
   name = "google.golang.org/grpc"
   version = "1.10.0"
 
+# Temporary fix https://github.com/golang/dep/issues/1799
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"
+
 [prune]
   go-tests = true

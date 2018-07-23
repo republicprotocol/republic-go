@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/ome"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
@@ -31,37 +32,41 @@ var _ = Describe("Ome", func() {
 		addr     identity.Address
 		err      error
 		epoch    registry.Epoch
-		storer   *leveldb.Store
+		storer   ComputationStorer
 		book     orderbook.Orderbook
 		smpcer   smpc.Smpcer
 		contract ContractBinder
 
 		// Ome components
-		ranker    Ranker
-		matcher   Matcher
-		confirmer Confirmer
-		settler   Settler
+		computationsGenerator ComputationGenerator
+		matcher               Matcher
+		confirmer             Confirmer
+		settler               Settler
 	)
 
 	Context("ome should manage everything about order matching ", func() {
 
 		BeforeEach(func() {
 			done = make(chan struct{})
-			addr, err = testutils.RandomAddress()
+			addr, epoch, err = testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
-			epoch = newEpoch(0, addr)
-			storer, err = leveldb.NewStore("./data.out")
+
+			computationsGenerator = NewComputationGenerator()
+			rsaKey, err := crypto.RandomRsaKey()
 			Ω(err).ShouldNot(HaveOccurred())
-			book, err = testutils.NewOrderbook()
+			book = testutils.NewRandOrderbook(rsaKey)
 			Ω(err).ShouldNot(HaveOccurred())
 			smpcer = testutils.NewAlwaysMatchSmpc()
 			contract = newOmeBinder()
 
-			ranker, err = NewRanker(done, addr, storer, storer, epoch)
 			Ω(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
 			settler = NewSettler(storer, smpcer, contract)
+
+			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			Ω(err).ShouldNot(HaveOccurred())
+			storer = store.SomerComputationStore()
 		})
 
 		AfterEach(func() {
@@ -70,7 +75,7 @@ var _ = Describe("Ome", func() {
 		})
 
 		It("should be able to sync with the order book ", func() {
-			ome := NewOme(addr, ranker, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
@@ -81,22 +86,23 @@ var _ = Describe("Ome", func() {
 			}()
 		})
 
-		// It("should be able to listen for epoch change event", func() {
-		// 	done := make(chan struct{})
-		// 	ome := NewOme(ranker, computer, book, smpcer)
-		// 	go func() {
-		// 		defer close(done)
+		It("should be able to listen for epoch change event", func() {
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			errs := ome.Run(done)
 
-		// 		time.Sleep(3 * time.Second)
-		// 		epoch := Epoch{}
-		// 		ome.OnChangeEpoch(epoch)
-		// 		time.Sleep(3 * time.Second)
-		// 	}()
-		// 	errs := ome.Run(done)
-		// 	for err := range errs {
-		// 		Ω(err).ShouldNot(HaveOccurred())
-		// 	}
-		// })
+			go func() {
+				defer GinkgoRecover()
+
+				for err := range errs {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
+
+			_, epoch, err := testutils.RandomEpoch(0)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			ome.OnChangeEpoch(epoch)
+		})
 	})
 })
 
