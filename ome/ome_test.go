@@ -12,12 +12,8 @@ import (
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/registry"
-	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -27,51 +23,31 @@ const (
 )
 
 var _ = Describe("Ome", func() {
-	var (
-		addr     identity.Address
-		err      error
-		epoch    registry.Epoch
-		storer   ComputationStorer
-		book     orderbook.Orderbook
-		smpcer   smpc.Smpcer
-		contract ContractBinder
-
-		// Ome components
-		computationsGenerator ComputationGenerator
-		matcher               Matcher
-		confirmer             Confirmer
-		settler               Settler
-	)
 
 	Context("ome should manage everything about order matching ", func() {
 
-		BeforeEach(func() {
-			addr, epoch, err = testutils.RandomEpoch(0)
+		It("should be able to sync with the order book ", func() {
+			addr, epoch, err := testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			computationsGenerator = NewComputationGenerator()
+			computationsGenerator := NewComputationGenerator()
 			rsaKey, err := crypto.RandomRsaKey()
 			Ω(err).ShouldNot(HaveOccurred())
-			book = testutils.NewRandOrderbook(rsaKey)
+			book := testutils.NewRandOrderbook(rsaKey)
 			Ω(err).ShouldNot(HaveOccurred())
-			smpcer = testutils.NewAlwaysMatchSmpc()
-			contract = newOmeBinder()
-
-			Ω(err).ShouldNot(HaveOccurred())
-			matcher = NewMatcher(storer, smpcer)
-			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
-			settler = NewSettler(storer, smpcer, contract)
+			smpcer := testutils.NewAlwaysMatchSmpc()
+			contract := newOmeBinder()
 
 			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			defer os.RemoveAll("./data.out")
 			Ω(err).ShouldNot(HaveOccurred())
-			storer = store.SomerComputationStore()
-		})
+			storer := store.SomerComputationStore()
 
-		AfterEach(func() {
-			os.RemoveAll("./data.out")
-		})
+			Ω(err).ShouldNot(HaveOccurred())
+			matcher := NewMatcher(storer, smpcer)
+			confirmer := NewConfirmer(storer, contract, PollInterval, Depth)
+			settler := NewSettler(storer, smpcer, contract)
 
-		It("should be able to sync with the order book ", func() {
 			done := make(chan struct{})
 			defer close(done)
 
@@ -87,6 +63,27 @@ var _ = Describe("Ome", func() {
 		})
 
 		It("should be able to listen for epoch change event", func() {
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			computationsGenerator := NewComputationGenerator()
+			rsaKey, err := crypto.RandomRsaKey()
+			Ω(err).ShouldNot(HaveOccurred())
+			book := testutils.NewRandOrderbook(rsaKey)
+			Ω(err).ShouldNot(HaveOccurred())
+			smpcer := testutils.NewAlwaysMatchSmpc()
+			contract := newOmeBinder()
+
+			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			defer os.RemoveAll("./data.out")
+			Ω(err).ShouldNot(HaveOccurred())
+			storer := store.SomerComputationStore()
+
+			Ω(err).ShouldNot(HaveOccurred())
+			matcher := NewMatcher(storer, smpcer)
+			confirmer := NewConfirmer(storer, contract, PollInterval, Depth)
+			settler := NewSettler(storer, smpcer, contract)
+
 			done := make(chan struct{})
 			defer close(done)
 
