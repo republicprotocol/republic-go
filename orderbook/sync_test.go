@@ -111,6 +111,7 @@ var _ = Describe("Syncer", func() {
 			Expect(countOpens).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
+			countCancels = 0
 			countMu.Unlock()
 
 			// Cancel random orders in the contract
@@ -120,7 +121,7 @@ var _ = Describe("Syncer", func() {
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
 			countMu.Lock()
-			Expect(countCancels).Should(BeNumerically(">=", numCancels))
+			Expect(countCancels).Should(BeNumerically(">", numCancels*2))
 			Expect(countConfirms).Should(BeZero())
 			Expect(countOpens).Should(BeZero())
 			countMu.Unlock()
