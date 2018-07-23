@@ -206,6 +206,7 @@ func (smpc *smpcer) query(addr identity.Address) (identity.MultiAddress, error) 
 }
 
 func (smpc *smpcer) handleStream(ctx context.Context, remoteAddr identity.Address, remoteStream stream.Stream) {
+	timeout := 1000
 	for {
 		// Check whether or not the stream has closed
 		select {
@@ -217,9 +218,11 @@ func (smpc *smpcer) handleStream(ctx context.Context, remoteAddr identity.Addres
 		message := Message{}
 		if err := remoteStream.Recv(&message); err != nil {
 			log.Printf("[error] (network) cannot receive message from %v: %v", remoteAddr, err)
-			time.Sleep(time.Second)
+			time.Sleep(time.Duration(timeout) * time.Millisecond)
+			timeout = int(float64(timeout) * 1.6)
 			continue
 		}
+		timeout = 1000
 
 		switch message.MessageType {
 		case MessageTypeJoin:
