@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/dispatch"
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/leveldb"
@@ -58,6 +59,7 @@ var _ = Describe("Confirmer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
+		time.Sleep(30 * time.Second)
 		go func() {
 			defer GinkgoRecover()
 			defer close(done)
@@ -69,25 +71,29 @@ var _ = Describe("Confirmer", func() {
 		}()
 
 		confirmedMatches, errs := confirmer.Confirm(done, orderMatches)
-		go func() {
-			defer GinkgoRecover()
 
-			for err := range errs {
-				Ω(err).ShouldNot(HaveOccurred())
-			}
-		}()
+		go dispatch.CoBegin(
+			func() {
+				defer GinkgoRecover()
 
-		for match := range confirmedMatches {
-			_, ok := orderIDs[match.Buy.OrderID]
-			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Buy.OrderID)
+				for err := range errs {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			},
+			func() {
+				defer GinkgoRecover()
 
-			_, ok = orderIDs[match.Sell.OrderID]
-			Ω(ok).Should(BeTrue())
-			delete(orderIDs, match.Sell.OrderID)
-		}
+				for match := range confirmedMatches {
+					_, ok := orderIDs[match.Buy.OrderID]
+					Ω(ok).Should(BeTrue())
+					delete(orderIDs, match.Buy.OrderID)
 
-		Ω(len(orderIDs)).Should(Equal(0))
+					_, ok = orderIDs[match.Sell.OrderID]
+					Ω(ok).Should(BeTrue())
+					delete(orderIDs, match.Sell.OrderID)
+				}
+				Ω(len(orderIDs)).Should(Equal(0))
+			})
 	}, 100)
 
 	It("should return error for invalid computations", func() {

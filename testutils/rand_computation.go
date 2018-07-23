@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/ome"
 )
@@ -17,8 +18,9 @@ func RandomComputation() (ome.Computation, error) {
 		return ome.Computation{}, err
 	}
 	comp := ome.Computation{
-		Buy:  buyFragments[0],
-		Sell: sellFragments[0],
+		Buy:        buyFragments[0],
+		Sell:       sellFragments[0],
+		EpochDepth: order.FragmentEpochDepth(0),
 	}
 	copy(comp.ID[:], crypto.Keccak256(buy.ID[:], sell.ID[:]))
 	return comp, nil
