@@ -42,6 +42,7 @@ var ErrCannotEncryptSecret = errors.New("cannot encrypt secret")
 // concurrentStream is a grpc.Stream that is safe for concurrent reading and
 // writing and implements the stream.Stream interface.
 type concurrentStream struct {
+	doneMu *sync.RWMutex
 	done   chan struct{}
 	closed bool
 
@@ -53,6 +54,7 @@ type concurrentStream struct {
 
 func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStream {
 	return &concurrentStream{
+		doneMu: new(sync.RWMutex),
 		done:   make(chan struct{}),
 		closed: false,
 
@@ -68,7 +70,7 @@ func (concurrentStream *concurrentStream) Send(message stream.Message) error {
 	concurrentStream.grpcSendMu.Lock()
 	defer concurrentStream.grpcSendMu.Unlock()
 
-	if concurrentStream.closed {
+	if concurrentStream.isClosed() {
 		return stream.ErrSendOnClosedStream
 	}
 
@@ -91,7 +93,7 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 	concurrentStream.grpcRecvMu.Lock()
 	defer concurrentStream.grpcRecvMu.Unlock()
 
-	if concurrentStream.closed {
+	if concurrentStream.isClosed() {
 		return stream.ErrRecvOnClosedStream
 	}
 
@@ -110,10 +112,8 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 // Close the stream. This will close the done channel, and prevents future
 // sending and receiving on this stream.
 func (concurrentStream *concurrentStream) Close() error {
-	concurrentStream.grpcSendMu.Lock()
-	concurrentStream.grpcRecvMu.Lock()
-	defer concurrentStream.grpcSendMu.Unlock()
-	defer concurrentStream.grpcRecvMu.Unlock()
+	concurrentStream.doneMu.Lock()
+	defer concurrentStream.doneMu.Unlock()
 
 	if concurrentStream.closed {
 		return nil
@@ -131,6 +131,12 @@ func (concurrentStream *concurrentStream) Close() error {
 // be closed.
 func (concurrentStream *concurrentStream) Done() <-chan struct{} {
 	return concurrentStream.done
+}
+
+func (concurrentStream *concurrentStream) isClosed() bool {
+	concurrentStream.doneMu.RLock()
+	defer concurrentStream.doneMu.RUnlock()
+	return concurrentStream.closed
 }
 
 // streamClient implements the stream.Client by using gRPC to create
