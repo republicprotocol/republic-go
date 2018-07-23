@@ -1,7 +1,6 @@
 package ome_test
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -60,6 +59,7 @@ var _ = Describe("Confirmer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
+		time.Sleep(30 * time.Second)
 		go func() {
 			defer GinkgoRecover()
 			defer close(done)
@@ -84,7 +84,6 @@ var _ = Describe("Confirmer", func() {
 				defer GinkgoRecover()
 
 				for match := range confirmedMatches {
-					log.Println("got a match")
 					_, ok := orderIDs[match.Buy.OrderID]
 					Ω(ok).Should(BeTrue())
 					delete(orderIDs, match.Buy.OrderID)
