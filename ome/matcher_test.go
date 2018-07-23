@@ -9,24 +9,34 @@ import (
 	. "github.com/republicprotocol/republic-go/ome"
 
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Matcher", func() {
 
+	var store ComputationStorer
+	var buyFragment, sellFragment order.Fragment
+
+	BeforeEach(func() {
+		storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
+		Expect(err).ShouldNot(HaveOccurred())
+		store = storer.SomerComputationStore()
+
+		buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
+		Expect(err).ShouldNot(HaveOccurred())
+		buyFragment = buyFragments[0]
+		sellFragments, err := testutils.RandomSellOrderFragments(6, 4)
+		Expect(err).ShouldNot(HaveOccurred())
+		sellFragment = sellFragments[0]
+	})
+
+	AfterEach(func() {
+		os.RemoveAll("./data.out")
+	})
+
 	Context("when using an smpc that matches all values", func() {
 		It("should trigger the callback with matched results", func() {
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
-			defer os.RemoveAll("./data.out")
-			Expect(err).ShouldNot(HaveOccurred())
-			store := storer.SomerComputationStore()
-
-			buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			buyFragment := buyFragments[0]
-			sellFragments, err := testutils.RandomSellOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			sellFragment := sellFragments[0]
 			smpcer := testutils.NewAlwaysMatchSmpc()
 			matcher := NewMatcher(store, smpcer)
 
@@ -46,18 +56,6 @@ var _ = Describe("Matcher", func() {
 
 	Context("when using an smpc that mismatches all values", func() {
 		It("should never trigger the callback with matched results", func() {
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
-			defer os.RemoveAll("./data.out")
-			Expect(err).ShouldNot(HaveOccurred())
-			store := storer.SomerComputationStore()
-
-			buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			buyFragment := buyFragments[0]
-			sellFragments, err := testutils.RandomSellOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			sellFragment := sellFragments[0]
-
 			smpcer := testutils.NewAlwaysMismatchSmpc()
 			matcher := NewMatcher(store, smpcer)
 
@@ -77,18 +75,6 @@ var _ = Describe("Matcher", func() {
 
 	Context("when using an smpc that randomly matches values", func() {
 		It("should randomly trigger the callback with matched results", func() {
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
-			defer os.RemoveAll("./data.out")
-			Expect(err).ShouldNot(HaveOccurred())
-			store := storer.SomerComputationStore()
-
-			buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			buyFragment := buyFragments[0]
-			sellFragments, err := testutils.RandomSellOrderFragments(6, 4)
-			Expect(err).ShouldNot(HaveOccurred())
-			sellFragment := sellFragments[0]
-
 			smpcer := testutils.NewSmpc()
 			matcher := NewMatcher(store, smpcer)
 
