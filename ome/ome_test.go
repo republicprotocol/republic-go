@@ -73,7 +73,6 @@ var _ = Describe("Ome", func() {
 
 		It("should be able to sync with the order book ", func() {
 			done := make(chan struct{})
-			defer close(done)
 
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
@@ -84,11 +83,13 @@ var _ = Describe("Ome", func() {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
 			}()
+
+			time.Sleep(5 * time.Second)
+			close(done)
 		})
 
 		It("should be able to listen for epoch change event", func() {
 			done := make(chan struct{})
-			defer close(done)
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 
@@ -100,10 +101,13 @@ var _ = Describe("Ome", func() {
 				}
 			}()
 
-			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
+			epoch.Hash = testutils.Random32Bytes()
+			go func() {
+				ome.OnChangeEpoch(epoch)
+			}()
 
-			ome.OnChangeEpoch(epoch)
+			time.Sleep(5 * time.Second)
+			close(done)
 		})
 	})
 })
