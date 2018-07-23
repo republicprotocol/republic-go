@@ -176,7 +176,6 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 		// On an error backoff and retry until the context.Context is done
 		grpcStream, err = NewStreamServiceClient(conn).Connect(ctx)
 		if err != nil {
-			log.Printf("[debug] (stream) connect backoff timeout")
 			return err
 		}
 		return nil
@@ -356,7 +355,6 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 	if stream == nil {
 		err := BackoffMax(ctx, func() error {
 			if stream = connector.connection(addr); stream == nil {
-				log.Printf("[debug] (stream) listen backoff timeout")
 				return ErrStreamDisconnected
 			}
 			return nil
