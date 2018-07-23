@@ -42,7 +42,6 @@ var ErrCannotEncryptSecret = errors.New("cannot encrypt secret")
 // concurrentStream is a grpc.Stream that is safe for concurrent reading and
 // writing and implements the stream.Stream interface.
 type concurrentStream struct {
-	doneMu     *sync.RWMutex
 	done       chan struct{}
 	doneClosed bool
 
@@ -54,7 +53,6 @@ type concurrentStream struct {
 
 func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStream {
 	return &concurrentStream{
-		doneMu:     new(sync.RWMutex),
 		done:       make(chan struct{}),
 		doneClosed: false,
 
@@ -113,8 +111,10 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 // sending and receiving on this stream.
 func (concurrentStream *concurrentStream) Close() {
 	go func() {
-		concurrentStream.doneMu.Lock()
-		defer concurrentStream.doneMu.Unlock()
+		concurrentStream.grpcSendMu.Lock()
+		concurrentStream.grpcRecvMu.Lock()
+		defer concurrentStream.grpcSendMu.Unlock()
+		defer concurrentStream.grpcRecvMu.Unlock()
 
 		if concurrentStream.doneClosed {
 			return
@@ -137,8 +137,6 @@ func (concurrentStream *concurrentStream) Done() <-chan struct{} {
 }
 
 func (concurrentStream *concurrentStream) isDoneClosed() bool {
-	concurrentStream.doneMu.RLock()
-	defer concurrentStream.doneMu.RUnlock()
 	return concurrentStream.doneClosed
 }
 
