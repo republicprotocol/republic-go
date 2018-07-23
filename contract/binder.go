@@ -213,11 +213,6 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 }
 
 func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
-	previousGasLimit := binder.transactOpts.GasLimit
-	binder.transactOpts.GasLimit = 300000
-	defer func() {
-		binder.transactOpts.GasLimit = previousGasLimit
-	}()
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
