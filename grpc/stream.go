@@ -243,6 +243,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
+	log.Printf("[debug] (stream) connecting as client... got global lock...")
 	connector.streamsMu[addr].Lock()
 	defer connector.streamsMu[addr].Unlock()
 
@@ -307,6 +308,7 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 		if connector.streamsMu[addr] == nil {
 			connector.streamsMu[addr] = new(sync.Mutex)
 		}
+		log.Printf("[debug] (stream) listening as server... got global lock...")
 		connector.streamsMu[addr].Lock()
 		defer connector.streamsMu[addr].Unlock()
 
