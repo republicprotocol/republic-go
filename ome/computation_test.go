@@ -27,7 +27,7 @@ var _ = Describe("Computations", func() {
 
 	Context("when checking for equality", func() {
 		It("should return true for equal computation IDs", func() {
-			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID)
+			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID, buyFragment.EpochDepth)
 			expectedID := ComputationID{}
 			copy(expectedID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
 			Ω(bytes.Equal(computationID[:], expectedID[:]))
