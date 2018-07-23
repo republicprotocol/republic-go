@@ -167,7 +167,11 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	if err := BackoffMax(ctx, func() error {
 		// On an error backoff and retry until the context.Context is done
 		grpcStream, err = NewStreamServiceClient(conn).Connect(ctx)
-		return err
+		if err != nil {
+			log.Printf("[debug] (stream) connect backoff timeout")
+			return err
+		}
+		return nil
 	}, 30000 /* 30s max backoff */); err != nil {
 		return nil, fmt.Errorf("cannot open stream: %v", err)
 	}
@@ -238,7 +242,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	connector.streamsMu[addr].Lock()
 	defer connector.streamsMu[addr].Unlock()
 
-	if connector.streamsRc[addr] == 0 {
+	if connector.streamsRc[addr] <= 0 {
 
 		connector.mu.Unlock()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -255,6 +259,13 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 		connector.streamsCancel[addr] = cancel
 	}
 
+	// Defensively guard against the Rc dropping below zero
+	if connector.streamsRc[addr] < 0 {
+		connector.streamsRc[addr] = 0
+	}
+	connector.streamsRc[addr]++
+
+	// Wait for the context to be canceled and then lower the Rc
 	go func() {
 		<-ctx.Done()
 
@@ -262,7 +273,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 		defer connector.mu.Unlock()
 
 		connector.streamsRc[addr]--
-		if connector.streamsRc[addr] == 0 {
+		if connector.streamsRc[addr] <= 0 {
 
 			connector.streams[addr].Close()
 			connector.streamsCancel[addr]()
@@ -275,7 +286,6 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 		}
 	}()
 
-	connector.streamsRc[addr]++
 	return connector.streams[addr], nil
 }
 
@@ -291,12 +301,18 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 		connector.streamsMu[addr].Lock()
 		defer connector.streamsMu[addr].Unlock()
 
-		if connector.streamsRc[addr] == 0 {
+		if connector.streamsRc[addr] <= 0 {
 			ctx, cancel := context.WithCancel(context.Background())
 			connector.streamsCtx[addr] = ctx
 			connector.streamsCancel[addr] = cancel
 		}
+		// Defensively guard against the Rc dropping below zero
+		if connector.streamsRc[addr] < 0 {
+			connector.streamsRc[addr] = 0
+		}
+		connector.streamsRc[addr]++
 
+		// Wait for the context to be canceled and then lower the Rc
 		go func() {
 			<-ctx.Done()
 
@@ -304,7 +320,7 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 			defer connector.mu.Unlock()
 
 			connector.streamsRc[addr]--
-			if connector.streamsRc[addr] == 0 {
+			if connector.streamsRc[addr] <= 0 {
 
 				if connector.streams[addr] != nil {
 					connector.streams[addr].Close()
@@ -319,13 +335,13 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 			}
 		}()
 
-		connector.streamsRc[addr]++
 		return connector.streams[addr]
 	}()
 
 	if stream == nil {
 		err := BackoffMax(ctx, func() error {
 			if stream = connector.connection(addr); stream == nil {
+				log.Printf("[debug] (stream) listen backoff timeout")
 				return ErrStreamDisconnected
 			}
 			return nil
@@ -514,6 +530,8 @@ func (service *StreamerService) Register(server *Server) {
 }
 
 func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
+	defer log.Printf("[debug] (stream) accepted connection closing...")
+
 	// Verify the address of this connection
 	message, err := grpcStream.Recv()
 	if err != nil {
