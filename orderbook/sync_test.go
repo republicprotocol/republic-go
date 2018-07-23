@@ -39,7 +39,7 @@ var _ = Describe("Syncer", func() {
 	})
 
 	AfterEach(func() {
-		os.RemoveAll("./tmp/data.out")
+		os.RemoveAll("./tmp")
 	})
 
 	Context("when syncing", func() {
@@ -107,7 +107,7 @@ var _ = Describe("Syncer", func() {
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
 			countMu.Lock()
-			Expect(countConfirms).Should(Equal(numConfirms))
+			Expect(countConfirms).Should(Equal(numConfirms * 2))
 			Expect(countOpens).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
@@ -120,7 +120,7 @@ var _ = Describe("Syncer", func() {
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
 			countMu.Lock()
-			Expect(countCancels).Should(Equal(numCancels))
+			Expect(countCancels).Should(BeNumerically(">=", numCancels))
 			Expect(countConfirms).Should(BeZero())
 			Expect(countOpens).Should(BeZero())
 			countMu.Unlock()
