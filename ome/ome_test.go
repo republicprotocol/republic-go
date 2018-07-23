@@ -28,7 +28,6 @@ const (
 
 var _ = Describe("Ome", func() {
 	var (
-		done     chan struct{}
 		addr     identity.Address
 		err      error
 		epoch    registry.Epoch
@@ -47,7 +46,6 @@ var _ = Describe("Ome", func() {
 	Context("ome should manage everything about order matching ", func() {
 
 		BeforeEach(func() {
-			done = make(chan struct{})
 			addr, epoch, err = testutils.RandomEpoch(0)
 			Ω(err).ShouldNot(HaveOccurred())
 
@@ -70,11 +68,13 @@ var _ = Describe("Ome", func() {
 		})
 
 		AfterEach(func() {
-			close(done)
 			os.RemoveAll("./data.out")
 		})
 
 		It("should be able to sync with the order book ", func() {
+			done := make(chan struct{})
+			defer close(done)
+
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
@@ -86,23 +86,26 @@ var _ = Describe("Ome", func() {
 			}()
 		})
 
-		// It("should be able to listen for epoch change event", func() {
-		// 	ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
-		// 	errs := ome.Run(done)
+		It("should be able to listen for epoch change event", func() {
+			done := make(chan struct{})
+			defer close(done)
+			
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			errs := ome.Run(done)
 
-		// 	go func() {
-		// 		defer GinkgoRecover()
+			go func() {
+				defer GinkgoRecover()
 
-		// 		for err := range errs {
-		// 			Ω(err).ShouldNot(HaveOccurred())
-		// 		}
-		// 	}()
+				for err := range errs {
+					Ω(err).ShouldNot(HaveOccurred())
+				}
+			}()
 
-		// 	_, epoch, err := testutils.RandomEpoch(0)
-		// 	Ω(err).ShouldNot(HaveOccurred())
+			_, epoch, err = testutils.RandomEpoch(1)
+			Ω(err).ShouldNot(HaveOccurred())
 
-		// 	ome.OnChangeEpoch(epoch)
-		// })
+			ome.OnChangeEpoch(epoch)
+		})
 	})
 })
 
