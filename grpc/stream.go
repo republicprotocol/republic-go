@@ -42,9 +42,9 @@ var ErrCannotEncryptSecret = errors.New("cannot encrypt secret")
 // concurrentStream is a grpc.Stream that is safe for concurrent reading and
 // writing and implements the stream.Stream interface.
 type concurrentStream struct {
-	doneMu *sync.RWMutex
-	done   chan struct{}
-	closed bool
+	doneMu     *sync.RWMutex
+	done       chan struct{}
+	doneClosed bool
 
 	cipher     crypto.AESCipher
 	grpcSendMu *sync.Mutex
@@ -54,9 +54,9 @@ type concurrentStream struct {
 
 func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStream {
 	return &concurrentStream{
-		doneMu: new(sync.RWMutex),
-		done:   make(chan struct{}),
-		closed: false,
+		doneMu:     new(sync.RWMutex),
+		done:       make(chan struct{}),
+		doneClosed: false,
 
 		cipher:     crypto.NewAESCipher(secret[:]),
 		grpcSendMu: new(sync.Mutex),
@@ -70,7 +70,7 @@ func (concurrentStream *concurrentStream) Send(message stream.Message) error {
 	concurrentStream.grpcSendMu.Lock()
 	defer concurrentStream.grpcSendMu.Unlock()
 
-	if concurrentStream.isClosed() {
+	if concurrentStream.isDoneClosed() {
 		return stream.ErrSendOnClosedStream
 	}
 
@@ -93,7 +93,7 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 	concurrentStream.grpcRecvMu.Lock()
 	defer concurrentStream.grpcRecvMu.Unlock()
 
-	if concurrentStream.isClosed() {
+	if concurrentStream.isDoneClosed() {
 		return stream.ErrRecvOnClosedStream
 	}
 
@@ -111,20 +111,21 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 
 // Close the stream. This will close the done channel, and prevents future
 // sending and receiving on this stream.
-func (concurrentStream *concurrentStream) Close() error {
+func (concurrentStream *concurrentStream) Close() {
 	concurrentStream.doneMu.Lock()
 	defer concurrentStream.doneMu.Unlock()
 
-	if concurrentStream.closed {
-		return nil
+	if concurrentStream.doneClosed {
+		return
 	}
-	concurrentStream.closed = true
+	concurrentStream.doneClosed = true
 	close(concurrentStream.done)
 
+	// TODO: Does a call to grpc.ClientStream.CloseSend that is concurrent with
+	// respect to grpc.ClientStream.SendMsg cause issues?
 	if grpcClientStream, ok := concurrentStream.grpcStream.(grpc.ClientStream); ok {
-		return grpcClientStream.CloseSend()
+		grpcClientStream.CloseSend()
 	}
-	return nil
 }
 
 // Done returns a read-only channel that can be used to wait for the stream to
@@ -133,10 +134,10 @@ func (concurrentStream *concurrentStream) Done() <-chan struct{} {
 	return concurrentStream.done
 }
 
-func (concurrentStream *concurrentStream) isClosed() bool {
+func (concurrentStream *concurrentStream) isDoneClosed() bool {
 	concurrentStream.doneMu.RLock()
 	defer concurrentStream.doneMu.RUnlock()
-	return concurrentStream.closed
+	return concurrentStream.doneClosed
 }
 
 // streamClient implements the stream.Client by using gRPC to create
@@ -249,7 +250,6 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	if connector.streamsMu[addr] == nil {
 		connector.streamsMu[addr] = new(sync.Mutex)
 	}
-	log.Printf("[debug] (stream) connecting as client... got global lock...")
 	connector.streamsMu[addr].Lock()
 	defer connector.streamsMu[addr].Unlock()
 
@@ -269,10 +269,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 		connector.streams[addr] = stream.(*concurrentStream)
 		connector.streamsCtx[addr] = ctx
 		connector.streamsCancel[addr] = cancel
-	} else {
-		log.Printf("[debug] (stream) recycling previously established connection...")
 	}
-
 	// Defensively guard against the Rc dropping below zero
 	if connector.streamsRc[addr] < 0 {
 		connector.streamsRc[addr] = 0
@@ -314,7 +311,6 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 		if connector.streamsMu[addr] == nil {
 			connector.streamsMu[addr] = new(sync.Mutex)
 		}
-		log.Printf("[debug] (stream) listening as server... got global lock...")
 		connector.streamsMu[addr].Lock()
 		defer connector.streamsMu[addr].Unlock()
 
@@ -324,8 +320,6 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 			ctx, cancel := context.WithCancel(context.Background())
 			connector.streamsCtx[addr] = ctx
 			connector.streamsCancel[addr] = cancel
-		} else {
-			log.Printf("[debug] (stream) recycling previously accepted connection...")
 		}
 		// Defensively guard against the Rc dropping below zero
 		if connector.streamsRc[addr] < 0 {
@@ -511,7 +505,6 @@ func (streamer *ctxStreamer) message(message stream.Message, f func(stream *conc
 			// There is no such this as "relistening" so if the connection dies
 			// all we can do is hope that the client will eventually attempt to
 			// reconnect and until then, we simply let the errors happen
-			log.Println("cannot relisten")
 		}
 		if err != nil {
 			return err
