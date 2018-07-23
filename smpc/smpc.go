@@ -220,6 +220,9 @@ func (smpc *smpcer) handleStream(ctx context.Context, remoteAddr identity.Addres
 			log.Printf("[error] (network) cannot receive message from %v: %v", remoteAddr, err)
 			time.Sleep(time.Duration(timeout) * time.Millisecond)
 			timeout = int(float64(timeout) * 1.6)
+			if timeout > 30000 {
+				timeout = 30000
+			}
 			continue
 		}
 		timeout = 1000
