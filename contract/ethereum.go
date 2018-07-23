@@ -54,7 +54,7 @@ func Connect(config Config) (Conn, error) {
 	if config.DarknodeRegistryAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.DarknodeRegistryAddress = "0x5d09eb34ce084bece690651f147dbd8ff41007bf"
+			config.DarknodeRegistryAddress = "0x372b6204263c6867f81e2a9e11057ff43efea14b"
 		case NetworkFalcon:
 			config.DarknodeRegistryAddress = "0xfafd5c83d1e21763b79418c4ecb5d62b4970df8e"
 		case NetworkNightly:
@@ -67,7 +67,7 @@ func Connect(config Config) (Conn, error) {
 	if config.OrderbookAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.OrderbookAddress = "0xB01219Cf49e92ffcd48fecC96241dBd1372B8Bb1"
+			config.OrderbookAddress = "0xa7caa4780a39d8b8acd6a0bdfb5b906210bc76cd"
 		case NetworkFalcon:
 			config.OrderbookAddress = "0x044b08eec761c39ac32aee1d6ef0583812f21699"
 		case NetworkNightly:
@@ -106,7 +106,7 @@ func Connect(config Config) (Conn, error) {
 	if config.RenExSettlementAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.RenExSettlementAddress = "0xc53abbc5713e606a86533088707e80fcae33eff8"
+			config.RenExSettlementAddress = "0xc4f1420de7efbd76e973fe8c99294fe482819f9a"
 		case NetworkFalcon:
 			config.RenExSettlementAddress = "0x8617dcd709bb8660602ef70ade78626b7408a210"
 		case NetworkNightly:
