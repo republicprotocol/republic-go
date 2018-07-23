@@ -89,7 +89,7 @@ var _ = Describe("Ome", func() {
 		It("should be able to listen for epoch change event", func() {
 			done := make(chan struct{})
 			defer close(done)
-			
+
 			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
 			errs := ome.Run(done)
 
