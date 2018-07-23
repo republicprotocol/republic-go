@@ -112,20 +112,22 @@ func (concurrentStream *concurrentStream) Recv(message stream.Message) error {
 // Close the stream. This will close the done channel, and prevents future
 // sending and receiving on this stream.
 func (concurrentStream *concurrentStream) Close() {
-	concurrentStream.doneMu.Lock()
-	defer concurrentStream.doneMu.Unlock()
+	go func() {
+		concurrentStream.doneMu.Lock()
+		defer concurrentStream.doneMu.Unlock()
 
-	if concurrentStream.doneClosed {
-		return
-	}
-	concurrentStream.doneClosed = true
-	close(concurrentStream.done)
+		if concurrentStream.doneClosed {
+			return
+		}
+		concurrentStream.doneClosed = true
+		close(concurrentStream.done)
 
-	// TODO: Does a call to grpc.ClientStream.CloseSend that is concurrent with
-	// respect to grpc.ClientStream.SendMsg cause issues?
-	if grpcClientStream, ok := concurrentStream.grpcStream.(grpc.ClientStream); ok {
-		grpcClientStream.CloseSend()
-	}
+		// TODO: Does a call to grpc.ClientStream.CloseSend that is concurrent with
+		// respect to grpc.ClientStream.SendMsg cause issues?
+		if grpcClientStream, ok := concurrentStream.grpcStream.(grpc.ClientStream); ok {
+			grpcClientStream.CloseSend()
+		}
+	}()
 }
 
 // Done returns a read-only channel that can be used to wait for the stream to
