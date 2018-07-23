@@ -107,7 +107,7 @@ var _ = Describe("Syncer", func() {
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
 			countMu.Lock()
-			Expect(countConfirms).Should(Equal(numConfirms * 2))
+			Expect(countConfirms).Should(Equal(numConfirms))
 			Expect(countOpens).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
@@ -121,7 +121,7 @@ var _ = Describe("Syncer", func() {
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
 			countMu.Lock()
-			Expect(countCancels).Should(BeNumerically(">", numCancels*2))
+			Expect(countCancels).Should(Equal(numCancels))
 			Expect(countConfirms).Should(BeZero())
 			Expect(countOpens).Should(BeZero())
 			countMu.Unlock()
