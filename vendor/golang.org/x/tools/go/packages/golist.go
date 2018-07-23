@@ -18,16 +18,20 @@ import (
 	"strings"
 )
 
-// A GoTooOldError indicates that the go command predates the Go
-// 1.11 features needed by this package. This error is a stopgap measure
-// until the necessary features can be emulated in terms of an older go
-// command, at which point this error will no longer be used.
-type GoTooOldError struct{ error }
+// A GoTooOldError reports that the go command
+// found by exec.LookPath does not contain the necessary
+// support to be used with go/packages.
+// Currently, go/packages requires Go 1.11 or later.
+// (We intend to issue a point release for Go 1.10
+// so that go/packages can be used with updated Go 1.10 systems too.)
+type GoTooOldError struct {
+	error
+}
 
 // golistPackages uses the "go list" command to expand the
 // pattern words and return metadata for the specified packages.
 // dir may be "" and env may be nil, as per os/exec.Command.
-func golistPackages(ctx context.Context, dir string, env []string, cgo, export, tests bool, words []string) ([]*Package, error) {
+func golistPackages(ctx context.Context, dir string, env []string, cgo, export, tests bool, words []string) ([]*loaderPackage, error) {
 	// Fields must match go list;
 	// see $GOROOT/src/cmd/go/internal/load/pkg.go.
 	type jsonPackage struct {
@@ -69,7 +73,7 @@ func golistPackages(ctx context.Context, dir string, env []string, cgo, export, 
 		return nil, err
 	}
 	// Decode the JSON and convert it to Package form.
-	var result []*Package
+	var result []*loaderPackage
 	for dec := json.NewDecoder(buf); dec.More(); {
 		p := new(jsonPackage)
 		if err := dec.Decode(p); err != nil {
@@ -148,15 +152,17 @@ func golistPackages(ctx context.Context, dir string, env []string, cgo, export, 
 			imports[id] = id // identity import
 		}
 
-		pkg := &Package{
-			ID:        id,
-			Name:      p.Name,
-			PkgPath:   pkgpath,
-			Srcs:      absJoin(p.Dir, p.GoFiles, p.CgoFiles),
-			OtherSrcs: absJoin(p.Dir, p.SFiles, p.CFiles),
-			imports:   imports,
-			export:    export,
-			indirect:  p.DepOnly,
+		pkg := &loaderPackage{
+			Package: &Package{
+				ID:        id,
+				Name:      p.Name,
+				PkgPath:   pkgpath,
+				Srcs:      absJoin(p.Dir, p.GoFiles, p.CgoFiles),
+				OtherSrcs: absJoin(p.Dir, p.SFiles, p.CFiles),
+			},
+			imports:  imports,
+			export:   export,
+			indirect: p.DepOnly,
 		}
 		result = append(result, pkg)
 	}
