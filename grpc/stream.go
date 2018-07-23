@@ -153,6 +153,7 @@ func newStreamClient(signer crypto.Signer, encrypter crypto.Encrypter, addr iden
 func (client *streamClient) Connect(ctx context.Context, multiAddr identity.MultiAddress) (stream.Stream, error) {
 	// Establish a connection to the identity.MultiAddress and clean the
 	// connection once the context.Context is done
+	log.Printf("[debug] (stream) dialing...")
 	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot dial %v: %v", multiAddr, err)
@@ -177,6 +178,7 @@ func (client *streamClient) Connect(ctx context.Context, multiAddr identity.Mult
 	}
 
 	// Generate a secret
+	log.Printf("[debug] (stream) authenticating stream...")
 	secret := [16]byte{}
 	if _, err := rand.Read(secret[:]); err != nil {
 		return nil, ErrCannotGenerateSecret
@@ -232,6 +234,8 @@ func newConcurrentStreamConnector(client *streamClient) *concurrentStreamConnect
 }
 
 func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	log.Printf("[debug] (stream) connecting as client...")
+
 	addr := multiAddr.Address()
 
 	connector.mu.Lock()
@@ -243,6 +247,7 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 	defer connector.streamsMu[addr].Unlock()
 
 	if connector.streamsRc[addr] <= 0 {
+		log.Printf("[debug] (stream) establishing new connection...")
 
 		connector.mu.Unlock()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -257,6 +262,8 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 		connector.streams[addr] = stream.(*concurrentStream)
 		connector.streamsCtx[addr] = ctx
 		connector.streamsCancel[addr] = cancel
+	} else {
+		log.Printf("[debug] (stream) recycling previously established connection...")
 	}
 
 	// Defensively guard against the Rc dropping below zero
@@ -290,6 +297,8 @@ func (connector *concurrentStreamConnector) connect(ctx context.Context, multiAd
 }
 
 func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	log.Printf("[debug] (stream) listening as server...")
+
 	addr := multiAddr.Address()
 	stream := func() *concurrentStream {
 
@@ -302,9 +311,13 @@ func (connector *concurrentStreamConnector) listen(ctx context.Context, multiAdd
 		defer connector.streamsMu[addr].Unlock()
 
 		if connector.streamsRc[addr] <= 0 {
+			log.Printf("[debug] (stream) accepting new connection...")
+
 			ctx, cancel := context.WithCancel(context.Background())
 			connector.streamsCtx[addr] = ctx
 			connector.streamsCancel[addr] = cancel
+		} else {
+			log.Printf("[debug] (stream) recycling previously accepted connection...")
 		}
 		// Defensively guard against the Rc dropping below zero
 		if connector.streamsRc[addr] < 0 {
