@@ -142,6 +142,10 @@ func (service *SwarmService) Register(server *Server) {
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
+	if service.IsRateLimited(...) {
+		return ErrRateLimit
+	}
+
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -166,6 +170,10 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
+	if service.IsRateLimited(...) {
+		return ErrRateLimit
+	}
+
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -189,6 +197,10 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
+	if service.IsRateLimited(...) {
+		return ErrRateLimit
+	}
+	
 	query := identity.Address(request.GetAddress())
 	querySig := [65]byte{}
 	copy(querySig[:], request.GetSignature())

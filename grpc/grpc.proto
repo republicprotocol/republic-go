@@ -8,32 +8,32 @@ service SwarmService {
     rpc Query (QueryRequest) returns (QueryResponse);
 }
 
-message PingRequest {
+message MultiAddress {
     bytes  signature         = 1;
     string multiAddress      = 2;
     uint64 multiAddressNonce = 3;
+}
+
+message PingRequest {
+    MultiAddress multiAddress = 1;
 }
 
 message PingResponse {
 }
 
 message PongRequest {
-    bytes  signature         = 1;
-    string multiAddress      = 2;
-    uint64 multiAddressNonce = 3;
+    MultiAddress multiAddress = 1;
 }
 
 message PongResponse {
 }
 
 message QueryRequest {
-    bytes  signature = 1;
-    string address   = 2;
+    string address = 1;
 }
 
 message QueryResponse {
-    bytes           signature      = 1;
-    repeated string multiAddresses = 2;
+    repeated MultiAddress multiAddresses = 1;
 }
 
 service StreamService {

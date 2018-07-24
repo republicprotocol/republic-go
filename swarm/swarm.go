@@ -9,21 +9,19 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 )
 
+// A Client exposes methods for invoking RPCs on a remote server.
 type Client interface {
 
-	// Ping a node to inform it of the existence of a new multiaddress
+	// Ping a remote server to propagate a multi-address throughout the
+	// network.
 	Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress, nonce uint64) error
 
-	// An implementation of Client's Pong should pass its own identity.MultiAddress
-	// to the node during the pong.
+	// Pong a remote server with own multi-address in response to a Ping.
 	Pong(ctx context.Context, to identity.MultiAddress) error
 
-	// Query a node for the identity.MultiAddress of an identity.Address.
-	// Returns a list of identity.MultiAddresses that are closer to the query
-	// than the node that was queried.
-	Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error)
+	Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error)
 
-	// MultiAddress of the Client.
+	// MultiAddress used when invoking the Pong RPC.
 	MultiAddress() identity.MultiAddress
 }
 
@@ -35,23 +33,18 @@ type Swarmer interface {
 	// of a node in the network available in the storer.
 	Ping(ctx context.Context) error
 
-	// Broadcast will send the multiaddress and nonce to a randomly selected
-	// α nodes in the network. Before this, a Pong request will be initiated
-	// to inform the node at the multiaddress about the existence of this node.
-	Broadcast(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error
+	Pong(ctx context.Context, to identity.MultiAddress) error
 
-	// Query for the identity.MultiAddress of an identity.Address using a BFS
-	// algorithm. The depth parameters limits the BFS, however a depth below
-	// zero will perform an exhaustive search. Returns ErrMultiAddressNotFound
-	// if no matching results are found.
+	BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error
+
 	Query(ctx context.Context, query identity.Address) (identity.MultiAddress, error)
 
-	// MultiAddress of the Swarmer.
+	// MultiAddress used when pinging and ponging.
 	MultiAddress() identity.MultiAddress
 
-	// GetConnectedPeers will return the multiaddresses of all the darknodes that
-	// are connected to the swarmer.
-	GetConnectedPeers() (identity.MultiAddresses, error)
+	// Peers will return the latest version of all known multi-addresses. These
+	// multi-addresses are not guaranteed to be connected.
+	Peers() (identity.MultiAddresses, error)
 }
 
 type swarmer struct {
@@ -84,6 +77,10 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 	return swarmer.pingNodes(ctx, swarmer.MultiAddress(), swarmer.nonce)
 }
 
+func (swarmer *swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
+	panic("unimplemented")
+}
+
 // Broadcast implements the Swarmer interface.
 func (swarmer *swarmer) Broadcast(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
 	if err := swarmer.client.Pong(ctx, multiAddr); err != nil {
@@ -107,7 +104,7 @@ func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
 	return swarmer.client.MultiAddress()
 }
 
-func (swarmer *swarmer) GetConnectedPeers() (identity.MultiAddresses, error) {
+func (swarmer *swarmer) ConnectedPeers() (identity.MultiAddresses, error) {
 	multiaddressesIterator, err := swarmer.storer.MultiAddresses()
 	if err != nil {
 		return nil, err
@@ -162,7 +159,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		}
 
 		// Query for closer addresses.
-		closer, err := swarmer.client.Query(ctx, multiAddr, query, [65]byte{})
+		closer, err := swarmer.client.Query(ctx, multiAddr, query)
 		if err != nil {
 			log.Printf("cannot query %v: %v", multiAddr.Address(), err)
 			continue
@@ -189,7 +186,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 // pingNodes will ping α random nodes in the storer using the client to gossip about the multiaddress and nonce seen.
 func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	multiAddrs, err := swarmer.GetConnectedPeers()
+	multiAddrs, err := swarmer.ConnectedPeers()
 	if err != nil {
 		return err
 	}
@@ -233,9 +230,7 @@ type Server interface {
 	// multiaddresses in the storer.
 	Pong(ctx context.Context, from identity.MultiAddress, nonce uint64) error
 
-	// Query will return a list of multiaddresses that are closest to the
-	// query node. This list is limited by α.
-	Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error)
+	Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error)
 }
 
 type server struct {
@@ -274,44 +269,44 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress, nonc
 	return err
 }
 
-func (server *server) Query(ctx context.Context, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
+func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
 	return closerMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), query, server.α)
 }
 
 func closerMultiAddrs(storer MultiAddressStorer, addr, query identity.Address, α int) (identity.MultiAddresses, error) {
-	multi, _, err := storer.MultiAddress(query)
+	multiAddr, _, err := storer.MultiAddress(query)
 	if err == nil {
-		return []identity.MultiAddress{multi}, nil
+		return []identity.MultiAddress{multiAddr}, nil
 	}
 
-	multiAddrsCloser := identity.MultiAddresses{}
-	multiaddressesIterator, err := storer.MultiAddresses()
+	multiAddrsIter, err := storer.MultiAddresses()
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}
-	multiAddrs, _, err := multiaddressesIterator.Collect()
+	multiAddrs, _, err := multiAddrsIter.Collect()
 	if err != nil {
 		return identity.MultiAddresses{}, err
 	}
+	if len(multiAddrs) <= α {
+		return multiAddrs, nil
+	}
 
-	keys := map[int]struct{}{}
-	for len(keys) < len(multiAddrs) && len(multiAddrsCloser) < α {
+	results := identity.MultiAddresses{}
+	for len(results) < α {
+		// Randomly select a multi-address and make sure it is not selected
+		// more than once
 		i := rand.Intn(len(multiAddrs))
-		if _, ok := keys[i]; ok {
+		multiAddr := multiAddrs[i]
+
+		multiAddrs[i] = multiAddrs[len(multiAddrs)-1]
+		multiAddrs = multiAddrs[:len(multiAddrs)-1]
+
+		// Do not return own multi-address
+		if multiAddr.Address() == addr {
 			continue
 		}
-		keys[i] = struct{}{}
-
-		if multiAddrs[i].Address() == query {
-			multiAddrsCloser = append(multiAddrsCloser, multiAddrs[i])
-			return multiAddrsCloser, nil
-		}
-		if multiAddrs[i].Address() == addr {
-			continue
-		}
-
-		multiAddrsCloser = append(multiAddrsCloser, multiAddrs[i])
+		results = append(results, multiAddr)
 	}
 
-	return multiAddrsCloser, nil
+	return results, nil
 }
