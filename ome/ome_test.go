@@ -78,10 +78,12 @@ var _ = Describe("Ome", func() {
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
+				defer close(done)
 
 				for err := range errs {
 					Ω(err).ShouldNot(HaveOccurred())
 				}
+				time.Sleep(2 * time.Second)
 			}()
 
 			time.Sleep(5 * time.Second)
@@ -103,11 +105,14 @@ var _ = Describe("Ome", func() {
 
 			epoch.Hash = testutils.Random32Bytes()
 			go func() {
+				defer GinkgoRecover()
+				defer close(done)
+
 				ome.OnChangeEpoch(epoch)
+				time.Sleep(2 * time.Second)
 			}()
 
-			time.Sleep(5 * time.Second)
-			close(done)
+			time.Sleep(4 * time.Second)
 		})
 	})
 })

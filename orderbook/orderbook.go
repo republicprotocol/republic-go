@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"context"
-	"errors"
 	"log"
 	"sync"
 	"time"
@@ -15,14 +14,6 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
-// ErrServerIsRunning is returned when a Server that has already been started
-// is started again.
-var ErrServerIsRunning = errors.New("server is running")
-
-// ErrServerIsNotRunning is returned when a Server receives the shutdown signal
-// while handling an RPC, or when a Server handles an RPC before being started.
-var ErrServerIsNotRunning = errors.New("server is not running")
-
 // Client for invoking the Server.OpenOrder ROC on a remote Server.
 type Client interface {
 
@@ -32,14 +23,10 @@ type Client interface {
 	OpenOrder(context.Context, identity.MultiAddress, order.EncryptedFragment) error
 }
 
-// A Server expose RPCs for opening orders with a Darknode by sending it an
-// order.EncryptedFragment.
+// Server for opening order.EncryptedFragments. This RPC should only be called
+// after the respective order.Order has been opened on the Ethereum blockchain
+// otherwise it will be ignored by the Server.
 type Server interface {
-
-	// OpenOrder is the RPC invoked by a Client. It accepts an
-	// order.EncryptedFragment and decrypts it. Until this RPC is invoked, the
-	// Server cannot participate in the respective secure multi-party
-	// computation.
 	OpenOrder(context.Context, order.EncryptedFragment) error
 }
 
@@ -106,10 +93,10 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 	if err != nil {
 		return err
 	}
-	if orderFragment.OrderParity == order.ParityBuy {
-		logger.BuyOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
+	if encryptedOrderFragment.OrderParity == order.ParityBuy {
+		logger.BuyOrderReceived(logger.LevelDebugLow, encryptedOrderFragment.OrderID.String(), encryptedOrderFragment.ID.String())
 	} else {
-		logger.SellOrderReceived(logger.LevelDebugLow, orderFragment.OrderID.String(), orderFragment.ID.String())
+		logger.SellOrderReceived(logger.LevelDebugLow, encryptedOrderFragment.OrderID.String(), encryptedOrderFragment.ID.String())
 	}
 	return orderbook.routeOrderFragment(ctx.Done(), orderFragment)
 }

@@ -111,6 +111,7 @@ var _ = Describe("Syncer", func() {
 			Expect(countOpens).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
+			countCancels = 0
 			countMu.Unlock()
 
 			// Cancel random orders in the contract

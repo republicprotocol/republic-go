@@ -156,7 +156,7 @@ func (ome *ome) OnChangeEpoch(epoch registry.Epoch) {
 		ome.gen.OnChangeEpoch(epoch)
 
 		// Wait for some time to allow for the connections to begin
-		time.Sleep(14 * time.Second)
+		time.Sleep(time.Second)
 
 		// Replace the previous epoch and disconnect from it
 		if ome.epochPrev != nil {

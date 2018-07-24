@@ -152,7 +152,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 
 	offset := syncer.resyncPointer
-	for i := 0; i < 2*syncer.limit; i++ {
+	limit := 2 * syncer.limit
+	if limit > len(orders) {
+		limit = len(orders)
+	}
+	for i := 0; i < limit; i++ {
 		syncer.resyncPointer = (offset + i) % len(orders)
 
 		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
