@@ -541,6 +541,7 @@ func (service *StreamerService) Register(server *Server) {
 }
 
 func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
+	log.Printf("[debug] (stream) remote client opened connection")
 
 	// Verify the address of this connection
 	message, err := grpcStream.Recv()
