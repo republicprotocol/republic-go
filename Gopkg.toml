@@ -28,10 +28,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/republicprotocol/go-do"
-
-[[constraint]]
-  branch = "master"
   name = "golang.org/x/net"
 
 [[constraint]]

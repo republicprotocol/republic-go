@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/republicprotocol/go-do"
+	"sync"
 )
 
 // A FilePlugin implements the Plugin interface by logging all events to a
 // File. The Stdout File can be used to create a plugin that logs to Stdout.
 type FilePlugin struct {
-	do.GuardedObject
+	mu *sync.Mutex
 
 	file     *os.File
 	filePath string
@@ -26,20 +25,22 @@ type FilePluginOptions struct {
 }
 
 // NewFilePlugin uses the FilePluginOptions to create a new FilePlugin.
-func NewFilePlugin(filePluginOptions FilePluginOptions) (Plugin, error) {
-	plugin := new(FilePlugin)
-	plugin.GuardedObject = do.NewGuardedObject()
-	plugin.filePath = filePluginOptions.Path
-	return plugin, nil
+func NewFilePlugin(filePluginOptions FilePluginOptions) Plugin {
+	return &FilePlugin{
+		mu:       new(sync.Mutex),
+		file:     nil,
+		filePath: filePluginOptions.Path,
+	}
 }
 
 // Start implements the Plugin interface. It opens the log file which will
 // be opened as appendable and will be closed when the plugin is stopped.
 func (plugin *FilePlugin) Start() error {
-	var err error
-	plugin.Enter(nil)
-	defer plugin.Exit()
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+
 	// Initialise the file based on path
+	var err error
 	switch plugin.filePath {
 	case "stdout":
 		plugin.file = os.Stdout
@@ -54,8 +55,9 @@ func (plugin *FilePlugin) Start() error {
 // Stop implements the Plugin interface. If the filePath is stdout or stderr
 // it does nothing, otherwise it closes the open log file.
 func (plugin *FilePlugin) Stop() error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		return nil
 	}
@@ -64,14 +66,15 @@ func (plugin *FilePlugin) Stop() error {
 
 // Log implements the Plugin interface.
 func (plugin *FilePlugin) Log(l Log) error {
-	plugin.Enter(nil)
-	defer plugin.Exit()
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+
 	if plugin.file == nil {
 		return fmt.Errorf("cannot write log to file plugin: nil file")
 	}
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		// format the tags to a string
-		tags := []string{}
+		tags := make([]string, 0)
 		for key, value := range l.Tags {
 			tags = append(tags, fmt.Sprintf("%s:%s,", key, value))
 		}
