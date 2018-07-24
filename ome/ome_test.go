@@ -43,7 +43,7 @@ var _ = Describe("Ome", func() {
 		settler               Settler
 	)
 
-	XContext("ome should manage everything about order matching ", func() {
+	Context("ome should manage everything about order matching ", func() {
 
 		BeforeEach(func() {
 			addr, epoch, err = testutils.RandomEpoch(0)
