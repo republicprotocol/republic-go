@@ -1,13 +1,22 @@
 package grpc
 
 import (
+	"errors"
 	"fmt"
+	"net"
+	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/peer"
 )
+
+// ErrRateLimitExceeded is returned when the same client sends more than one
+// request to the server within a specified rate limit.
+var ErrRateLimitExceeded = errors.New("cannot process request, rate limit exceeded")
 
 type swarmClient struct {
 	addr  identity.Address
@@ -120,13 +129,21 @@ func (client *swarmClient) MultiAddress() identity.MultiAddress {
 // to a swarm.Server.
 type SwarmService struct {
 	server swarm.Server
+
+	rate         time.Duration
+	rateLimitsMu *sync.Mutex
+	rateLimits   map[net.Addr]time.Time
 }
 
 // NewSwarmService returns a SwarmService that uses the swarm.Server as a
 // delegate.
-func NewSwarmService(server swarm.Server) SwarmService {
+func NewSwarmService(server swarm.Server, rate time.Duration) SwarmService {
 	return SwarmService{
 		server: server,
+
+		rate:         rate,
+		rateLimitsMu: new(sync.Mutex),
+		rateLimits:   make(map[net.Addr]time.Time),
 	}
 }
 
@@ -142,9 +159,9 @@ func (service *SwarmService) Register(server *Server) {
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
-	// if service.IsRateLimited(...) {
-	// 	return ErrRateLimit
-	// }
+	if err := service.isRateLimited(ctx); err != nil {
+		return nil, err
+	}
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
@@ -170,9 +187,9 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
-	// if service.IsRateLimited(...) {
-	// 	return ErrRateLimit
-	// }
+	if err := service.isRateLimited(ctx); err != nil {
+		return nil, err
+	}
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
@@ -197,14 +214,11 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
-	// if service.IsRateLimited(...) {
-	// 	return ErrRateLimit
-	// }
+	if err := service.isRateLimited(ctx); err != nil {
+		return nil, err
+	}
 
 	query := identity.Address(request.GetAddress())
-	querySig := [65]byte{}
-	copy(querySig[:], request.GetSignature())
-
 	multiAddrs, err := service.server.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -219,4 +233,28 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 		Signature:      []byte{},
 		MultiAddresses: multiAddrsStr,
 	}, nil
+}
+
+func (service *SwarmService) isRateLimited(ctx context.Context) error {
+	client, ok := peer.FromContext(ctx)
+	if !ok {
+		return fmt.Errorf("failed to get peer from ctx")
+	}
+	if client.Addr == net.Addr(nil) {
+		return fmt.Errorf("failed to get peer address")
+	}
+
+	service.rateLimitsMu.Lock()
+	defer service.rateLimitsMu.Unlock()
+
+	if lastPing, ok := service.rateLimits[client.Addr]; ok {
+		if service.rate > time.Since(lastPing) {
+			return ErrRateLimitExceeded
+		}
+		service.rateLimits[client.Addr] = time.Now()
+		return nil
+	}
+
+	service.rateLimits[client.Addr] = time.Now()
+	return nil
 }

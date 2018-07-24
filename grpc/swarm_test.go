@@ -37,7 +37,7 @@ var _ = Describe("Swarming", func() {
 
 		swarmer, err := swarm.NewSwarmer(serviceClient, serviceClientDb, 10)
 		Expect(err).ShouldNot(HaveOccurred())
-		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10))
+		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10), time.Second)
 		serviceMultiAddr = serviceClient.MultiAddress()
 		server = NewServer()
 		service.Register(server)
