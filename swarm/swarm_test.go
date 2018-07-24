@@ -198,7 +198,7 @@ func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.M
 	return errors.New("pong address not active")
 }
 
-func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySig [65]byte) (identity.MultiAddresses, error) {
+func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
 	var server Server
 	isActive := false
 
@@ -210,7 +210,7 @@ func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAd
 
 	if isActive {
 		randomSleep()
-		return server.Query(ctx, query, querySig)
+		return server.Query(ctx, query)
 	}
 	return identity.MultiAddresses{}, errors.New("server not active")
 }

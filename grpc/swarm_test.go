@@ -109,7 +109,7 @@ var _ = Describe("Swarming", func() {
 			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			multiAddrs, err := client.Query(context.Background(), serviceMultiAddr, client.MultiAddress().Address(), [65]byte{})
+			multiAddrs, err := client.Query(context.Background(), serviceMultiAddr, client.MultiAddress().Address())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(multiAddrs).Should(HaveLen(1))
 		})

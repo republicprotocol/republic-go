@@ -100,11 +100,7 @@ func main() {
 		log.Fatalf("cannot create swarmer: %v", err)
 	}
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha))
-
 	swarmService.Register(server)
-
-	statusService := grpc.NewStatusService(swarmer)
-	statusService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
@@ -270,7 +266,7 @@ func pingNetwork(swarmer swarm.Swarmer) {
 	if err := swarmer.Ping(context.Background()); err != nil {
 		log.Printf("bootstrap: %v", err)
 	}
-	peers, err := swarmer.GetConnectedPeers()
+	peers, err := swarmer.Peers()
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
 	}

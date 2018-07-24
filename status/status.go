@@ -193,7 +193,7 @@ func (sp *provider) Tokens() (map[string]string, error) {
 
 // Peers returns the number of peers the darknode is connected to
 func (sp *provider) Peers() (int, error) {
-	peers, err := sp.swarmer.GetConnectedPeers()
+	peers, err := sp.swarmer.Peers()
 	if err != nil {
 		return 0, err
 	}

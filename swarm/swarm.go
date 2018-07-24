@@ -78,15 +78,11 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 }
 
 func (swarmer *swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
-	panic("unimplemented")
+	return swarmer.client.Pong(ctx, to)
 }
 
-// Broadcast implements the Swarmer interface.
-func (swarmer *swarmer) Broadcast(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	if err := swarmer.client.Pong(ctx, multiAddr); err != nil {
-		return err
-	}
-
+// BroadcastMultiAddress implements the Swarmer interface.
+func (swarmer *swarmer) BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
 	if err := swarmer.pingNodes(ctx, multiAddr, nonce); err != nil {
 		return err
 	}
@@ -104,7 +100,7 @@ func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
 	return swarmer.client.MultiAddress()
 }
 
-func (swarmer *swarmer) ConnectedPeers() (identity.MultiAddresses, error) {
+func (swarmer *swarmer) Peers() (identity.MultiAddresses, error) {
 	multiaddressesIterator, err := swarmer.storer.MultiAddresses()
 	if err != nil {
 		return nil, err
@@ -186,7 +182,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 // pingNodes will ping α random nodes in the storer using the client to gossip about the multiaddress and nonce seen.
 func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
-	multiAddrs, err := swarmer.ConnectedPeers()
+	multiAddrs, err := swarmer.Peers()
 	if err != nil {
 		return err
 	}
@@ -254,13 +250,16 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress,
 	if err != nil {
 		return err
 	}
+	if err := server.swarmer.Pong(ctx, multiAddr); err != nil {
+		return err
+	}
 	if !changed {
 		return nil
 	}
 
 	// If the multiaddress is new or has modifications, gossip the new
 	// information to α random nodes in the network.
-	return server.swarmer.Broadcast(ctx, multiAddr, nonce)
+	return server.swarmer.BroadcastMultiAddress(ctx, multiAddr, nonce)
 }
 
 // Pong will store unseen multiaddresses in the storer.

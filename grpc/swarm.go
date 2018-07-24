@@ -71,7 +71,7 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 }
 
 // Query implements the swarm.Client interface.
-func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address, querySignature [65]byte) (identity.MultiAddresses, error) {
+func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -80,7 +80,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 	defer conn.Close()
 
 	request := &QueryRequest{
-		Signature: querySignature[:],
+		Signature: []byte{},
 		Address:   query.String(),
 	}
 
@@ -142,9 +142,9 @@ func (service *SwarmService) Register(server *Server) {
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
-	if service.IsRateLimited(...) {
-		return ErrRateLimit
-	}
+	// if service.IsRateLimited(...) {
+	// 	return ErrRateLimit
+	// }
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
@@ -170,9 +170,9 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
-	if service.IsRateLimited(...) {
-		return ErrRateLimit
-	}
+	// if service.IsRateLimited(...) {
+	// 	return ErrRateLimit
+	// }
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
 	if err != nil {
@@ -197,15 +197,15 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
-	if service.IsRateLimited(...) {
-		return ErrRateLimit
-	}
-	
+	// if service.IsRateLimited(...) {
+	// 	return ErrRateLimit
+	// }
+
 	query := identity.Address(request.GetAddress())
 	querySig := [65]byte{}
 	copy(querySig[:], request.GetSignature())
 
-	multiAddrs, err := service.server.Query(ctx, query, querySig)
+	multiAddrs, err := service.server.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}

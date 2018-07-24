@@ -31,7 +31,11 @@ func (swarmer *Swarmer) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (swarmer *Swarmer) Broadcast(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
+func (swarmer *Swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
+	return nil
+}
+
+func (swarmer *Swarmer) BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
 	return nil
 }
 
@@ -43,7 +47,7 @@ func (swarmer *Swarmer) MultiAddress() identity.MultiAddress {
 	return swarmer.multiAddr
 }
 
-func (swarmer *Swarmer) GetConnectedPeers() (identity.MultiAddresses, error) {
+func (swarmer *Swarmer) Peers() (identity.MultiAddresses, error) {
 	return make([]identity.MultiAddress, len(swarmer.multiAddrs)), nil
 }
 
