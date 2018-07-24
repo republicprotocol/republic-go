@@ -65,9 +65,6 @@ func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStr
 
 // Send implements the stream.Stream interface.
 func (concurrentStream *concurrentStream) Send(message stream.Message) error {
-	log.Printf("[debug] sending message")
-	defer log.Printf("[debug] sent message")
-
 	concurrentStream.grpcSendMu.Lock()
 	defer concurrentStream.grpcSendMu.Unlock()
 
