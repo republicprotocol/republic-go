@@ -32,9 +32,9 @@ service StreamService {
 }
 
 message StreamMessage {
-    string address = 1;
-    bytes signature = 2;
-    bytes data = 3;
+    bytes signature = 1;
+    bytes network   = 2;
+    bytes data      = 3;
 }
 
 service OrderbookService {
