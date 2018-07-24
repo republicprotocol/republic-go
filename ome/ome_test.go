@@ -85,9 +85,6 @@ var _ = Describe("Ome", func() {
 				}
 				time.Sleep(2 * time.Second)
 			}()
-
-			time.Sleep(5 * time.Second)
-			close(done)
 		})
 
 		It("should be able to listen for epoch change event", func() {
@@ -111,8 +108,6 @@ var _ = Describe("Ome", func() {
 				ome.OnChangeEpoch(epoch)
 				time.Sleep(2 * time.Second)
 			}()
-
-			time.Sleep(4 * time.Second)
 		})
 	})
 })
