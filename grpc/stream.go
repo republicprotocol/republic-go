@@ -65,6 +65,7 @@ func newConcurrentStream(secret [16]byte, grpcStream grpc.Stream) *concurrentStr
 
 // Send implements the stream.Stream interface.
 func (concurrentStream *concurrentStream) Send(message stream.Message) error {
+	log.Printf("[debug] sending message")
 	defer log.Printf("[debug] sent message")
 
 	concurrentStream.grpcSendMu.Lock()
@@ -540,7 +541,6 @@ func (service *StreamerService) Register(server *Server) {
 }
 
 func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
-	defer log.Printf("[debug] (stream) accepted connection closing...")
 
 	// Verify the address of this connection
 	message, err := grpcStream.Recv()
@@ -561,8 +561,10 @@ func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) 
 	// closed
 	select {
 	case <-grpcStream.Context().Done():
+		log.Printf("[debug] (stream) remote client closed connection")
 		return grpcStream.Context().Err()
 	case <-concurrentStream.Done():
+		log.Printf("[debug] (stream) local server closed connection")
 		return nil
 	}
 }
