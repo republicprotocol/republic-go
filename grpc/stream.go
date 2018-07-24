@@ -388,6 +388,34 @@ func (connector *concurrentStreamConnector) reconnect(multiAddr identity.MultiAd
 	return connector.streams[addr], nil
 }
 
+func (connector *concurrentStreamConnector) relisten(multiAddr identity.MultiAddress) (*concurrentStream, error) {
+	addr := multiAddr.Address()
+
+	connector.mu.Lock()
+	defer connector.mu.Unlock()
+	if connector.streamsMu[addr] == nil {
+		connector.streamsMu[addr] = new(sync.Mutex)
+	}
+	connector.streamsMu[addr].Lock()
+	defer connector.streamsMu[addr].Unlock()
+
+	if connector.streams[addr] != nil {
+		connector.streams[addr].Close()
+	}
+
+	ctx := connector.streamsCtx[addr]
+
+	var stream *concurrentStream
+	err := BackoffMax(ctx, func() error {
+		if stream = connector.connection(addr); stream == nil {
+			return ErrStreamDisconnected
+		}
+		return nil
+	}, 30000 /* Maximum backoff 30s */)
+
+	return stream, err
+}
+
 func (connector *concurrentStreamConnector) accept(addr identity.Address, stream *concurrentStream) {
 	connector.mu.Lock()
 	defer connector.mu.Unlock()
@@ -498,9 +526,7 @@ func (streamer *ctxStreamer) message(message stream.Message, f func(stream *conc
 		if streamer.addr < remoteAddr {
 			stream, err = streamer.connector.reconnect(streamer.remoteMultiAddr)
 		} else {
-			// There is no such this as "relistening" so if the connection dies
-			// all we can do is hope that the client will eventually attempt to
-			// reconnect and until then, we simply let the errors happen
+			stream, err = streamer.connector.relisten(streamer.remoteMultiAddr)
 		}
 		if err != nil {
 			return err
@@ -540,8 +566,6 @@ func (service *StreamerService) Register(server *Server) {
 }
 
 func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
-	defer log.Printf("[debug] (stream) accepted connection closing...")
-
 	// Verify the address of this connection
 	message, err := grpcStream.Recv()
 	if err != nil {
@@ -551,6 +575,9 @@ func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) 
 	if err != nil {
 		return err
 	}
+
+	log.Printf("[debug] (stream) accepted connection")
+	defer log.Printf("[debug] (stream) accepted connection closing...")
 
 	// Establish a connection with the recycler so that the stream can be used
 	// outside of this service
