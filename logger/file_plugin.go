@@ -74,7 +74,7 @@ func (plugin *FilePlugin) Log(l Log) error {
 	}
 	if plugin.file == os.Stdout || plugin.file == os.Stderr {
 		// format the tags to a string
-		tags := []string{}
+		tags := make([]string, 0)
 		for key, value := range l.Tags {
 			tags = append(tags, fmt.Sprintf("%s:%s,", key, value))
 		}
