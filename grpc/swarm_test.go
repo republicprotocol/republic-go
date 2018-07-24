@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/republicprotocol/republic-go/dispatch"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
@@ -25,6 +27,7 @@ var _ = Describe("Swarming", func() {
 	var serviceClientDb swarm.MultiAddressStorer
 	var client swarm.Client
 	var clientDb swarm.MultiAddressStorer
+	var swarmer swarm.Swarmer
 
 	BeforeEach(func() {
 		var err error
@@ -35,9 +38,9 @@ var _ = Describe("Swarming", func() {
 		serviceClient, err = newSwarmClient(serviceClientDb)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		swarmer, err := swarm.NewSwarmer(serviceClient, serviceClientDb, 10)
+		swarmer, err = swarm.NewSwarmer(serviceClient, serviceClientDb, 10)
 		Expect(err).ShouldNot(HaveOccurred())
-		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10), time.Second)
+		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10), time.Microsecond)
 		serviceMultiAddr = serviceClient.MultiAddress()
 		server = NewServer()
 		service.Register(server)
@@ -104,7 +107,6 @@ var _ = Describe("Swarming", func() {
 				err := server.Start("0.0.0.0:18514")
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
-			time.Sleep(time.Millisecond)
 
 			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -113,6 +115,35 @@ var _ = Describe("Swarming", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(multiAddrs).Should(HaveLen(1))
 		})
+
+		It("should error when too many requests are sent to the server", func(done Done) {
+			defer close(done)
+
+			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10), time.Second)
+			serviceMultiAddr = serviceClient.MultiAddress()
+			server = NewServer()
+			service.Register(server)
+
+			go func() {
+				defer GinkgoRecover()
+
+				err := server.Start("0.0.0.0:18514")
+				Expect(err).ShouldNot(HaveOccurred())
+			}()
+
+			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), uint64(0))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			dispatch.CoForAll(10, func(i int) {
+				defer GinkgoRecover()
+
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Millisecond)
+				defer cancel()
+
+				_, err := client.Query(ctx, serviceMultiAddr, client.MultiAddress().Address())
+				Expect(err).Should(HaveOccurred())
+			})
+		}, 30 /* 30s timeout */)
 
 	})
 })

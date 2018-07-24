@@ -132,7 +132,7 @@ type SwarmService struct {
 
 	rate         time.Duration
 	rateLimitsMu *sync.Mutex
-	rateLimits   map[net.Addr]time.Time
+	rateLimits   map[string]time.Time
 }
 
 // NewSwarmService returns a SwarmService that uses the swarm.Server as a
@@ -143,7 +143,7 @@ func NewSwarmService(server swarm.Server, rate time.Duration) SwarmService {
 
 		rate:         rate,
 		rateLimitsMu: new(sync.Mutex),
-		rateLimits:   make(map[net.Addr]time.Time),
+		rateLimits:   make(map[string]time.Time),
 	}
 }
 
@@ -244,17 +244,18 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 		return fmt.Errorf("failed to get peer address")
 	}
 
+	clientAddr := client.Addr.(*net.TCPAddr)
+	clientIP := clientAddr.IP.String()
+
 	service.rateLimitsMu.Lock()
 	defer service.rateLimitsMu.Unlock()
 
-	if lastPing, ok := service.rateLimits[client.Addr]; ok {
+	if lastPing, ok := service.rateLimits[clientIP]; ok {
 		if service.rate > time.Since(lastPing) {
 			return ErrRateLimitExceeded
 		}
-		service.rateLimits[client.Addr] = time.Now()
-		return nil
 	}
 
-	service.rateLimits[client.Addr] = time.Now()
+	service.rateLimits[clientIP] = time.Now()
 	return nil
 }
