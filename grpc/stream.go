@@ -124,6 +124,10 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						secret, stream, err = connector.connect(ctx, networkID, to)
 						return err
 					}, 30000)
+					if err != nil {
+						log.Printf("[error] cannot reconnect to %v on network %v: %v", addr, networkID, err)
+						return
+					}
 
 					sender.streamMu.Lock()
 					sender.cipher = crypto.NewAESCipher(secret[:])
