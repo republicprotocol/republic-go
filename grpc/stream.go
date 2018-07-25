@@ -382,7 +382,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}
 	sender.inject(secret[:], stream)
 
-	func() {
+	done := func() chan struct{} {
 		service.donesMu.Lock()
 		defer service.donesMu.Unlock()
 		if _, ok := service.dones[networkID]; !ok {
@@ -392,7 +392,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 			close(service.dones[networkID][addr])
 		}
 		service.dones[networkID][addr] = make(chan struct{})
-		done := service.dones[networkID][addr]
+		return service.dones[networkID][addr]
 	}()
 
 	go func() {
