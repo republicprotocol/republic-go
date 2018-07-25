@@ -1,12 +1,10 @@
 package ome
 
 import (
-	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/logger"
-
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -29,9 +27,11 @@ type computationGenerator struct {
 
 	broadcastComputations chan (<-chan Computation)
 	broadcastErrs         chan (<-chan error)
+
+	orderFragmentStore OrderFragmentStorer
 }
 
-func NewComputationGenerator() ComputationGenerator {
+func NewComputationGenerator(orderFragmentStore OrderFragmentStorer) ComputationGenerator {
 	return &computationGenerator{
 		doneMu: new(sync.Mutex),
 		done:   nil,
@@ -44,6 +44,8 @@ func NewComputationGenerator() ComputationGenerator {
 
 		broadcastComputations: make(chan (<-chan Computation)),
 		broadcastErrs:         make(chan (<-chan error)),
+
+		orderFragmentStore: orderFragmentStore,
 	}
 }
 
@@ -102,7 +104,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	mat := newComputationMatrix(epoch)
+	mat := newComputationMatrix(epoch, gen.orderFragmentStore)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	go func() {
@@ -154,7 +156,6 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 
 	switch notification.OrderFragment.EpochDepth {
 	case 0:
-		logger.Compute(logger.LevelInfo, fmt.Sprintf("inserting order %v at depth = %v", notification.OrderID, notification.OrderFragment.EpochDepth))
 		if gen.matCurrNotifications != nil {
 			select {
 			case <-done:
@@ -163,7 +164,6 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 			}
 		}
 	case 1:
-		logger.Compute(logger.LevelInfo, fmt.Sprintf("inserting order %v at depth = %v", notification.OrderID, notification.OrderFragment.EpochDepth))
 		if gen.matPrevNotifications != nil {
 			select {
 			case <-done:
@@ -176,17 +176,13 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 
 type computationMatrix struct {
 	epoch              registry.Epoch
-	buyOrderFragments  []order.Fragment
-	sellOrderFragments []order.Fragment
-	traders            map[order.ID]string
+	orderFragmentStore OrderFragmentStorer
 }
 
-func newComputationMatrix(epoch registry.Epoch) *computationMatrix {
+func newComputationMatrix(epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
 	return &computationMatrix{
 		epoch:              epoch,
-		buyOrderFragments:  []order.Fragment{},
-		sellOrderFragments: []order.Fragment{},
-		traders:            map[order.ID]string{},
+		orderFragmentStore: orderFragmentStore,
 	}
 }
 
@@ -239,18 +235,40 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 
 	// Store the order.Fragment and get the opposing list so that computations
 	// can be generated
-	var cmpOrderFragments []order.Fragment
+	var orderFragmentIter OrderFragmentIterator
+	var err error
+
 	if notification.OrderFragment.OrderParity == order.ParityBuy {
-		mat.buyOrderFragments = append(mat.buyOrderFragments, notification.OrderFragment)
-		cmpOrderFragments = mat.sellOrderFragments
+		if err := mat.orderFragmentStore.PutBuyOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader); err != nil {
+			log.Printf("[error] (generator) cannot store buy order fragment = %v: %v", notification.OrderID, err)
+			return
+		}
+		orderFragmentIter, err = mat.orderFragmentStore.BuyOrderFragments(mat.epoch)
+		if err != nil {
+			log.Printf("[error] (generator) cannot load buy order fragment iterator: %v", err)
+			return
+		}
+		defer orderFragmentIter.Release()
 	} else {
-		mat.sellOrderFragments = append(mat.sellOrderFragments, notification.OrderFragment)
-		cmpOrderFragments = mat.buyOrderFragments
+		if err := mat.orderFragmentStore.PutSellOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader); err != nil {
+			log.Printf("[error] (generator) cannot store sell order fragment = %v: %v", notification.OrderID, err)
+			return
+		}
+		orderFragmentIter, err = mat.orderFragmentStore.SellOrderFragments(mat.epoch)
+		if err != nil {
+			log.Printf("[error] (generator) cannot load sell order fragment iterator: %v", err)
+			return
+		}
+		defer orderFragmentIter.Release()
 	}
-	mat.traders[notification.OrderID] = notification.Trader
 
 	// Iterate through the opposing list and generate computations
-	for _, cmpOrderFragment := range cmpOrderFragments {
+	for orderFragmentIter.Next() {
+		orderFragment, trader, err := orderFragmentIter.Cursor()
+		if err != nil {
+			log.Printf("[error] (generator) cannot load cursor: %v", err)
+			continue
+		}
 
 		// TODO: Order fragments are opened on a hierarchical path through the
 		// Darknode pods. Pods should prioritise computations for which they
@@ -258,7 +276,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		// computations that otherwise have the same priority).
 
 		// Traders should not match against themselves
-		if mat.traders[cmpOrderFragment.OrderID] == notification.Trader {
+		if trader == notification.Trader {
 			continue
 		}
 
@@ -269,12 +287,11 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
-			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, cmpOrderFragment, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, orderFragment, ComputationStateNil, false)
 		} else {
-			computation = NewComputation(mat.epoch.Hash, cmpOrderFragment, notification.OrderFragment, ComputationStateNil, false)
+			computation = NewComputation(mat.epoch.Hash, orderFragment, notification.OrderFragment, ComputationStateNil, false)
 		}
 
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("generator created computation buy = %v, sell = %v", computation.Buy.OrderID, computation.Sell.OrderID))
 		select {
 		case <-done:
 			return
@@ -284,16 +301,10 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 }
 
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
-	for i := range mat.buyOrderFragments {
-		if mat.buyOrderFragments[i].OrderID == orderID {
-			mat.buyOrderFragments = append(mat.buyOrderFragments[:i], mat.buyOrderFragments[i+1:]...)
-			return
-		}
+	if err := mat.orderFragmentStore.DeleteBuyOrderFragment(mat.epoch, orderID); err != nil {
+		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
-	for i := range mat.sellOrderFragments {
-		if mat.sellOrderFragments[i].OrderID == orderID {
-			mat.sellOrderFragments = append(mat.sellOrderFragments[:i], mat.sellOrderFragments[i+1:]...)
-			return
-		}
+	if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
+		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
 }
