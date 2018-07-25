@@ -7,8 +7,6 @@ import (
 	"log"
 	"sync"
 	"time"
-
-	"github.com/republicprotocol/go-do"
 )
 
 // Level defines the different levels of Log messages that can be sent.
@@ -202,7 +200,6 @@ func Compute(ty Level, message string) {
 
 // Logger handles distributing logs to plugins registered with it
 type Logger struct {
-	do.GuardedObject
 	Plugins      []Plugin
 	Tags         map[string]string
 	FilterLevel  Level
@@ -241,18 +238,14 @@ func eventListToMap(events []EventType) map[EventType]struct{} {
 // NewLogger returns a new Logger that will start and stop a set of plugins.
 func NewLogger(options Options) (*Logger, error) {
 	logger := &Logger{
-		GuardedObject: do.NewGuardedObject(),
-		Plugins:       make([]Plugin, 0, len(options.Plugins)),
-		Tags:          options.Tags,
-		FilterLevel:   options.FilterLevel,
-		FilterEvents:  eventListToMap(options.FilterEvents),
+		Plugins:      make([]Plugin, 0, len(options.Plugins)),
+		Tags:         options.Tags,
+		FilterLevel:  options.FilterLevel,
+		FilterEvents: eventListToMap(options.FilterEvents),
 	}
 	for i := range options.Plugins {
 		if options.Plugins[i].File != nil {
-			plugin, err := NewFilePlugin(*options.Plugins[i].File)
-			if err != nil {
-				return nil, err
-			}
+			plugin := NewFilePlugin(*options.Plugins[i].File)
 			logger.Plugins = append(logger.Plugins, plugin)
 		}
 	}

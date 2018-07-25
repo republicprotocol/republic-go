@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d2d43cb63597ba4c480679279ce46443da2cec6f106f25b87d95e7fed7eb62e8"
+  digest = "1:1a3c884a4aca598e7f72579f46e5fef6534e884c92a94aba6a79254e4bf1f60e"
   name = "github.com/aristanetworks/goarista"
   packages = ["monotime"]
   pruneopts = "T"
-  revision = "32a4de07828f33fc490e6acfbdc211c4f2143ee7"
+  revision = "7fdf701d5bbf6a590d62664bced14b66db2b675c"
 
 [[projects]]
   branch = "master"
@@ -243,14 +243,6 @@
   version = "v1.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4815b1ea7715e70406378281ba05ce03957b37b0fc528715a2a883240e3bd301"
-  name = "github.com/republicprotocol/go-do"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "0dccf0d7d287e828155a3ea16f7b968fa9662020"
-
-[[projects]]
   digest = "1:3a59a673de0deaee372e540e372c9d8c367e7966face8606fa24ad0749c85a48"
   name = "github.com/rjeczalik/notify"
   packages = ["."]
@@ -305,7 +297,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9a74ab4659e08b1c065c0e3da2777990ea91fc32661b37f05b98fe139dbb032d"
+  digest = "1:244dfd7d34502ec21ead42e6b1744ac312c55af72fa8ccf2d804935f0009843c"
   name = "golang.org/x/crypto"
   packages = [
     "blake2s",
@@ -315,11 +307,11 @@
     "sha3",
   ]
   pruneopts = "T"
-  revision = "a2144134853fc9a27a7b1e3eb4f19f1a76df13c9"
+  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
 
 [[projects]]
   branch = "master"
-  digest = "1:5dc276691386951495e5d6a75811d9974cc818390372a12508c4516f780cf673"
+  digest = "1:83e9b4f374013c17e5f0c359a9f1f47f7eda7132f53f5e97b17e310599260f0f"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -335,18 +327,18 @@
     "websocket",
   ]
   pruneopts = "T"
-  revision = "a680a1efc54dd51c040b3b5ce4939ea3cf2ea0d1"
+  revision = "3673e40ba22529d22c3fd7c93e97b0ce50fa7bdd"
 
 [[projects]]
   branch = "master"
-  digest = "1:8e9014061ae2e7d7dd0cb0fab9690769cad671e1664895025e411c063d1eeb0c"
+  digest = "1:0aa54570e0333bf9c5e83f91e97319b56173027bbf7be74a57eeea277a0d953d"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "T"
-  revision = "ac767d655b305d4e9612f5f6e33120b9176c4ad4"
+  revision = "e072cadbbdc8dd3d3ffa82b8b4b9304c261d9311"
 
 [[projects]]
   digest = "1:24db346d9931fe01f1e9a02aba78ba22c1ecd55bf0f79dd10ba5169719cf002d"
@@ -385,7 +377,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3dbd03cb7cb357943e0320fb1a2b871e67b6448159116f5f150d7b42939e6efd"
+  digest = "1:0ac6b14bfec4e1d2be418630154a42cc9179021c18e18b308a4a2d4852992e3f"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -393,7 +385,7 @@
     "internal/fastwalk",
   ]
   pruneopts = "T"
-  revision = "60ffea201e66e0d9375dc5bec85245d7b416710f"
+  revision = "526516e9c4bf5a3f76fe506dec01ca51d04cbe50"
 
 [[projects]]
   branch = "master"
@@ -513,7 +505,6 @@
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/pborman/uuid",
-    "github.com/republicprotocol/go-do",
     "github.com/rs/cors",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/iterator",

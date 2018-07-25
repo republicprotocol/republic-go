@@ -49,6 +49,28 @@ var (
 	SomerComputationIterEnd      = paddingBytes(0xFF, 32)
 )
 
+// Constants for use in the SomerBuyOrderFragmentTable. Keys in the
+// SomerBuyOrderFragmentTable have a length of 64 bytes, 32 bytes for the
+// epoch and 32 bytes for the order ID, and so no padding is needed to ensure
+// that keys are 64 bytes.
+var (
+	SomerBuyOrderFragmentTableBegin   = []byte{0x11, 0x00}
+	SomerBuyOrderFragmentTablePadding = paddingBytes(0x00, 0)
+	SomerBuyOrderFragmentIterBegin    = paddingBytes(0x00, 32)
+	SomerBuyOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
+)
+
+// Constants for use in the SomerSellOrderFragmentTable. Keys in the
+// SomerSellOrderFragmentTable have a length of 64 bytes, 32 bytes for the
+// epoch and 32 bytes for the order ID, and so no padding is needed to ensure
+// that keys are 64 bytes.
+var (
+	SomerSellOrderFragmentTableBegin   = []byte{0x12, 0x00}
+	SomerSellOrderFragmentTablePadding = paddingBytes(0x00, 0)
+	SomerSellOrderFragmentIterBegin    = paddingBytes(0x00, 32)
+	SomerSellOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
+)
+
 // Constants for use in the SwarmMultiAddress. Keys in the
 // SwarmMultiAddressTable have a length of 32 bytes, and so 32 bytes of padding is
 // needed to ensure that keys are 64 bytes.
@@ -71,7 +93,8 @@ type Store struct {
 	orderbookOrderFragmentTable *OrderbookOrderFragmentTable
 	orderbookPointerTable       *OrderbookPointerTable
 
-	somerComputationTable *SomerComputationTable
+	somerComputationTable   *SomerComputationTable
+	somerOrderFragmentTable *SomerOrderFragmentTable
 
 	swarmMultiAddressTable *SwarmMultiAddressTable
 }
@@ -92,7 +115,8 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, expiry),
 		orderbookPointerTable:       NewOrderbookPointerTable(db),
 
-		somerComputationTable: NewSomerComputationTable(db),
+		somerComputationTable:   NewSomerComputationTable(db),
+		somerOrderFragmentTable: NewSomerOrderFragmentTable(db, expiry),
 
 		swarmMultiAddressTable: NewSwarmMultiAddressTable(db, expiry),
 	}, nil
@@ -112,6 +136,9 @@ func (store *Store) Prune() (err error) {
 		err = localErr
 	}
 	if localErr := store.somerComputationTable.Prune(); localErr != nil {
+		err = localErr
+	}
+	if localErr := store.somerOrderFragmentTable.Prune(); localErr != nil {
 		err = localErr
 	}
 	if localErr := store.swarmMultiAddressTable.Prune(); localErr != nil {
@@ -142,6 +169,12 @@ func (store *Store) OrderbookPointerStore() orderbook.PointerStorer {
 // It implements the ome.ComputationStorer interface.
 func (store *Store) SomerComputationStore() ome.ComputationStorer {
 	return store.somerComputationTable
+}
+
+// SomerOrderFragmentStore returns the SomerOrderFragmentTable used by the Store.
+// It implements the ome.OrderFragmentStorer interface.
+func (store *Store) SomerOrderFragmentStore() ome.OrderFragmentStorer {
+	return store.somerOrderFragmentTable
 }
 
 // SwarmMultiAddressStore returns the SwarmMultiAddressTable used by the Store.
