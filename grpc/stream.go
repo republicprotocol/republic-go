@@ -382,16 +382,18 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}
 	sender.inject(secret[:], stream)
 
-	service.donesMu.Lock()
-	if _, ok := service.dones[networkID]; !ok {
-		service.dones[networkID] = map[identity.Address](chan struct{}){}
-	}
-	if _, ok := service.dones[networkID][addr]; ok {
-		close(service.dones[networkID][addr])
-	}
-	service.dones[networkID][addr] = make(chan struct{})
-	done := service.dones[networkID][addr]
-	service.donesMu.Unlock()
+	func() {
+		service.donesMu.Lock()
+		defer service.donesMu.Unlock()
+		if _, ok := service.dones[networkID]; !ok {
+			service.dones[networkID] = map[identity.Address](chan struct{}){}
+		}
+		if _, ok := service.dones[networkID][addr]; ok {
+			close(service.dones[networkID][addr])
+		}
+		service.dones[networkID][addr] = make(chan struct{})
+		done := service.dones[networkID][addr]
+	}()
 
 	go func() {
 		for {
