@@ -109,7 +109,9 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		multiAddr, err := network.query(addr)
 		if err != nil {
 			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
-			return
+			if addr < network.swarmer.MultiAddress().Address() {
+				return
+			}
 		}
 
 		if addr < network.swarmer.MultiAddress().Address() {
