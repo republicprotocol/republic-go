@@ -112,6 +112,11 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						return
 					default:
 					}
+
+					// TODO: Inspect the error in more detail to understand
+					// whether or not a reconnect is necessary. For example, a
+					// protobuf unmarshaling error should not cause a
+					// reconnect.
 					if err == io.EOF {
 						return
 					}
@@ -200,6 +205,11 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 	if err != nil {
 		return secret, nil, fmt.Errorf("cannot sign stream authentication: %v", err)
 	}
+
+	log.Printf("sig: %v", signature)
+	log.Printf("addr: %v", connector.addr.String())
+	log.Printf("network: %v", networkID[:])
+
 	// Send the authentication message
 	if err := stream.Send(&StreamMessage{
 		Signature: signature,
