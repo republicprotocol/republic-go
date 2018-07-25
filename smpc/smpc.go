@@ -3,7 +3,6 @@ package smpc
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -106,12 +105,10 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 func (smpc *smpcer) Receive(from identity.Address, message Message) {
 	switch message.MessageType {
 	case MessageTypeJoin:
-		log.Printf("[debug] (smpc) received join from %v", from)
 		if err := smpc.handleMessageJoin(from, message.MessageJoin); err != nil {
 			logger.Network(logger.LevelError, fmt.Sprintf("error handling join message from smpc node %v: %v", from, err))
 		}
 	case MessageTypeJoinResponse:
-		log.Printf("[debug] (smpc) received join response from %v", from)
 		if err := smpc.handleMessageJoinResponse(message.MessageJoinResponse); err != nil {
 			logger.Network(logger.LevelError, fmt.Sprintf("error handling join message from smpc node %v: %v", from, err))
 		}
