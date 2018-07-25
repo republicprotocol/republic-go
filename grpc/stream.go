@@ -206,10 +206,6 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		return secret, nil, fmt.Errorf("cannot sign stream authentication: %v", err)
 	}
 
-	log.Printf("sig: %v", signature)
-	log.Printf("addr: %v", connector.addr.String())
-	log.Printf("network: %v", networkID[:])
-
 	// Send the authentication message
 	if err := stream.Send(&StreamMessage{
 		Signature: signature,
@@ -309,6 +305,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	// Verify the address of this connection
 	message, err := stream.Recv()
 	if err != nil {
+		log.Printf("[error] cannot receive authorisation message on network: %v", err)
 		return err
 	}
 	addr, networkID, secret, err := service.verifyAuthentication(message.GetSignature(), message.GetAddress(), message.GetNetwork(), message.GetData())
