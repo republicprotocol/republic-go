@@ -202,6 +202,13 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 		}
 
+		// Check that these orders have not already been output
+		if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+			continue
+		}
+		if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+			continue
+		}
 		select {
 		case <-done:
 			return
