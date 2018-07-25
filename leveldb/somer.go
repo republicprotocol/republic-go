@@ -232,17 +232,17 @@ func (table *SomerOrderFragmentTable) PutBuyOrderFragment(epoch registry.Epoch, 
 	if err != nil {
 		return err
 	}
-	return table.db.Put(table.buyKey(orderFragment.ID[:]), data, nil)
+	return table.db.Put(table.buyKey(epoch.Hash[:], orderFragment.OrderID[:]), data, nil)
 }
 
 // DeleteBuyOrderFragment implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) DeleteBuyOrderFragment(epoch registry.Epoch, id order.ID) error {
-	return table.db.Delete(table.buyKey(id[:]), nil)
+	return table.db.Delete(table.buyKey(epoch.Hash[:], id[:]), nil)
 }
 
 // BuyOrderFragment implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error) {
-	data, err := table.db.Get(table.buyKey(id[:]), nil)
+	data, err := table.db.Get(table.buyKey(epoch.Hash[:], id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrOrderFragmentNotFound
@@ -259,7 +259,7 @@ func (table *SomerOrderFragmentTable) BuyOrderFragment(epoch registry.Epoch, id 
 
 // BuyOrderFragments implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) BuyOrderFragments(epoch registry.Epoch) (ome.OrderFragmentIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.buyKey(SomerBuyOrderFragmentIterBegin), Limit: table.buyKey(SomerBuyOrderFragmentIterEnd)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.buyKey(epoch.Hash[:], SomerBuyOrderFragmentIterBegin), Limit: table.buyKey(epoch.Hash[:], SomerBuyOrderFragmentIterEnd)}, nil)
 	return newSomerOrderFragmentIterator(iter), nil
 }
 
@@ -274,17 +274,17 @@ func (table *SomerOrderFragmentTable) PutSellOrderFragment(epoch registry.Epoch,
 	if err != nil {
 		return err
 	}
-	return table.db.Put(table.sellKey(orderFragment.ID[:]), data, nil)
+	return table.db.Put(table.sellKey(epoch.Hash[:], orderFragment.OrderID[:]), data, nil)
 }
 
 // DeleteSellOrderFragment implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) DeleteSellOrderFragment(epoch registry.Epoch, id order.ID) error {
-	return table.db.Delete(table.sellKey(id[:]), nil)
+	return table.db.Delete(table.sellKey(epoch.Hash[:], id[:]), nil)
 }
 
 // SellOrderFragment implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error) {
-	data, err := table.db.Get(table.sellKey(id[:]), nil)
+	data, err := table.db.Get(table.sellKey(epoch.Hash[:], id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrOrderFragmentNotFound
@@ -301,13 +301,13 @@ func (table *SomerOrderFragmentTable) SellOrderFragment(epoch registry.Epoch, id
 
 // SellOrderFragments implements the ome.OrderFragmentStorer interface.
 func (table *SomerOrderFragmentTable) SellOrderFragments(epoch registry.Epoch) (ome.OrderFragmentIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.sellKey(SomerSellOrderFragmentIterBegin), Limit: table.sellKey(SomerSellOrderFragmentIterEnd)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.sellKey(epoch.Hash[:], SomerSellOrderFragmentIterBegin), Limit: table.sellKey(epoch.Hash[:], SomerSellOrderFragmentIterEnd)}, nil)
 	return newSomerOrderFragmentIterator(iter), nil
 }
 
 // Prune iterates over all order fragments and deletes those that have expired.
 func (table *SomerOrderFragmentTable) Prune() (err error) {
-	buyIter := table.db.NewIterator(&util.Range{Start: table.buyKey(SomerBuyOrderFragmentIterBegin), Limit: table.buyKey(SomerBuyOrderFragmentIterEnd)}, nil)
+	buyIter := table.db.NewIterator(&util.Range{Start: table.buyKey(SomerBuyOrderFragmentIterBegin, SomerBuyOrderFragmentIterBegin), Limit: table.buyKey(SomerBuyOrderFragmentIterEnd, SomerBuyOrderFragmentIterEnd)}, nil)
 	defer buyIter.Release()
 
 	now := time.Now()
@@ -325,7 +325,7 @@ func (table *SomerOrderFragmentTable) Prune() (err error) {
 		}
 	}
 
-	sellIter := table.db.NewIterator(&util.Range{Start: table.sellKey(SomerSellOrderFragmentIterBegin), Limit: table.sellKey(SomerSellOrderFragmentIterEnd)}, nil)
+	sellIter := table.db.NewIterator(&util.Range{Start: table.sellKey(SomerSellOrderFragmentIterBegin, SomerSellOrderFragmentIterBegin), Limit: table.sellKey(SomerSellOrderFragmentIterEnd, SomerSellOrderFragmentIterEnd)}, nil)
 	defer sellIter.Release()
 
 	for sellIter.Next() {
@@ -344,10 +344,10 @@ func (table *SomerOrderFragmentTable) Prune() (err error) {
 	return err
 }
 
-func (table *SomerOrderFragmentTable) buyKey(k []byte) []byte {
-	return append(append(SomerBuyOrderFragmentTableBegin, k...), SomerBuyOrderFragmentTablePadding...)
+func (table *SomerOrderFragmentTable) buyKey(epoch, orderID []byte) []byte {
+	return append(append(append(SomerBuyOrderFragmentTableBegin, epoch...), orderID...), SomerBuyOrderFragmentTablePadding...)
 }
 
-func (table *SomerOrderFragmentTable) sellKey(k []byte) []byte {
-	return append(append(SomerSellOrderFragmentTableBegin, k...), SomerSellOrderFragmentTablePadding...)
+func (table *SomerOrderFragmentTable) sellKey(epoch, orderID []byte) []byte {
+	return append(append(append(SomerSellOrderFragmentTableBegin, epoch...), orderID...), SomerSellOrderFragmentTablePadding...)
 }
