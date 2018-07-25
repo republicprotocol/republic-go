@@ -79,6 +79,25 @@ func (sender *Sender) Send(message smpc.Message) error {
 	})
 }
 
+func (sender *Sender) inject(secret []byte, stream grpc.Stream) {
+	sender.streamMu.Lock()
+	defer sender.streamMu.Unlock()
+
+	sender.cipher = crypto.NewAESCipher(secret)
+	sender.stream = stream
+}
+
+func (sender *Sender) release() {
+	sender.streamMu.Lock()
+	defer sender.streamMu.Unlock()
+
+	if stream, ok := sender.stream.(grpc.ClientStream); ok {
+		if err := stream.CloseSend(); err != nil {
+			log.Printf("[error] cannot release stream: %v", err)
+		}
+	}
+}
+
 type Connector struct {
 	addr      identity.Address
 	signer    crypto.Signer
@@ -98,25 +117,28 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	if err != nil {
 		return nil, err
 	}
-
 	sender := NewSender(secret, stream)
+
+	// This function is used to read a message from the sender defined above
 	recv := func() error {
+		// Block until a message is received or an error occurs
 		rawMessage, err := stream.Recv()
 		if err != nil {
 			return err
 		}
-
+		// Decrypt the message
 		data, err := sender.cipher.Decrypt(rawMessage.Data)
 		if err != nil {
 			log.Printf("[error] received malformed encryption from %v on network %v: %v", to, networkID, err)
 			return err
 		}
+		// Unmarshal the message
 		message := smpc.Message{}
 		if err := message.UnmarshalBinary(data); err != nil {
 			log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
 			return err
 		}
-
+		// Notify the receiver of the message
 		receiver.Receive(to.Address(), message)
 		return nil
 	}
@@ -124,8 +146,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	go dispatch.CoBegin(
 		func() {
 			for {
-				// Backoff receive from the stream
-				recvErrNum := 0
+				// Backoff receiving / reconnecting using the stream
 				recvErr := error(nil)
 				backoffErr := BackoffMax(ctx, func() error {
 					recvErr = recv()
@@ -139,36 +160,19 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						if recvErr == io.EOF {
 							return nil
 						}
-						// Retry 10 times before attempting a reconnect
-						recvErrNum++
-						if recvErrNum < 10 {
-							return recvErr
-						}
 						// Reconnect
-						return BackoffMax(ctx, func() error {
-							secret, stream, err = connector.connect(ctx, networkID, to)
-							if err != nil {
-								return err
-							}
-							sender.streamMu.Lock()
-							sender.cipher = crypto.NewAESCipher(secret[:])
-							sender.stream = stream
-							sender.streamMu.Unlock()
-							return nil
-						}, 30000)
+						secret, stream, err := connector.connect(ctx, networkID, to)
+						if err != nil {
+							return err
+						}
+						sender.inject(secret, stream)
+						return nil
 					}
 					return nil
 				}, 30000)
 
-				// Backoff error indicates that the stream is dead and there is
-				// no hope of reconnecting
-				if backoffErr != nil {
-					log.Printf("[error] cannot reconnect to %v on network %v: %v", to.Address(), networkID, err)
-					return
-				}
-
-				// After reading a message successfully, we still need to check
-				// termination conditions
+				// Check termination conditions to see why the exit has
+				// happened
 				select {
 				case <-ctx.Done():
 					return
@@ -177,13 +181,18 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						return
 					}
 				}
+
+				// Backoff error indicates that the stream is dead and there is
+				// no hope of reconnecting
+				if backoffErr != nil {
+					log.Printf("[error] cannot reconnect to %v on network %v: %v", to.Address(), networkID, backoffErr)
+					return
+				}
 			}
 		},
 		func() {
+			defer sender.release()
 			<-ctx.Done()
-			if err := stream.CloseSend(); err != nil {
-				log.Printf("[error] cannot close stream to peer %v on network %v: %v", to, networkID, err)
-			}
 		})
 
 	return sender, nil
