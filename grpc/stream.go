@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -168,6 +169,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 							return err
 						}
 						sender.inject(secret, stream)
+						time.Sleep(time.Second)
 
 						// The reconnection is not considered successful until
 						// we have successfully received a message
