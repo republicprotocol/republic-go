@@ -100,54 +100,83 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	}
 
 	sender := NewSender(secret, stream)
+	recv := func() error {
+		rawMessage, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		data, err := sender.cipher.Decrypt(rawMessage.Data)
+		if err != nil {
+			log.Printf("[error] received malformed encryption from %v on network %v: %v", to, networkID, err)
+			return err
+		}
+		message := smpc.Message{}
+		if err := message.UnmarshalBinary(data); err != nil {
+			log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
+			return err
+		}
+
+		receiver.Receive(to.Address(), message)
+		return nil
+	}
 
 	go dispatch.CoBegin(
 		func() {
-			addr := to.Address()
 			for {
-				rawMessage, err := stream.Recv()
-				if err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					default:
+				// Backoff receive from the stream
+				recvErrNum := 0
+				recvErr := error(nil)
+				backoffErr := BackoffMax(ctx, func() error {
+					recvErr = recv()
+					if recvErr != nil {
+						// Check for valid termination conditions
+						select {
+						case <-ctx.Done():
+							return nil
+						default:
+						}
+						if recvErr == io.EOF {
+							return nil
+						}
+						// Retry 10 times before attempting a reconnect
+						recvErrNum++
+						if recvErrNum < 10 {
+							return recvErr
+						}
+						// Reconnect
+						return BackoffMax(ctx, func() error {
+							secret, stream, err = connector.connect(ctx, networkID, to)
+							if err != nil {
+								return err
+							}
+							sender.streamMu.Lock()
+							sender.cipher = crypto.NewAESCipher(secret[:])
+							sender.stream = stream
+							sender.streamMu.Unlock()
+							return nil
+						}, 30000)
 					}
+					return nil
+				}, 30000)
 
-					// TODO: Inspect the error in more detail to understand
-					// whether or not a reconnect is necessary. For example, a
-					// protobuf unmarshaling error should not cause a
-					// reconnect.
-					if err == io.EOF {
-						return
-					}
-					log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
-
-					var secret []byte
-					var stream grpc.ClientStream
-					var err error
-					err = BackoffMax(ctx, func() error {
-						secret, stream, err = connector.connect(ctx, networkID, to)
-						return err
-					}, 30000)
-					if err != nil {
-						log.Printf("[error] cannot reconnect to %v on network %v: %v", addr, networkID, err)
-						return
-					}
-
-					sender.streamMu.Lock()
-					sender.cipher = crypto.NewAESCipher(secret[:])
-					sender.stream = stream
-					sender.streamMu.Unlock()
-					continue
+				// Backoff error indicates that the stream is dead and there is
+				// no hope of reconnecting
+				if backoffErr != nil {
+					log.Printf("[error] cannot reconnect to %v on network %v: %v", to.Address(), networkID, err)
+					return
 				}
 
-				data, err := sender.cipher.Decrypt(rawMessage.Data)
-				message := smpc.Message{}
-				if err := message.UnmarshalBinary(data); err != nil {
-					log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
-					continue
+				// After reading a message successfully, we still need to check
+				// termination conditions
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					if recvErr == io.EOF {
+						return
+					}
 				}
-				receiver.Receive(addr, message)
 			}
 		},
 		func() {
