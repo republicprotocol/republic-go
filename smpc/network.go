@@ -104,14 +104,15 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		var err error
 		ctx, cancel := context.WithCancel(context.Background())
 
-		if addr < network.swarmer.MultiAddress().Address() {
-			log.Printf("[debug] querying peer %v on network %v", addr, networkID)
-			multiAddr, err := network.query(addr)
-			if err != nil {
-				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
-				return
-			}
+		// Always query because it encourages network coverage
+		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
+		multiAddr, err := network.query(addr)
+		if err != nil {
+			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+			return
+		}
 
+		if addr < network.swarmer.MultiAddress().Address() {
 			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
 			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
 			if err != nil {
