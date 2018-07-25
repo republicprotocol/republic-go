@@ -353,8 +353,6 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		log.Printf("[error] cannot authorise stream on network: %v", err)
 		return err
 	}
-	log.Printf("[debug] (stream) accepted connection from %v", addr)
-
 	ctx, receiver, sender := func() (context.Context, smpc.Receiver, *Sender) {
 		service.lis.mu.Lock()
 		defer service.lis.mu.Unlock()
@@ -383,6 +381,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		return fmt.Errorf("not ready to accept connection")
 	}
 	sender.inject(secret[:], stream)
+	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	done := func() chan struct{} {
 		service.donesMu.Lock()

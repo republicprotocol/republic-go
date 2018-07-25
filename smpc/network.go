@@ -83,15 +83,16 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 
 // Connect implements the Network interface.
 func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
-	k := int64(2 * (len(addrs) + 1) / 3)
 
+	k := int64(2 * (len(addrs) + 1) / 3)
 	log.Printf("[info] connecting to network %v with thresold = (%v, %v)", networkID, len(addrs), k)
 
-	network.networkMu.Lock()
-	defer network.networkMu.Unlock()
-
-	network.networkSenders[networkID] = map[identity.Address]Sender{}
-	network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
+	func() {
+		network.networkMu.Lock()
+		defer network.networkMu.Unlock()
+		network.networkSenders[networkID] = map[identity.Address]Sender{}
+		network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
+	}()
 
 	go dispatch.CoForAll(addrs, func(i int) {
 		addr := addrs[i]
@@ -100,11 +101,15 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			return
 		}
 
-		var sender Sender
-		var err error
+		// Create and store a context for connections
 		ctx, cancel := context.WithCancel(context.Background())
+		func() {
+			network.networkMu.Lock()
+			defer network.networkMu.Unlock()
+			network.networkCancels[networkID][addr] = cancel
+		}()
 
-		// Always query because it encourages network coverage
+		// Always query because it encourages better network coverage
 		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
 		multiAddr, err := network.query(addr)
 		if err != nil {
@@ -114,6 +119,8 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			}
 		}
 
+		// Connect, or listen for a connection, and store the sending handle
+		var sender Sender
 		if addr < network.swarmer.MultiAddress().Address() {
 			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
 			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
@@ -131,12 +138,11 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			}
 			log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
 		}
-
-		network.networkMu.Lock()
-		defer network.networkMu.Unlock()
-
-		network.networkSenders[networkID][addr] = sender
-		network.networkCancels[networkID][addr] = cancel
+		func() {
+			network.networkMu.Lock()
+			defer network.networkMu.Unlock()
+			network.networkSenders[networkID][addr] = sender
+		}()
 	})
 }
 
