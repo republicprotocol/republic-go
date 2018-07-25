@@ -387,23 +387,37 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 
 	go func() {
 		for {
-			// Receive a message
-			rawMessage, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					return
+			var rawMessage *StreamMessage
+			var recvErr error
+
+			backoffErr := BackoffMax(stream.Context(), func() error {
+				// Receive a message
+				rawMessage, recvErr = stream.Recv()
+				if recvErr != nil {
+					if recvErr == io.EOF {
+						return nil
+					}
+					log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, recvErr)
+					return recvErr
 				}
-				log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
-				continue
+				// Decrypt the message
+				data, err := sender.cipher.Decrypt(rawMessage.Data)
+				if err != nil {
+					log.Printf("[error] received malformed encryption from %v on network %v: %v", addr, networkID, err)
+					return err
+				}
+				message := smpc.Message{}
+				if err := message.UnmarshalBinary(data); err != nil {
+					log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
+					return err
+				}
+				receiver.Receive(addr, message)
+				return nil
+			}, 30000)
+			if backoffErr != nil {
+				log.Printf("[error] cannot relisten to %v on network %v: %v", addr, networkID, backoffErr)
+				return
 			}
-			// Decrypt the message
-			data, err := sender.cipher.Decrypt(rawMessage.Data)
-			message := smpc.Message{}
-			if err := message.UnmarshalBinary(data); err != nil {
-				log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
-				continue
-			}
-			receiver.Receive(addr, message)
 		}
 	}()
 
@@ -412,7 +426,8 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	select {
 	case <-done:
 		log.Printf("[debug] (stream) client reconnected to an accepted connection")
-		panic("unimplemented")
+		// TODO: Return better error.
+		return nil
 	case <-ctx.Done():
 		log.Printf("[debug] (stream) server closed accepted connection")
 		return nil
