@@ -75,10 +75,7 @@ func (sender *Sender) Send(message smpc.Message) error {
 	}
 
 	return sender.stream.SendMsg(&StreamMessage{
-		Signature: []byte{},
-		Address:   "",
-		Network:   []byte{},
-		Data:      data,
+		Data: data,
 	})
 }
 
@@ -313,6 +310,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}
 	addr, networkID, secret, err := service.verifyAuthentication(message.GetSignature(), message.GetAddress(), message.GetNetwork(), message.GetData())
 	if err != nil {
+		log.Printf("[error] cannot authorise stream on network: %v", err)
 		return err
 	}
 	log.Printf("[debug] (stream) accepted connection")
