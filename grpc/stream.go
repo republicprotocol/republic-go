@@ -161,14 +161,12 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 							}
 						}
 						// Reconnect
-						return BackoffMax(ctx, func() error {
-							secret, stream, err := connector.connect(ctx, networkID, to)
-							if err != nil {
-								return err
-							}
-							sender.inject(secret, stream)
-							return nil
-						}, 30000)
+						secret, stream, err = connector.connect(ctx, networkID, to)
+						if err != nil {
+							return err
+						}
+						sender.inject(secret, stream)
+						return nil
 					}
 					return nil
 				}, 30000)
