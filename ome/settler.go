@@ -81,14 +81,14 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
 	if err := settler.contract.Settle(buy, sell); err != nil {
-		logger.Error(fmt.Sprintf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
+		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
 	}
-	log.Printf("[settle] buy = %v, sell = %v", buy.ID, sell.ID)
+	log.Printf("[info] (settle) 💰💰💰 buy = %v, sell = %v 💰💰💰", buy.ID, sell.ID)
 
 	com.State = ComputationStateSettled
 	if err := settler.computationStore.PutComputation(com); err != nil {
-		logger.Error(fmt.Sprintf("cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err))
+		log.Printf("[error] (settle) cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
 	}
 }

@@ -3,7 +3,6 @@ package contract
 import (
 	"context"
 	"crypto/rsa"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -195,7 +194,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	}
 
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
-	log.Printf("[submit order] id: %v,tokens:%d, priceCo:%v, priceExp:%v, volumeCo:%v, volumeExp:%v, minVol:%v, minVolExp:%v", base64.StdEncoding.EncodeToString(ord.ID[:]), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp))
+	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
 	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint32(ord.Settlement), uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
 }
 
@@ -213,6 +212,7 @@ func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
 }
 
 func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
+	log.Printf("[info] (submit match) buy = %v, sell = %v", buy, sell)
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
