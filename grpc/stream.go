@@ -315,8 +315,26 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}
 	log.Printf("[debug] (stream) accepted connection")
 
-	// TODO: Check ok-ness
+	// TODO: Return a more appropriate error
 	service.lis.mu.Lock()
+	if _, ok := service.lis.contexts[networkID]; !ok {
+		return nil
+	}
+	if _, ok := service.lis.receivers[networkID]; !ok {
+		return nil
+	}
+	if _, ok := service.lis.senders[networkID]; !ok {
+		return nil
+	}
+	if _, ok := service.lis.contexts[networkID][addr]; !ok {
+		return nil
+	}
+	if _, ok := service.lis.receivers[networkID][addr]; !ok {
+		return nil
+	}
+	if _, ok := service.lis.senders[networkID][addr]; !ok {
+		return nil
+	}
 	ctx := service.lis.contexts[networkID][addr]
 	receiver := service.lis.receivers[networkID][addr]
 	sender := service.lis.senders[networkID][addr]
