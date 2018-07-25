@@ -124,27 +124,28 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	sender := NewSender(secret, stream)
 
 	// This function is used to read a message from the sender defined above
+	addr := to.Address()
 	recv := func() error {
 		// Block until a message is received or an error occurs
 		rawMessage, err := stream.Recv()
 		if err != nil {
-			log.Printf("[error] cannot receive message from %v on network %v: %v", to, networkID, err)
+			log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Decrypt the message
 		data, err := sender.cipher.Decrypt(rawMessage.Data)
 		if err != nil {
-			log.Printf("[error] received malformed encryption from %v on network %v: %v", to, networkID, err)
+			log.Printf("[error] received malformed encryption from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Unmarshal the message
 		message := smpc.Message{}
 		if err := message.UnmarshalBinary(data); err != nil {
-			log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
+			log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Notify the receiver of the message
-		receiver.Receive(to.Address(), message)
+		receiver.Receive(addr, message)
 		return nil
 	}
 
