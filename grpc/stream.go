@@ -115,6 +115,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 					if err == io.EOF {
 						return
 					}
+					log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
 
 					var secret []byte
 					var stream grpc.ClientStream
