@@ -217,8 +217,11 @@ type SomerOrderFragmentTable struct {
 
 // NewSomerOrderFragmentTable returns a new SomerOrderFragmentTable that uses the
 // given LevelDB instance to store and load values from the disk.
-func NewSomerOrderFragmentTable(db *leveldb.DB) *SomerOrderFragmentTable {
-	return &SomerOrderFragmentTable{db: db}
+func NewSomerOrderFragmentTable(db *leveldb.DB, expiry time.Duration) *SomerOrderFragmentTable {
+	return &SomerOrderFragmentTable{
+		db:     db,
+		expiry: expiry,
+	}
 }
 
 // PutBuyOrderFragment implements the ome.OrderFragmentStorer interface.

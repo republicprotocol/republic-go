@@ -273,7 +273,7 @@ func NewListener() *Listener {
 	}
 }
 
-func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
+func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to identity.Address, receiver smpc.Receiver) (smpc.Sender, error) {
 	lis.mu.Lock()
 	defer lis.mu.Unlock()
 
@@ -287,12 +287,11 @@ func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to id
 		lis.senders[networkID] = map[identity.Address]*Sender{}
 	}
 
-	addr := to.Address()
-	lis.contexts[networkID][addr] = ctx
-	lis.senders[networkID][addr] = NewSender(nil, nil)
-	lis.receivers[networkID][addr] = receiver
+	lis.contexts[networkID][to] = ctx
+	lis.senders[networkID][to] = NewSender(nil, nil)
+	lis.receivers[networkID][to] = receiver
 
-	return lis.senders[networkID][addr], nil
+	return lis.senders[networkID][to], nil
 }
 
 type ConnectorListener struct {

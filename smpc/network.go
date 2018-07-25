@@ -35,7 +35,7 @@ type Connector interface {
 }
 
 type Listener interface {
-	Listen(ctx context.Context, networkID NetworkID, to identity.MultiAddress, receiver Receiver) (Sender, error)
+	Listen(ctx context.Context, networkID NetworkID, to identity.Address, receiver Receiver) (Sender, error)
 }
 
 type ConnectorListener interface {
@@ -100,17 +100,18 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			return
 		}
 
-		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
-		multiAddr, err := network.query(addr)
-		if err != nil {
-			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
-			return
-		}
-
 		var sender Sender
+		var err error
 		ctx, cancel := context.WithCancel(context.Background())
 
 		if addr < network.swarmer.MultiAddress().Address() {
+			log.Printf("[debug] querying peer %v on network %v", addr, networkID)
+			multiAddr, err := network.query(addr)
+			if err != nil {
+				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+				return
+			}
+
 			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
 			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
 			if err != nil {
@@ -120,7 +121,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
 		} else {
 			log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
-			sender, err = network.conn.Listen(ctx, networkID, multiAddr, network.receiver)
+			sender, err = network.conn.Listen(ctx, networkID, addr, network.receiver)
 			if err != nil {
 				log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
 				return
