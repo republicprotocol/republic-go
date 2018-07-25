@@ -31,7 +31,7 @@ type Smpcer interface {
 }
 
 type smpcer struct {
-	network NetworkOverlay
+	network Network
 
 	joinersMu *sync.RWMutex
 	joiners   map[NetworkID]*Joiner
@@ -41,7 +41,7 @@ type smpcer struct {
 }
 
 // NewSmpcer returns an Smpcer node that is not connected to a network.
-func NewSmpcer(connector NetworkConnector, swarmer swarm.Swarmer) Smpcer {
+func NewSmpcer(conn ConnectorListener, swarmer swarm.Swarmer) Smpcer {
 	smpc := &smpcer{
 		joinersMu: new(sync.RWMutex),
 		joiners:   map[NetworkID]*Joiner{},
@@ -49,7 +49,7 @@ func NewSmpcer(connector NetworkConnector, swarmer swarm.Swarmer) Smpcer {
 		selfJoinsMu: new(sync.RWMutex),
 		selfJoins:   map[JoinID]Join{},
 	}
-	smpc.network = NewNetworkOverlay(connector, smpc, swarmer)
+	smpc.network = NewNetwork(conn, smpc, swarmer)
 	return smpc
 }
 

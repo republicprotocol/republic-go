@@ -30,15 +30,21 @@ func (id NetworkID) String() string {
 	return base64.StdEncoding.EncodeToString(id[:8])
 }
 
-type NetworkConnector interface {
+type Connector interface {
 	Connect(ctx context.Context, networkID NetworkID, to identity.MultiAddress, receiver Receiver) (Sender, error)
+}
+
+type Listener interface {
 	Listen(ctx context.Context, networkID NetworkID, to identity.MultiAddress, receiver Receiver) (Sender, error)
 }
 
-// NetworkOverlay provides an abstraction for message passing over multiple
-// networks.
-type NetworkOverlay interface {
-	Receiver
+type ConnectorListener interface {
+	Connector
+	Listener
+}
+
+// Network provides an abstraction for message passing over multiple networks.
+type Network interface {
 
 	// Connect to a new network of addresses.
 	Connect(networkID NetworkID, addrs identity.Addresses)
@@ -53,60 +59,60 @@ type NetworkOverlay interface {
 	SendTo(networkID NetworkID, to identity.Address, message Message)
 }
 
-type networkOverlay struct {
-	connector NetworkConnector
-	receiver  Receiver
-	swarmer   swarm.Swarmer
+type network struct {
+	conn     ConnectorListener
+	receiver Receiver
+	swarmer  swarm.Swarmer
 
 	networkMu      *sync.RWMutex
-	network        map[NetworkID](map[identity.Address]Sender)
+	networkSenders map[NetworkID](map[identity.Address]Sender)
 	networkCancels map[NetworkID](map[identity.Address]context.CancelFunc)
-
-	lookupMu *sync.RWMutex
-	lookup   map[identity.Address]identity.MultiAddress
 }
 
-func NewNetworkOverlay(connector NetworkConnector, receiver Receiver, swarmer swarm.Swarmer) NetworkOverlay {
-	panic("unimplemented")
+func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer) Network {
+	return &network{
+		conn:     conn,
+		receiver: receiver,
+		swarmer:  swarmer,
+
+		networkMu:      new(sync.RWMutex),
+		networkSenders: map[NetworkID](map[identity.Address]Sender){},
+		networkCancels: map[NetworkID](map[identity.Address]context.CancelFunc){},
+	}
 }
 
-// Connect implements the NetworkOverlay interface.
-func (overlay *networkOverlay) Connect(networkID NetworkID, addrs identity.Addresses) {
+// Connect implements the Network interface.
+func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 	k := int64(2 * (len(addrs) + 1) / 3)
 
 	log.Printf("[info] connecting to network %v with thresold = (%v, %v)", networkID, len(addrs), k)
 
-	overlay.networkMu.Lock()
-	defer overlay.networkMu.Unlock()
+	network.networkMu.Lock()
+	defer network.networkMu.Unlock()
 
-	overlay.network[networkID] = map[identity.Address]Sender{}
-	overlay.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
+	network.networkSenders[networkID] = map[identity.Address]Sender{}
+	network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
 
 	go dispatch.CoForAll(addrs, func(i int) {
 		addr := addrs[i]
-		if addr == overlay.swarmer.MultiAddress().Address() {
+		if addr == network.swarmer.MultiAddress().Address() {
 			// Skip trying to connect to ourself
 			return
 		}
 
 		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
-		multiAddr, err := overlay.query(addr)
+		multiAddr, err := network.query(addr)
 		if err != nil {
 			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
 			return
 		}
 
-		// Store the identity.Identity to identity.MultiAddress mapping
-		overlay.lookupMu.Lock()
-		overlay.lookup[addr] = multiAddr
-		overlay.lookupMu.Unlock()
-
 		var sender Sender
 		ctx, cancel := context.WithCancel(context.Background())
 
-		if addr < overlay.swarmer.MultiAddress().Address() {
+		if addr < network.swarmer.MultiAddress().Address() {
 			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
-			sender, err = overlay.connector.Connect(ctx, networkID, multiAddr, overlay)
+			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
 			if err != nil {
 				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
 				return
@@ -114,7 +120,7 @@ func (overlay *networkOverlay) Connect(networkID NetworkID, addrs identity.Addre
 			log.Printf("[debug] connected to peer %v on network %v", addr, networkID)
 		} else {
 			log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
-			sender, err = overlay.connector.Listen(ctx, networkID, multiAddr, overlay)
+			sender, err = network.conn.Listen(ctx, networkID, multiAddr, network.receiver)
 			if err != nil {
 				log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
 				return
@@ -122,76 +128,72 @@ func (overlay *networkOverlay) Connect(networkID NetworkID, addrs identity.Addre
 			log.Printf("[debug] accepted peer %v on network %v", addr, networkID)
 		}
 
-		overlay.networkMu.Lock()
-		defer overlay.networkMu.Unlock()
+		network.networkMu.Lock()
+		defer network.networkMu.Unlock()
 
-		overlay.network[networkID][addr] = sender
-		overlay.networkCancels[networkID][addr] = cancel
+		network.networkSenders[networkID][addr] = sender
+		network.networkCancels[networkID][addr] = cancel
 	})
 }
 
-// Disconnect implements the NetworkOverlay interface.
-func (overlay *networkOverlay) Disconnect(networkID NetworkID) {
+// Disconnect implements the Network interface.
+func (network *network) Disconnect(networkID NetworkID) {
 	log.Printf("[info] disconnecting from network %v", networkID)
 
-	overlay.networkMu.Lock()
-	defer overlay.networkMu.Unlock()
+	network.networkMu.Lock()
+	defer network.networkMu.Unlock()
 
-	cancels, ok := overlay.networkCancels[networkID]
+	cancels, ok := network.networkCancels[networkID]
 	if ok {
 		for _, cancel := range cancels {
 			cancel()
 		}
 	}
-	delete(overlay.network, networkID)
-	delete(overlay.networkCancels, networkID)
+	delete(network.networkSenders, networkID)
+	delete(network.networkCancels, networkID)
 }
 
-// Send implements the NetworkOverlay interface.
-func (overlay *networkOverlay) Send(networkID NetworkID, message Message) {
-	overlay.networkMu.RLock()
-	defer overlay.networkMu.RUnlock()
+// Send implements the Network interface.
+func (network *network) Send(networkID NetworkID, message Message) {
+	network.networkMu.RLock()
+	defer network.networkMu.RUnlock()
 
-	peers, ok := overlay.network[networkID]
+	senders, ok := network.networkSenders[networkID]
 	if !ok {
 		log.Printf("[error] cannot send message to unknown network %v", networkID)
 		return
 	}
 
-	go dispatch.CoForAll(peers, func(peer identity.Address) {
-		peers[peer].Send(message)
+	go dispatch.CoForAll(senders, func(addr identity.Address) {
+		sender := senders[addr]
+		sender.Send(message)
 	})
 }
 
-// SendTo implements the NetworkOverlay interface.
-func (overlay *networkOverlay) SendTo(networkID NetworkID, to identity.Address, message Message) {
-	overlay.networkMu.RLock()
-	defer overlay.networkMu.RUnlock()
+// SendTo implements the Network interface.
+func (network *network) SendTo(networkID NetworkID, to identity.Address, message Message) {
+	network.networkMu.RLock()
+	defer network.networkMu.RUnlock()
 
-	peers, ok := overlay.network[networkID]
+	senders, ok := network.networkSenders[networkID]
 	if !ok {
 		log.Printf("[error] cannot send message to unknown network %v", networkID)
 		return
 	}
-	peer, ok := peers[to]
+	sender, ok := senders[to]
 	if !ok {
 		log.Printf("[error] cannot send message to unknown peer %v", to)
 		return
 	}
 
-	go peer.Send(message)
+	go sender.Send(message)
 }
 
-// OnReceiveMessage implements the NetworkOverlay interface.
-func (overlay *networkOverlay) Receive(from identity.Address, message Message) {
-	overlay.receiver.Receive(from, message)
-}
-
-func (overlay *networkOverlay) query(q identity.Address) (identity.MultiAddress, error) {
+func (network *network) query(q identity.Address) (identity.MultiAddress, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	multiAddr, err := overlay.swarmer.Query(ctx, q, -1)
+	multiAddr, err := network.swarmer.Query(ctx, q, -1)
 	if err != nil {
 		return multiAddr, fmt.Errorf("cannot query peer %v: %v", q, err)
 	}

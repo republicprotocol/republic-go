@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/smpc"
 	"golang.org/x/net/context"
@@ -48,7 +50,8 @@ type Sender struct {
 
 func NewSender(secret []byte, stream grpc.Stream) *Sender {
 	return &Sender{
-		cipher:   crypto.NewAESCipher(secret),
+		cipher: crypto.NewAESCipher(secret),
+
 		streamMu: new(sync.Mutex),
 		stream:   stream,
 	}
@@ -57,6 +60,10 @@ func NewSender(secret []byte, stream grpc.Stream) *Sender {
 func (sender *Sender) Send(message smpc.Message) error {
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
+
+	if sender.stream == nil {
+		return ErrStreamDisconnected
+	}
 
 	data, err := message.MarshalBinary()
 	if err != nil {
@@ -87,16 +94,69 @@ func NewConnector(signer crypto.Signer, encrypter crypto.Encrypter, addr identit
 }
 
 func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
-	panic("unimplemented")
+	secret, stream, err := connector.connect(ctx, networkID, to)
+	if err != nil {
+		return nil, err
+	}
+
+	sender := NewSender(secret, stream)
+
+	go dispatch.CoBegin(
+		func() {
+			addr := to.Address()
+			for {
+				rawMessage, err := stream.Recv()
+				if err != nil {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					if err == io.EOF {
+						return
+					}
+
+					var secret []byte
+					var stream grpc.ClientStream
+					var err error
+					err = BackoffMax(ctx, func() error {
+						secret, stream, err = connector.connect(ctx, networkID, to)
+						return err
+					}, 30000)
+
+					sender.streamMu.Lock()
+					sender.cipher = crypto.NewAESCipher(secret[:])
+					sender.stream = stream
+					sender.streamMu.Unlock()
+					continue
+				}
+
+				data, err := sender.cipher.Decrypt(rawMessage.Data)
+				message := smpc.Message{}
+				if err := message.UnmarshalBinary(data); err != nil {
+					log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
+					continue
+				}
+				receiver.Receive(addr, message)
+			}
+		},
+		func() {
+			<-ctx.Done()
+			if err := stream.CloseSend(); err != nil {
+				log.Printf("[error] cannot close stream to peer %v on network %v: %v", to, networkID, err)
+			}
+		})
+
+	return sender, nil
 }
 
-func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress) ([16]byte, StreamService_ConnectClient, error) {
+func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress) ([]byte, StreamService_ConnectClient, error) {
 	// Establish a connection to the identity.MultiAddress and clean the
 	// connection once the context.Context is done
 	log.Printf("[debug] (stream) dialing...")
 	conn, err := Dial(ctx, to)
 	if err != nil {
-		return [16]byte{}, nil, fmt.Errorf("cannot dial %v: %v", to, err)
+		return nil, nil, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
 	go func() {
 		defer conn.Close()
@@ -113,13 +173,13 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		}
 		return nil
 	}, 30000 /* 30s max backoff */); err != nil {
-		return [16]byte{}, nil, fmt.Errorf("cannot open stream: %v", err)
+		return nil, nil, fmt.Errorf("cannot open stream: %v", err)
 	}
 
 	// Generate a secret
 	log.Printf("[debug] (stream) authorising...")
-	secret := [16]byte{}
-	if _, err := rand.Read(secret[:]); err != nil {
+	secret := make([]byte, 16)
+	if _, err := rand.Read(secret); err != nil {
 		return secret, nil, ErrCannotGenerateSecret
 	}
 	encryptedSecret, err := connector.encrypter.Encrypt(to.Address().String(), secret[:])
@@ -129,7 +189,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 
 	// Sign an authentication message so that the StreamService can verify the
 	// identity.Address of the client
-	signature := []byte(fmt.Sprintf("Republic Protocol: connect: to %v on %v", to.Address(), networkID))
+	signature := append([]byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v on ", connector.addr, to.Address())), networkID[:]...)
 	signature = crypto.Keccak256(signature)
 	signature, err = connector.signer.Sign(signature)
 	if err != nil {
@@ -138,6 +198,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 	// Send the authentication message
 	if err := stream.Send(&StreamMessage{
 		Signature: signature,
+		Address:   connector.addr.String(),
 		Network:   networkID[:],
 		Data:      encryptedSecret,
 	}); err != nil {
@@ -183,17 +244,23 @@ type StreamerService struct {
 	addr      identity.Address
 	verifier  crypto.Verifier
 	decrypter crypto.Decrypter
-	listener  *Listener
+	lis       *Listener
+
+	donesMu *sync.Mutex
+	dones   map[smpc.NetworkID]map[identity.Address](chan struct{})
 }
 
 // NewStreamerService returns an implementation of the gRPC StreamService that
 // connects stream.Streams from clients to a Streamer.
-func NewStreamerService(addr identity.Address, verifier crypto.Verifier, decrypter crypto.Decrypter, listener *Listener) StreamerService {
+func NewStreamerService(addr identity.Address, verifier crypto.Verifier, decrypter crypto.Decrypter, lis *Listener) StreamerService {
 	return StreamerService{
 		addr:      addr,
 		verifier:  verifier,
 		decrypter: decrypter,
-		listener:  listener,
+		lis:       lis,
+
+		donesMu: new(sync.Mutex),
+		dones:   map[smpc.NetworkID]map[identity.Address](chan struct{}){},
 	}
 }
 
@@ -202,58 +269,101 @@ func (service *StreamerService) Register(server *Server) {
 	RegisterStreamServiceServer(server.Server, service)
 }
 
-func (service *StreamerService) Connect(grpcStream StreamService_ConnectServer) error {
+func (service *StreamerService) Connect(stream StreamService_ConnectServer) error {
 	// Verify the address of this connection
-	message, err := grpcStream.Recv()
+	message, err := stream.Recv()
 	if err != nil {
 		return err
 	}
-	addr, secret, err := service.verifyAuthentication(message.GetSignature(), message.GetAddress(), message.GetData())
+	addr, networkID, secret, err := service.verifyAuthentication(message.GetSignature(), message.GetAddress(), message.GetNetwork(), message.GetData())
 	if err != nil {
 		return err
 	}
-
 	log.Printf("[debug] (stream) accepted connection")
-	defer log.Printf("[debug] (stream) accepted connection closing...")
 
-	// Establish a connection with the recycler so that the stream can be used
-	// outside of this service
-	concurrentStream := newConcurrentStream(secret, grpcStream)
-	service.connector.accept(addr, concurrentStream)
+	// TODO: Check ok-ness
+	service.lis.mu.Lock()
+	ctx := service.lis.contexts[networkID][addr]
+	receiver := service.lis.receivers[networkID][addr]
+	sender := service.lis.senders[networkID][addr]
+	service.lis.mu.Unlock()
+
+	sender.streamMu.Lock()
+	sender.cipher = crypto.NewAESCipher(secret[:])
+	sender.stream = stream
+	sender.streamMu.Unlock()
+
+	service.donesMu.Lock()
+	if _, ok := service.dones[networkID][addr]; ok {
+		close(service.dones[networkID][addr])
+	}
+	done := make(chan struct{})
+	service.dones[networkID][addr] = done
+	service.donesMu.Unlock()
+
+	go func() {
+		for {
+			// Receive a message
+			rawMessage, err := stream.Recv()
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
+				continue
+			}
+			// Decrypt the message
+			data, err := sender.cipher.Decrypt(rawMessage.Data)
+			message := smpc.Message{}
+			if err := message.UnmarshalBinary(data); err != nil {
+				log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
+				continue
+			}
+			receiver.Receive(addr, message)
+		}
+	}()
 
 	// Wait until the client closes the connection or the stream itself is
 	// closed
 	select {
-	case <-grpcStream.Context().Done():
-		return grpcStream.Context().Err()
-	case <-concurrentStream.Done():
+	case <-done:
+		log.Printf("[debug] (stream) client reconnected to an accepted connection")
+		panic("unimplemented")
+	case <-ctx.Done():
+		log.Printf("[debug] (stream) server closed accepted connection")
+		return nil
+	case <-stream.Context().Done():
+		log.Printf("[debug] (stream) client closed accepted connection")
 		return nil
 	}
 }
 
-func (service *StreamerService) verifyAuthentication(signature []byte, addr string, encryptedSecret []byte) (identity.Address, [16]byte, error) {
-	if signature == nil || len(signature) != 65 || addr == "" {
-		return identity.Address(""), [16]byte{}, ErrMalformedSignature
+func (service *StreamerService) verifyAuthentication(signature []byte, addr string, networkID []byte, encryptedSecret []byte) (identity.Address, smpc.NetworkID, [16]byte, error) {
+
+	if signature == nil || len(signature) != 65 || networkID == nil || len(networkID) != 32 || addr == "" {
+		return identity.Address(""), smpc.NetworkID{}, [16]byte{}, ErrMalformedSignature
 	}
 	if encryptedSecret == nil {
-		return identity.Address(""), [16]byte{}, ErrMalformedEncryptionSecret
+		return identity.Address(""), smpc.NetworkID{}, [16]byte{}, ErrMalformedEncryptionSecret
 	}
 
-	message := []byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v", addr, service.addr))
+	message := append([]byte(fmt.Sprintf("Republic Protocol: connect: from %v to %v on ", addr, service.addr)), networkID...)
 	message = crypto.Keccak256(message)
 	if err := service.verifier.Verify(message, signature); err != nil {
-		return identity.Address(""), [16]byte{}, err
+		return identity.Address(""), smpc.NetworkID{}, [16]byte{}, err
 	}
 
 	secret, err := service.decrypter.Decrypt(encryptedSecret)
 	if err != nil {
-		return identity.Address(""), [16]byte{}, err
+		return identity.Address(""), smpc.NetworkID{}, [16]byte{}, err
 	}
 	if len(secret) != 16 {
-		return identity.Address(""), [16]byte{}, ErrMalformedEncryptionSecret
+		return identity.Address(""), smpc.NetworkID{}, [16]byte{}, ErrMalformedEncryptionSecret
 	}
 	secret16 := [16]byte{}
 	copy(secret16[:], secret)
+	networkID32 := [32]byte{}
+	copy(networkID32[:], networkID)
 
-	return identity.Address(addr), secret16, nil
+	return identity.Address(addr), smpc.NetworkID(networkID32), secret16, nil
 }
