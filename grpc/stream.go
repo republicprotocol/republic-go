@@ -346,6 +346,9 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	sender.streamMu.Unlock()
 
 	service.donesMu.Lock()
+	if _, ok := service.dones[networkID]; !ok {
+		service.dones[networkID] = map[identity.Address](chan struct{}){}
+	}
 	if _, ok := service.dones[networkID][addr]; ok {
 		close(service.dones[networkID][addr])
 	}
