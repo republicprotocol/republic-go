@@ -342,7 +342,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		log.Printf("[error] cannot authorise stream on network: %v", err)
 		return err
 	}
-	log.Printf("[debug] (stream) accepted connection")
+	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	// TODO: Return a more appropriate error
 	service.lis.mu.Lock()
