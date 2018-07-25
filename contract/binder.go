@@ -221,13 +221,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	// Hardcode gas limit for now
-	oldGasLimit := binder.transactOpts.GasLimit
-	binder.transactOpts.GasLimit = 1000000
-	defer func() {
-		binder.transactOpts.GasLimit = oldGasLimit
-	}()
-
 	// Submit orders
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(buy)
