@@ -123,11 +123,22 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	}
 	sender := NewSender(secret, stream)
 
+	// isDone checks whether or not a context is done
+	isDone := func(ctx context.Context) bool {
+		select {
+		case <-ctx.Done():
+			return true
+		default:
+			return false
+		}
+	}
+
 	// This function is used to read a message from the sender defined above
 	recv := func() error {
 		// Block until a message is received or an error occurs
 		rawMessage, err := stream.Recv()
 		if err != nil {
+			log.Printf("[error] cannot receive message from %v on network %v: %v", to, networkID, err)
 			return err
 		}
 		// Decrypt the message
@@ -151,39 +162,34 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 		func() {
 			for {
 				// Backoff receiving / reconnecting using the stream
-				recvErr := error(nil)
 				backoffErr := BackoffMax(ctx, func() error {
-					recvErr = recv()
-					if recvErr != nil {
-						// Check for valid termination conditions
-						select {
-						case <-ctx.Done():
-							return nil
-						default:
-							if recvErr == io.EOF {
-								return nil
-							}
-						}
-						// Reconnect
+					// Check the context for termination conditions
+					select {
+					case <-ctx.Done():
+						return nil
+					default:
+					}
+
+					if err := recv(); err != nil {
+						// Reconnect when an error occurs
 						secret, stream, err = connector.connect(ctx, networkID, to)
 						if err != nil {
 							return err
 						}
 						sender.inject(secret, stream)
-						return nil
+
+						// The reconnection is not considered successful until
+						// we have successfully received a message
+						return recv()
 					}
 					return nil
 				}, 30000)
 
-				// Check termination conditions to see why the exit has
-				// happened
+				// Check the context for termination conditions
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					if recvErr == io.EOF {
-						return
-					}
 				}
 
 				// Backoff error indicates that the stream is dead and there is
