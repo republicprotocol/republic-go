@@ -123,16 +123,6 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	}
 	sender := NewSender(secret, stream)
 
-	// isDone checks whether or not a context is done
-	isDone := func(ctx context.Context) bool {
-		select {
-		case <-ctx.Done():
-			return true
-		default:
-			return false
-		}
-	}
-
 	// This function is used to read a message from the sender defined above
 	recv := func() error {
 		// Block until a message is received or an error occurs
