@@ -411,9 +411,9 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 					case <-stream.Context().Done():
 						return nil
 					default:
-					}
-					if recvErr == io.EOF {
-						return nil
+						if recvErr == io.EOF {
+							return nil
+						}
 					}
 					log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, recvErr)
 					return recvErr
