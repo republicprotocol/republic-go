@@ -3,6 +3,7 @@ package ome
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -133,19 +134,16 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	switch stage {
 	case ResolveStagePriceExp, ResolveStageBuyVolumeExp, ResolveStageSellVolumeExp:
 		if isGreaterThanZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+2)
 			return
 		}
 		if isEqualToZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
 
 	case ResolveStagePriceCo, ResolveStageBuyVolumeCo, ResolveStageSellVolumeCo:
 		if isGreaterThanOrEqualToZero(values[0]) {
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			matcher.resolve(networkID, com, callback, stage+1)
 			return
 		}
@@ -160,7 +158,6 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 			}
 
 			// Trigger the callback with a match
-			logger.Compute(logger.LevelDebug, fmt.Sprintf("✔ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
 			callback(com)
 			return
 		}
@@ -177,7 +174,7 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	}
 
 	// Trigger the callback with a mismatch
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("✗ %v => buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID))
+	log.Printf("[debug] (%v) ✗ buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID)
 	callback(com)
 }
 

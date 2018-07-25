@@ -1,11 +1,9 @@
 package ome
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/dispatch"
-	"github.com/republicprotocol/republic-go/logger"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -154,7 +152,6 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 
 	switch notification.OrderFragment.EpochDepth {
 	case 0:
-		logger.Compute(logger.LevelInfo, fmt.Sprintf("inserting order %v at depth = %v", notification.OrderID, notification.OrderFragment.EpochDepth))
 		if gen.matCurrNotifications != nil {
 			select {
 			case <-done:
@@ -163,7 +160,6 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 			}
 		}
 	case 1:
-		logger.Compute(logger.LevelInfo, fmt.Sprintf("inserting order %v at depth = %v", notification.OrderID, notification.OrderFragment.EpochDepth))
 		if gen.matPrevNotifications != nil {
 			select {
 			case <-done:
@@ -274,7 +270,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			computation = NewComputation(mat.epoch.Hash, cmpOrderFragment, notification.OrderFragment, ComputationStateNil, false)
 		}
 
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("generator created computation buy = %v, sell = %v", computation.Buy.OrderID, computation.Sell.OrderID))
 		select {
 		case <-done:
 			return

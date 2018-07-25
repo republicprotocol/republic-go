@@ -353,7 +353,6 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}
 	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
-	// TODO: Return a more appropriate error
 	ctx, receiver, sender := func() (context.Context, smpc.Receiver, *Sender) {
 		service.lis.mu.Lock()
 		defer service.lis.mu.Unlock()
@@ -375,19 +374,13 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		if _, ok := service.lis.senders[networkID][addr]; !ok {
 			return nil, nil, nil
 		}
-		ctx := service.lis.contexts[networkID][addr]
-		receiver := service.lis.receivers[networkID][addr]
-		sender := service.lis.senders[networkID][addr]
-		return ctx, receiver, sender
+		return service.lis.contexts[networkID][addr], service.lis.receivers[networkID][addr], service.lis.senders[networkID][addr]
 	}()
 	if ctx == nil || receiver == nil || sender == nil {
+		// TODO: Return a more appropriate error
 		return nil
 	}
-
-	sender.streamMu.Lock()
-	sender.cipher = crypto.NewAESCipher(secret[:])
-	sender.stream = stream
-	sender.streamMu.Unlock()
+	sender.inject(secret[:], stream)
 
 	service.donesMu.Lock()
 	if _, ok := service.dones[networkID]; !ok {
@@ -396,8 +389,8 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	if _, ok := service.dones[networkID][addr]; ok {
 		close(service.dones[networkID][addr])
 	}
-	done := make(chan struct{})
-	service.dones[networkID][addr] = done
+	service.dones[networkID][addr] = make(chan struct{})
+	done := service.dones[networkID][addr]
 	service.donesMu.Unlock()
 
 	go func() {
@@ -409,6 +402,16 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 				// Receive a message
 				rawMessage, recvErr = stream.Recv()
 				if recvErr != nil {
+					// Check for termination conditions
+					select {
+					case <-done:
+						return nil
+					case <-ctx.Done():
+						return nil
+					case <-stream.Context().Done():
+						return nil
+					default:
+					}
 					if recvErr == io.EOF {
 						return nil
 					}
@@ -429,6 +432,18 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 				receiver.Receive(addr, message)
 				return nil
 			}, 30000)
+
+			// Check for termination conditions
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-stream.Context().Done():
+				return
+			default:
+			}
+
 			if backoffErr != nil {
 				log.Printf("[error] cannot relisten to %v on network %v: %v", addr, networkID, backoffErr)
 				return
@@ -440,8 +455,8 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	// closed
 	select {
 	case <-done:
-		log.Printf("[debug] (stream) client reconnected to an accepted connection")
 		// TODO: Return better error.
+		log.Printf("[debug] (stream) client reconnected to an accepted connection")
 		return nil
 	case <-ctx.Done():
 		log.Printf("[debug] (stream) server closed accepted connection")
