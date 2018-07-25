@@ -37,6 +37,7 @@ type confirmer struct {
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
 	confirmingSellOrders map[order.ID]struct{}
+	confirmed            map[order.ID]time.Time
 }
 
 // NewConfirmer returns a Confirmer that submits Computations to the
@@ -55,6 +56,7 @@ func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, o
 		confirmingMu:         new(sync.Mutex),
 		confirmingBuyOrders:  map[order.ID]struct{}{},
 		confirmingSellOrders: map[order.ID]struct{}{},
+		confirmed:            map[order.ID]time.Time{},
 	}
 }
 
@@ -79,6 +81,15 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				if !ok {
 					return
 				}
+
+				// Check that these orders have not already been confirmed
+				if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+					continue
+				}
+				if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+					continue
+				}
+
 				// Confirm Computations on the blockchain and register them for
 				// observation (we need to wait for finality)
 				if err := confirmer.beginConfirmation(com); err != nil {
@@ -118,6 +129,12 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				confirmer.confirmingMu.Lock()
 				confirmer.checkOrdersForConfirmationFinality(order.ParityBuy, done, confirmations, errs)
 				confirmer.checkOrdersForConfirmationFinality(order.ParitySell, done, confirmations, errs)
+				// Clean up confirmed orders that are old enough to forget about
+				for key, t := range confirmer.confirmed {
+					if time.Since(t) > time.Hour {
+						delete(confirmer.confirmed, key)
+					}
+				}
 				confirmer.confirmingMu.Unlock()
 			}
 		}
@@ -191,6 +208,8 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		case confirmations <- com:
 			delete(confirmer.confirmingBuyOrders, com.Buy.OrderID)
 			delete(confirmer.confirmingSellOrders, com.Sell.OrderID)
+			confirmer.confirmed[com.Buy.OrderID] = time.Now()
+			confirmer.confirmed[com.Sell.OrderID] = time.Now()
 		}
 	}
 }
