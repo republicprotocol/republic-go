@@ -103,7 +103,7 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 		orderbookPointerTable:       NewOrderbookPointerTable(db),
 
 		somerComputationTable:   NewSomerComputationTable(db),
-		somerOrderFragmentTable: NewSomerOrderFragmentTable(db),
+		somerOrderFragmentTable: NewSomerOrderFragmentTable(db, expiry),
 	}, nil
 }
 
