@@ -170,7 +170,9 @@ func (network *network) Send(networkID NetworkID, message Message) {
 
 	go dispatch.CoForAll(senders, func(addr identity.Address) {
 		sender := senders[addr]
-		sender.Send(message)
+		if err := sender.Send(message); err != nil {
+			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+		}
 	})
 }
 
