@@ -117,7 +117,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
 				return
 			}
-			log.Printf("[debug] connected to peer %v on network %v", addr, networkID)
+			log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
 		} else {
 			log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
 			sender, err = network.conn.Listen(ctx, networkID, multiAddr, network.receiver)
@@ -125,7 +125,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 				log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
 				return
 			}
-			log.Printf("[debug] accepted peer %v on network %v", addr, networkID)
+			log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
 		}
 
 		network.networkMu.Lock()

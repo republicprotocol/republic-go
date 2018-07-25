@@ -345,29 +345,35 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	// TODO: Return a more appropriate error
-	service.lis.mu.Lock()
-	if _, ok := service.lis.contexts[networkID]; !ok {
+	ctx, receiver, sender := func() (context.Context, smpc.Receiver, *Sender) {
+		service.lis.mu.Lock()
+		defer service.lis.mu.Unlock()
+		if _, ok := service.lis.contexts[networkID]; !ok {
+			return nil, nil, nil
+		}
+		if _, ok := service.lis.receivers[networkID]; !ok {
+			return nil, nil, nil
+		}
+		if _, ok := service.lis.senders[networkID]; !ok {
+			return nil, nil, nil
+		}
+		if _, ok := service.lis.contexts[networkID][addr]; !ok {
+			return nil, nil, nil
+		}
+		if _, ok := service.lis.receivers[networkID][addr]; !ok {
+			return nil, nil, nil
+		}
+		if _, ok := service.lis.senders[networkID][addr]; !ok {
+			return nil, nil, nil
+		}
+		ctx := service.lis.contexts[networkID][addr]
+		receiver := service.lis.receivers[networkID][addr]
+		sender := service.lis.senders[networkID][addr]
+		return ctx, receiver, sender
+	}()
+	if ctx == nil || receiver == nil || sender == nil {
 		return nil
 	}
-	if _, ok := service.lis.receivers[networkID]; !ok {
-		return nil
-	}
-	if _, ok := service.lis.senders[networkID]; !ok {
-		return nil
-	}
-	if _, ok := service.lis.contexts[networkID][addr]; !ok {
-		return nil
-	}
-	if _, ok := service.lis.receivers[networkID][addr]; !ok {
-		return nil
-	}
-	if _, ok := service.lis.senders[networkID][addr]; !ok {
-		return nil
-	}
-	ctx := service.lis.contexts[networkID][addr]
-	receiver := service.lis.receivers[networkID][addr]
-	sender := service.lis.senders[networkID][addr]
-	service.lis.mu.Unlock()
 
 	sender.streamMu.Lock()
 	sender.cipher = crypto.NewAESCipher(secret[:])
