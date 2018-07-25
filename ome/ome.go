@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -198,6 +199,7 @@ func (ome *ome) sendComputationToMatcher(com Computation, done <-chan struct{}, 
 		if !com.Match {
 			return
 		}
+		log.Printf("[debug] (resolve) ✔ buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID)
 		ome.sendComputationToConfirmer(com, done, matches)
 	})
 	return nil
