@@ -58,12 +58,8 @@ func NewSender(secret []byte, stream grpc.Stream) *Sender {
 }
 
 func (sender *Sender) Send(message smpc.Message) error {
-	log.Printf("acquiring send lock...")
-
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
-
-	log.Printf("sending...")
 
 	if sender.stream == nil {
 		return ErrStreamDisconnected
