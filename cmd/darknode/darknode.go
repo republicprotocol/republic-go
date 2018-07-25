@@ -189,7 +189,7 @@ func main() {
 		}
 		gen := ome.NewComputationGenerator()
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
-		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 1)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 2)
 		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
@@ -224,8 +224,8 @@ func main() {
 		}, func() {
 			// Prune the database every hour
 			for {
-				store.Prune()
 				time.Sleep(time.Hour)
+				store.Prune()
 			}
 		})
 	}()
