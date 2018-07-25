@@ -55,12 +55,22 @@ func NewSmpcer(conn ConnectorListener, swarmer swarm.Swarmer) Smpcer {
 
 // Connect implements the Smpcer interface.
 func (smpc *smpcer) Connect(networkID NetworkID, addrs identity.Addresses) {
+	k := int64(2 * (len(addrs) + 1) / 3)
+
+	smpc.joinersMu.Lock()
+	smpc.joiners[networkID] = NewJoiner(k)
+	smpc.joinersMu.Unlock()
+
 	smpc.network.Connect(networkID, addrs)
 }
 
 // Disconnect implements the Smpcer interface.
 func (smpc *smpcer) Disconnect(networkID NetworkID) {
 	smpc.network.Disconnect(networkID)
+
+	smpc.joinersMu.Lock()
+	delete(smpc.joiners, networkID)
+	smpc.joinersMu.Unlock()
 }
 
 // Join implements the Smpcer interface.
