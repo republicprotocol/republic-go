@@ -91,11 +91,15 @@ func (sender *Sender) release() {
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
 
+	if sender.stream == nil {
+		return
+	}
 	if stream, ok := sender.stream.(grpc.ClientStream); ok {
 		if err := stream.CloseSend(); err != nil {
 			log.Printf("[error] cannot release stream: %v", err)
 		}
 	}
+	sender.stream = nil
 }
 
 type Connector struct {
@@ -156,9 +160,6 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						case <-ctx.Done():
 							return nil
 						default:
-							if recvErr == io.EOF {
-								return nil
-							}
 						}
 						// Reconnect
 						secret, stream, err = connector.connect(ctx, networkID, to)
@@ -177,9 +178,6 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				case <-ctx.Done():
 					return
 				default:
-					if recvErr == io.EOF {
-						return
-					}
 				}
 
 				// Backoff error indicates that the stream is dead and there is
