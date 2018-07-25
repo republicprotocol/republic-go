@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -91,11 +92,15 @@ func (sender *Sender) release() {
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
 
+	if sender.stream == nil {
+		return
+	}
 	if stream, ok := sender.stream.(grpc.ClientStream); ok {
 		if err := stream.CloseSend(); err != nil {
 			log.Printf("[error] cannot release stream: %v", err)
 		}
 	}
+	sender.stream = nil
 }
 
 type Connector struct {
@@ -120,26 +125,28 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	sender := NewSender(secret, stream)
 
 	// This function is used to read a message from the sender defined above
+	addr := to.Address()
 	recv := func() error {
 		// Block until a message is received or an error occurs
 		rawMessage, err := stream.Recv()
 		if err != nil {
+			log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Decrypt the message
 		data, err := sender.cipher.Decrypt(rawMessage.Data)
 		if err != nil {
-			log.Printf("[error] received malformed encryption from %v on network %v: %v", to, networkID, err)
+			log.Printf("[error] received malformed encryption from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Unmarshal the message
 		message := smpc.Message{}
 		if err := message.UnmarshalBinary(data); err != nil {
-			log.Printf("[error] received malformed message from %v on network %v: %v", to, networkID, err)
+			log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Notify the receiver of the message
-		receiver.Receive(to.Address(), message)
+		receiver.Receive(addr, message)
 		return nil
 	}
 
@@ -147,39 +154,35 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 		func() {
 			for {
 				// Backoff receiving / reconnecting using the stream
-				recvErr := error(nil)
 				backoffErr := BackoffMax(ctx, func() error {
-					recvErr = recv()
-					if recvErr != nil {
-						// Check for valid termination conditions
-						select {
-						case <-ctx.Done():
-							return nil
-						default:
-							if recvErr == io.EOF {
-								return nil
-							}
-						}
-						// Reconnect
+					// Check the context for termination conditions
+					select {
+					case <-ctx.Done():
+						return nil
+					default:
+					}
+
+					if err := recv(); err != nil {
+						// Reconnect when an error occurs
 						secret, stream, err = connector.connect(ctx, networkID, to)
 						if err != nil {
 							return err
 						}
 						sender.inject(secret, stream)
-						return nil
+						time.Sleep(time.Second)
+
+						// The reconnection is not considered successful until
+						// we have successfully received a message
+						return recv()
 					}
 					return nil
 				}, 30000)
 
-				// Check termination conditions to see why the exit has
-				// happened
+				// Check the context for termination conditions
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					if recvErr == io.EOF {
-						return
-					}
 				}
 
 				// Backoff error indicates that the stream is dead and there is
@@ -377,7 +380,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}()
 	if ctx == nil || receiver == nil || sender == nil {
 		// TODO: Return a more appropriate error
-		return nil
+		return fmt.Errorf("not ready to accept connection")
 	}
 	sender.inject(secret[:], stream)
 

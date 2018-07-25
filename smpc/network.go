@@ -104,14 +104,17 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		var err error
 		ctx, cancel := context.WithCancel(context.Background())
 
-		if addr < network.swarmer.MultiAddress().Address() {
-			log.Printf("[debug] querying peer %v on network %v", addr, networkID)
-			multiAddr, err := network.query(addr)
-			if err != nil {
-				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+		// Always query because it encourages network coverage
+		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
+		multiAddr, err := network.query(addr)
+		if err != nil {
+			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+			if addr < network.swarmer.MultiAddress().Address() {
 				return
 			}
+		}
 
+		if addr < network.swarmer.MultiAddress().Address() {
 			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
 			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
 			if err != nil {
@@ -167,7 +170,10 @@ func (network *network) Send(networkID NetworkID, message Message) {
 
 	go dispatch.CoForAll(senders, func(addr identity.Address) {
 		sender := senders[addr]
-		sender.Send(message)
+		if err := sender.Send(message); err != nil {
+			// These logs are disabled to prevent verbose output
+			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+		}
 	})
 }
 
@@ -187,7 +193,12 @@ func (network *network) SendTo(networkID NetworkID, to identity.Address, message
 		return
 	}
 
-	go sender.Send(message)
+	go func() {
+		if err := sender.Send(message); err != nil {
+			// These logs are disabled to prevent verbose output
+			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+		}
+	}()
 }
 
 func (network *network) query(q identity.Address) (identity.MultiAddress, error) {
