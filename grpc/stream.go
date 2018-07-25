@@ -160,6 +160,9 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 						case <-ctx.Done():
 							return nil
 						default:
+							if recvErr == io.EOF {
+								return nil
+							}
 						}
 						// Reconnect
 						secret, stream, err = connector.connect(ctx, networkID, to)
@@ -178,6 +181,9 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				case <-ctx.Done():
 					return
 				default:
+					if recvErr == io.EOF {
+						return
+					}
 				}
 
 				// Backoff error indicates that the stream is dead and there is
