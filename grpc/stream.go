@@ -80,16 +80,16 @@ func (sender *Sender) Send(message smpc.Message) error {
 }
 
 type Connector struct {
+	addr      identity.Address
 	signer    crypto.Signer
 	encrypter crypto.Encrypter
-	addr      identity.Address
 }
 
-func NewConnector(signer crypto.Signer, encrypter crypto.Encrypter, addr identity.Address) *Connector {
+func NewConnector(addr identity.Address, signer crypto.Signer, encrypter crypto.Encrypter) *Connector {
 	return &Connector{
+		addr:      addr,
 		signer:    signer,
 		encrypter: encrypter,
-		addr:      addr,
 	}
 }
 
@@ -215,6 +215,15 @@ type Listener struct {
 	senders   map[smpc.NetworkID]map[identity.Address]*Sender
 }
 
+func NewListener() *Listener {
+	return &Listener{
+		mu:        new(sync.Mutex),
+		contexts:  map[smpc.NetworkID]map[identity.Address]context.Context{},
+		receivers: map[smpc.NetworkID]map[identity.Address]smpc.Receiver{},
+		senders:   map[smpc.NetworkID]map[identity.Address]*Sender{},
+	}
+}
+
 func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
 	lis.mu.Lock()
 	defer lis.mu.Unlock()
@@ -235,6 +244,18 @@ func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to id
 	lis.receivers[networkID][addr] = receiver
 
 	return lis.senders[networkID][addr], nil
+}
+
+type ConnectorListener struct {
+	*Connector
+	*Listener
+}
+
+func NewConnectorListener(addr identity.Address, signer crypto.Signer, encrypter crypto.Encrypter) ConnectorListener {
+	return ConnectorListener{
+		Connector: NewConnector(addr, signer, encrypter),
+		Listener:  NewListener(),
+	}
 }
 
 // StreamerService implements the gRPC StreamService. After being registered to

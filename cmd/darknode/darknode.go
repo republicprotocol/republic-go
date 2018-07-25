@@ -110,8 +110,8 @@ func main() {
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
-	streamer := grpc.NewStreamer(&crypter, &crypter, config.Address)
-	streamerService := grpc.NewStreamerService(&crypter, &crypter, streamer)
+	connectorListener := grpc.NewConnectorListener(config.Address, &crypter, &crypter)
+	streamerService := grpc.NewStreamerService(config.Address, &crypter, &crypter, connectorListener.Listener)
 	streamerService.Register(server)
 
 	var ethNetwork string
@@ -180,7 +180,7 @@ func main() {
 		log.Printf("connected to %v peers", len(dht.MultiAddresses()))
 
 		// New secure multi-party computer
-		smpcer := smpc.NewSmpcer(swarmer, streamer)
+		smpcer := smpc.NewSmpcer(connectorListener, swarmer)
 
 		// New OME
 		epoch, err := contractBinder.PreviousEpoch()
