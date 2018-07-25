@@ -75,7 +75,10 @@ func (sender *Sender) Send(message smpc.Message) error {
 	}
 
 	return sender.stream.SendMsg(&StreamMessage{
-		Data: data,
+		Signature: []byte{},
+		Address:   "",
+		Network:   []byte{},
+		Data:      data,
 	})
 }
 
