@@ -2,6 +2,9 @@ package ome
 
 import (
 	"errors"
+
+	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrComputationNotFound is returned when the Storer cannot find a Computation
@@ -37,6 +40,37 @@ type ComputationIterator interface {
 
 	// Collect all Computations in the iterator into a slice.
 	Collect() ([]Computation, error)
+
+	// Release the resources allocated by the iterator.
+	Release()
+}
+
+// OrderFragmentStorer for the order.Fragments that are received.
+type OrderFragmentStorer interface {
+	PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error
+	DeleteBuyOrderFragment(epoch registry.Epoch, id order.ID) error
+	BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error)
+	BuyOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
+
+	PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error
+	DeleteSellOrderFragment(epoch registry.Epoch, id order.ID) error
+	SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error)
+	SellOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
+}
+
+// OrderFragmentIterator is used to iterate over an order.Fragment collection.
+type OrderFragmentIterator interface {
+
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the order.Fragment collection, otherwise false.
+	Next() bool
+
+	// Cursor returns the order.Fragment at the current cursor location.
+	// Returns an error if the cursor is out of range.
+	Cursor() (order.Fragment, error)
+
+	// Collect all order.Fragments in the iterator into a slice.
+	Collect() ([]order.Fragment, error)
 
 	// Release the resources allocated by the iterator.
 	Release()
