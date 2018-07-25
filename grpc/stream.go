@@ -377,7 +377,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 	}()
 	if ctx == nil || receiver == nil || sender == nil {
 		// TODO: Return a more appropriate error
-		return nil
+		return fmt.Errorf("not ready to accept connection")
 	}
 	sender.inject(secret[:], stream)
 
