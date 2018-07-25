@@ -194,7 +194,7 @@ func (network *network) query(q identity.Address) (identity.MultiAddress, error)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	multiAddr, err := network.swarmer.Query(ctx, q, -1)
+	multiAddr, err := network.swarmer.Query(ctx, q)
 	if err != nil {
 		return multiAddr, fmt.Errorf("cannot query peer %v: %v", q, err)
 	}

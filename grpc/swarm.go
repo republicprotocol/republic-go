@@ -42,9 +42,11 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	defer conn.Close()
 
 	request := &PingRequest{
-		Signature:         multiAddr.Signature,
-		MultiAddress:      multiAddr.String(),
-		MultiAddressNonce: nonce,
+		MultiAddress: &MultiAddress{
+			Signature:         multiAddr.Signature,
+			MultiAddress:      multiAddr.String(),
+			MultiAddressNonce: nonce,
+		},
 	}
 
 	return Backoff(ctx, func() error {
@@ -68,9 +70,11 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 	}
 
 	request := &PongRequest{
-		Signature:         multiAddr.Signature,
-		MultiAddress:      multiAddr.String(),
-		MultiAddressNonce: nonce,
+		MultiAddress: &MultiAddress{
+			Signature:         multiAddr.Signature,
+			MultiAddress:      multiAddr.String(),
+			MultiAddressNonce: nonce,
+		},
 	}
 
 	return Backoff(ctx, func() error {
@@ -89,8 +93,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 	defer conn.Close()
 
 	request := &QueryRequest{
-		Signature: []byte{},
-		Address:   query.String(),
+		Address: query.String(),
 	}
 
 	var response *QueryResponse
@@ -102,10 +105,10 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 	}
 
 	multiAddrs := identity.MultiAddresses{}
-	for _, multiAddrStr := range response.MultiAddresses {
-		multiAddr, err := identity.NewMultiAddressFromString(multiAddrStr)
+	for _, multiAddrMsg := range response.MultiAddresses {
+		multiAddr, err := identity.NewMultiAddressFromString(multiAddrMsg.MultiAddress)
 		if err != nil {
-			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", multiAddrStr, err))
+			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", multiAddrMsg.MultiAddress, err))
 			continue
 		}
 		multiAddr.Signature = multiAddr.Hash()
@@ -163,14 +166,16 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		return nil, err
 	}
 
-	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
+	// FIXME: Check for nil message components
+
+	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 
-	from.Signature = request.GetSignature()
-	nonce := request.GetMultiAddressNonce()
+	from.Signature = request.GetMultiAddress().GetSignature()
+	nonce := request.GetMultiAddress().GetMultiAddressNonce()
 
 	err = service.server.Ping(ctx, from, nonce)
 	if err != nil {
@@ -191,14 +196,14 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 		return nil, err
 	}
 
-	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress())
+	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 
-	from.Signature = request.GetSignature()
-	nonce := request.GetMultiAddressNonce()
+	from.Signature = request.GetMultiAddress().GetSignature()
+	nonce := request.GetMultiAddress().GetMultiAddressNonce()
 
 	err = service.server.Pong(ctx, from, nonce)
 	if err != nil {
@@ -224,14 +229,15 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 		return nil, err
 	}
 
-	multiAddrsStr := make([]string, len(multiAddrs))
+	multiAddrMsgs := make([]*MultiAddress, len(multiAddrs))
 	for i, multiAddr := range multiAddrs {
-		multiAddrsStr[i] = multiAddr.String()
+		multiAddrMsgs[i] = &MultiAddress{
+			MultiAddress: multiAddr.String(),
+		}
 	}
 
 	return &QueryResponse{
-		Signature:      []byte{},
-		MultiAddresses: multiAddrsStr,
+		MultiAddresses: multiAddrMsgs,
 	}, nil
 }
 
