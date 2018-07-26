@@ -162,14 +162,18 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		}
 
 		for _, multi := range closer {
+			if multi.Address() == query {
+				return multi, nil
+			}
+
+			if _, ok := keys[multiAddr.Address()]; ok {
+				continue
+			}
+
 			_, err := swarmer.storer.PutMultiAddress(multi, 1)
 			if err != nil {
 				log.Printf("cannot store %v: %v", multi.Address(), err)
 				continue
-			}
-
-			if multi.Address() == query {
-				return multi, nil
 			}
 
 			if _, ok := keys[multi.Address()]; !ok {
