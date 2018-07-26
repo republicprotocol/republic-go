@@ -2,13 +2,21 @@ package ome
 
 import (
 	"log"
+	"sort"
 	"sync"
+
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 )
+
+type computationWeight struct {
+	computation Computation
+	weight      int
+}
 
 type ComputationGenerator interface {
 	Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error)
@@ -18,6 +26,8 @@ type ComputationGenerator interface {
 type computationGenerator struct {
 	doneMu *sync.Mutex
 	done   chan struct{}
+
+	addr identity.Address
 
 	matMu                *sync.Mutex
 	matCurrDone          chan struct{}
@@ -31,10 +41,12 @@ type computationGenerator struct {
 	orderFragmentStore OrderFragmentStorer
 }
 
-func NewComputationGenerator(orderFragmentStore OrderFragmentStorer) ComputationGenerator {
+func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer) ComputationGenerator {
 	return &computationGenerator{
 		doneMu: new(sync.Mutex),
 		done:   nil,
+
+		addr: addr,
 
 		matMu:                new(sync.Mutex),
 		matCurrDone:          nil,
@@ -104,7 +116,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	mat := newComputationMatrix(epoch, gen.orderFragmentStore)
+	mat := newComputationMatrix(gen.addr, epoch, gen.orderFragmentStore)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	go func() {
@@ -175,15 +187,31 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 }
 
 type computationMatrix struct {
+	pod                *registry.Pod
 	epoch              registry.Epoch
 	orderFragmentStore OrderFragmentStorer
+
+	sortedComputationsMu     *sync.Mutex
+	sortedComputations       []computationWeight
+	sortedComputationsSignal chan struct{}
 }
 
-func newComputationMatrix(epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
-	return &computationMatrix{
+func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
+	mat := &computationMatrix{
 		epoch:              epoch,
 		orderFragmentStore: orderFragmentStore,
+
+		sortedComputationsMu:     new(sync.Mutex),
+		sortedComputations:       []computationWeight{},
+		sortedComputationsSignal: make(chan struct{}),
 	}
+	pod, err := epoch.Pod(addr)
+	if err != nil {
+		mat.pod = nil
+	} else {
+		mat.pod = &pod
+	}
+	return mat
 }
 
 func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
@@ -198,6 +226,23 @@ func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-cha
 			select {
 			case <-done:
 				return
+			case <-mat.sortedComputationsSignal:
+
+				mat.sortedComputationsMu.Lock()
+				if len(mat.sortedComputations) == 0 {
+					mat.sortedComputationsMu.Unlock()
+					continue
+				}
+				computationWeight := mat.sortedComputations[0]
+				mat.sortedComputations = mat.sortedComputations[1:]
+				mat.sortedComputationsMu.Unlock()
+
+				select {
+				case <-done:
+					return
+				case computations <- computationWeight.computation:
+				}
+
 			case notification, ok := <-notifications:
 				if !ok {
 					return
@@ -232,6 +277,11 @@ func (mat *computationMatrix) handleNotification(notification orderbook.Notifica
 }
 
 func (mat *computationMatrix) insertOrderFragment(notification orderbook.NotificationOpenOrder, done <-chan struct{}, computations chan<- Computation, errs chan<- error) {
+	// If we are not part of a pod during this epoch then we cannot process
+	// computations
+	if mat.pod == nil {
+		return
+	}
 
 	// Store the order.Fragment and get the opposing list so that computations
 	// can be generated
@@ -261,6 +311,12 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		defer oppositeOrderFragmentIter.Release()
 	}
+
+	mat.sortedComputationsMu.Lock()
+	defer mat.sortedComputationsMu.Unlock()
+
+	// FIXME: Associate priority with the order fragment so that we can
+	// maintain priority through persistent storage.
 
 	// Iterate through the opposing list and generate computations
 	for oppositeOrderFragmentIter.Next() {
@@ -292,11 +348,33 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			computation = NewComputation(mat.epoch.Hash, orderFragment, notification.OrderFragment, ComputationStateNil, false)
 		}
 
-		select {
-		case <-done:
-			return
-		case computations <- computation:
+		// Get the priority adjustment based on the distance of our pod from
+		// the first pod that could possibly do this computation
+		buyPath := mat.epoch.Pods.PathOfOrder(computation.Buy.OrderID)
+		sellPath := mat.epoch.Pods.PathOfOrder(computation.Sell.OrderID)
+		commonPath := buyPath.Ancestor(sellPath)
+		index, ok := commonPath.IndexOfPod(mat.pod)
+		if !ok {
+			log.Printf("[error] (generator) received orders with divergent paths")
+			continue
 		}
+		adjustment := len(commonPath) - (index + 1)
+		computationWeight := computationWeight{weight: len(mat.sortedComputations) + adjustment, computation: computation}
+
+		// Insert sort
+		if len(mat.sortedComputations) == 0 {
+			mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+			continue
+		}
+		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
+			return i+adjustment > mat.sortedComputations[i].weight
+		})
+		mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+	}
+
+	select {
+	case <-done:
+	case mat.sortedComputationsSignal <- struct{}{}:
 	}
 }
 
