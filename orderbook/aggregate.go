@@ -3,6 +3,8 @@ package orderbook
 import (
 	"log"
 
+	"github.com/republicprotocol/republic-go/identity"
+
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
@@ -22,21 +24,35 @@ type Aggregator interface {
 }
 
 type aggregator struct {
+	addr               identity.Address
 	epoch              registry.Epoch
 	orderStore         OrderStorer
 	orderFragmentStore OrderFragmentStorer
+	pod                *registry.Pod
 }
 
-func NewAggregator(epoch registry.Epoch, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer) Aggregator {
-	return &aggregator{
+func NewAggregator(addr identity.Address, epoch registry.Epoch, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer) Aggregator {
+	agg := &aggregator{
+		addr:               addr,
 		epoch:              epoch,
 		orderStore:         orderStore,
 		orderFragmentStore: orderFragmentStore,
 	}
+	pod, err := epoch.Pod(addr)
+	if err != nil {
+		agg.pod = nil
+	} else {
+		agg.pod = &pod
+	}
+	return agg
 }
 
 // InsertOrder implements the Aggregator interface.
 func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error) {
+	if !agg.isInPathOfEpoch(orderID) {
+		return nil, nil
+	}
+
 	if orderStatus != order.Open {
 		// The order is no longer open
 		if err := agg.orderStore.DeleteOrder(orderID); err != nil {
@@ -68,6 +84,10 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 
 // InsertOrderFragment implements the Aggregator interface.
 func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notification, error) {
+	if !agg.isInPathOfEpoch(orderFragment.OrderID) {
+		return nil, nil
+	}
+
 	// Store the order fragment
 	if err := agg.orderFragmentStore.PutOrderFragment(agg.epoch, orderFragment); err != nil {
 		return nil, err
@@ -98,4 +118,12 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		OrderFragment: orderFragment,
 		Trader:        trader,
 	}, nil
+}
+
+func (agg *aggregator) isInPathOfEpoch(orderID order.ID) bool {
+	if agg.pod == nil || agg.epoch.Pods == nil || len(agg.epoch.Pods) == 0 {
+		return false
+	}
+	index, ok := agg.epoch.Pods.PathOfOrder(orderID).IndexOfPod(agg.pod)
+	return index >= 0 && ok
 }

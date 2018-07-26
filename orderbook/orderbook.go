@@ -50,6 +50,8 @@ type Orderbook interface {
 }
 
 type orderbook struct {
+	addr identity.Address
+
 	rsaKey             crypto.RsaKey
 	pointerStore       PointerStorer
 	orderStore         OrderStorer
@@ -68,8 +70,10 @@ type orderbook struct {
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
 // order.EncryptedFragments that it receives, and stores them in a Storer.
-func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
+func NewOrderbook(addr identity.Address, rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
 	return &orderbook{
+		addr: addr,
+
 		rsaKey:             rsaKey,
 		pointerStore:       pointerStore,
 		orderStore:         orderStore,
@@ -131,7 +135,7 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	defer orderbook.aggMu.Unlock()
 
 	orderbook.aggPrev = orderbook.aggCurr
-	orderbook.aggCurr = NewAggregator(epoch, orderbook.orderStore, orderbook.orderFragmentStore)
+	orderbook.aggCurr = NewAggregator(orderbook.addr, epoch, orderbook.orderStore, orderbook.orderFragmentStore)
 }
 
 func (orderbook *orderbook) sync(done <-chan struct{}) {
