@@ -30,7 +30,7 @@ var _ = Describe("Computations", func() {
 			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID)
 			expectedID := ComputationID{}
 			copy(expectedID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
-			Ω(bytes.Equal(computationID[:], expectedID[:]))
+			Expect(bytes.Equal(computationID[:], expectedID[:]))
 		})
 
 		It("should return true for the same computations compared against itself", func() {
@@ -57,13 +57,13 @@ var _ = Describe("Computations", func() {
 
 	Context("computations state ", func() {
 		It("should implement the Stringer interface ", func() {
-			Ω(fmt.Sprintf("%v", ComputationStateNil)).Should(Equal("nil"))
-			Ω(fmt.Sprintf("%v", ComputationStateMatched)).Should(Equal("matched"))
-			Ω(fmt.Sprintf("%v", ComputationStateMismatched)).Should(Equal("mismatched"))
-			Ω(fmt.Sprintf("%v", ComputationStateAccepted)).Should(Equal("accepted"))
-			Ω(fmt.Sprintf("%v", ComputationStateRejected)).Should(Equal("rejected"))
-			Ω(fmt.Sprintf("%v", ComputationStateSettled)).Should(Equal("settled"))
-			Ω(fmt.Sprintf("%v", ComputationState(100))).Should(Equal("unsupported state"))
+			Expect(fmt.Sprintf("%v", ComputationStateNil)).Should(Equal("nil"))
+			Expect(fmt.Sprintf("%v", ComputationStateMatched)).Should(Equal("matched"))
+			Expect(fmt.Sprintf("%v", ComputationStateMismatched)).Should(Equal("mismatched"))
+			Expect(fmt.Sprintf("%v", ComputationStateAccepted)).Should(Equal("accepted"))
+			Expect(fmt.Sprintf("%v", ComputationStateRejected)).Should(Equal("rejected"))
+			Expect(fmt.Sprintf("%v", ComputationStateSettled)).Should(Equal("settled"))
+			Expect(fmt.Sprintf("%v", ComputationState(100))).Should(Equal("unsupported state"))
 		})
 	})
 })

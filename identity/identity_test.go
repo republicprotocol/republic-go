@@ -15,10 +15,10 @@ var _ = Describe("", func() {
 			id := identity.Address(key.Address()).ID()
 
 			It("should not error", func() {
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 			It("should return 20 bytes", func() {
-				Ω(len(id)).Should(Equal(identity.IDLength))
+				Expect(len(id)).Should(Equal(identity.IDLength))
 			})
 
 		})
@@ -28,11 +28,11 @@ var _ = Describe("", func() {
 			id := identity.Address(key.Address()).ID()
 
 			It("should not error", func() {
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 
 			It("should be converted to a string", func() {
-				Ω(id.String()).Should(Equal(id.Address().String()))
+				Expect(id.String()).Should(Equal(id.Address().String()))
 			})
 		})
 
@@ -41,10 +41,10 @@ var _ = Describe("", func() {
 				key, err := crypto.RandomEcdsaKey()
 				id := identity.Address(key.Address()).ID()
 
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 				address := id.Address()
 				newID := address.ID()
-				Ω(id).Should(Equal(newID))
+				Expect(id).Should(Equal(newID))
 			})
 		})
 	})

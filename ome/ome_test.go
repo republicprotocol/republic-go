@@ -49,23 +49,23 @@ var _ = Describe("Ome", func() {
 		BeforeEach(func() {
 			done = make(chan struct{})
 			addr, epoch, err = testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			computationsGenerator = NewComputationGenerator()
 			rsaKey, err := crypto.RandomRsaKey()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			book = testutils.NewRandOrderbook(rsaKey)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			smpcer = testutils.NewAlwaysMatchSmpc()
 			contract = newOmeBinder()
 
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
 			settler = NewSettler(storer, smpcer, contract)
 
 			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			storer = store.SomerComputationStore()
 		})
 
@@ -81,7 +81,7 @@ var _ = Describe("Ome", func() {
 				defer GinkgoRecover()
 
 				for err := range errs {
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}()
 		})
@@ -94,12 +94,12 @@ var _ = Describe("Ome", func() {
 				defer GinkgoRecover()
 
 				for err := range errs {
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}()
 
 			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			ome.OnChangeEpoch(epoch)
 		})

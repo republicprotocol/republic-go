@@ -73,21 +73,21 @@ var _ = Describe("Confirmer", func() {
 			defer GinkgoRecover()
 
 			for err := range errs {
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 		}()
 
 		for match := range confirmedMatches {
 			_, ok := orderIDs[match.Buy.OrderID]
-			Ω(ok).Should(BeTrue())
+			Expect(ok).Should(BeTrue())
 			delete(orderIDs, match.Buy.OrderID)
 
 			_, ok = orderIDs[match.Sell.OrderID]
-			Ω(ok).Should(BeTrue())
+			Expect(ok).Should(BeTrue())
 			delete(orderIDs, match.Sell.OrderID)
 		}
 
-		Ω(len(orderIDs)).Should(Equal(0))
+		Expect(len(orderIDs)).Should(Equal(0))
 	}, 100)
 
 	It("should return error for invalid computations", func() {
@@ -120,10 +120,10 @@ var _ = Describe("Confirmer", func() {
 			defer GinkgoRecover()
 
 			for err := range errs {
-				Ω(err).Should(HaveOccurred())
+				Expect(err).Should(HaveOccurred())
 			}
 		}()
 
-		Ω(len(confirmedMatches)).Should(BeZero())
+		Expect(len(confirmedMatches)).Should(BeZero())
 	})
 })

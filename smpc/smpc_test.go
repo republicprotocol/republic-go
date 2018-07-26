@@ -47,7 +47,7 @@ var _ = Describe("Smpcer", func() {
 			By("serving")
 			for i := 0; i < numDarknodes; i++ {
 				go func(i int) {
-					Ω(nodes[i].Start()).ShouldNot(HaveOccurred())
+					Expect(nodes[i].Start()).ShouldNot(HaveOccurred())
 				}(i)
 			}
 			time.Sleep(time.Second)

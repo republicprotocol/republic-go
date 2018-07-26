@@ -34,31 +34,31 @@ var _ = Describe("Int1024 bitwise operations", func() {
 	Context("when left-shifting a number", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			oneShiftLOne := one.ShiftLeft(1)
-			Ω(oneShiftLOne).Should(Equal(two))
+			Expect(oneShiftLOne).Should(Equal(two))
 
 			shiftHalf := one.ShiftLeft(SIZE - 1)
 			expected := HalfMax()
 			expected = expected.Add(&one)
-			Ω(shiftHalf).Should(Equal(expected))
+			Expect(shiftHalf).Should(Equal(expected))
 
 			// Shift into next word by 1
 			shifted := oneWord.ShiftLeft(1)
 			expected = two64.Add(&oneWord)
 			expected = expected.Sub(&one)
-			Ω(shifted).Should(Equal(expected))
+			Expect(shifted).Should(Equal(expected))
 
 			// Shift into next word by more than 1
 			shifted = two.ShiftLeft(63)
 			expected = two64
-			Ω(shifted).Should(Equal(expected))
+			Expect(shifted).Should(Equal(expected))
 
 			zeroShiftLOne := zero.ShiftLeft(1)
-			Ω(zeroShiftLOne).Should(Equal(zero))
+			Expect(zeroShiftLOne).Should(Equal(zero))
 		})
 
 		It("should overflow without wrapping", func() {
 			overflow := one.ShiftLeft(SIZE)
-			Ω(overflow).Should(Equal(zero))
+			Expect(overflow).Should(Equal(zero))
 		})
 
 	})
@@ -66,42 +66,42 @@ var _ = Describe("Int1024 bitwise operations", func() {
 	Context("when right-shifting a number", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			oneShiftROne := one.ShiftRight(1)
-			Ω(oneShiftROne).Should(Equal(zero))
+			Expect(oneShiftROne).Should(Equal(zero))
 
 			twoShiftROne := two.ShiftRight(1)
-			Ω(twoShiftROne).Should(Equal(one))
+			Expect(twoShiftROne).Should(Equal(one))
 
 			zeroShiftROne := zero.ShiftRight(1)
-			Ω(zeroShiftROne).Should(Equal(zero))
+			Expect(zeroShiftROne).Should(Equal(zero))
 
 			// (shift amount) >= (word size)
 			shifted := two64.ShiftRight(WORDSIZE)
 			expected := one
-			Ω(shifted).Should(Equal(expected))
+			Expect(shifted).Should(Equal(expected))
 
 			// 1 < (shift amount) < (word size)
 			shifted = two64.ShiftRight(WORDSIZE - 1)
 			expected = two
-			Ω(shifted).Should(Equal(expected))
+			Expect(shifted).Should(Equal(expected))
 
 			// shift amount == 1
 			shifted = two64.ShiftRight(1)
 			expected = FromUint(1 << (WORDSIZE - 1))
-			Ω(shifted).Should(Equal(expected))
+			Expect(shifted).Should(Equal(expected))
 
 			elevenShiftRTwo := eleven.ShiftRight(2)
-			Ω(elevenShiftRTwo).Should(Equal(two))
+			Expect(elevenShiftRTwo).Should(Equal(two))
 		})
 
 		It("should overflow without wrapping", func() {
 			oneShiftROne := one.ShiftRight(2)
-			Ω(oneShiftROne).Should(Equal(zero))
+			Expect(oneShiftROne).Should(Equal(zero))
 
 			shifted := one.ShiftRight(WORDSIZE)
-			Ω(shifted).Should(Equal(zero))
+			Expect(shifted).Should(Equal(zero))
 
 			shifted = one.ShiftRight(WORDSIZE * 2)
-			Ω(shifted).Should(Equal(zero))
+			Expect(shifted).Should(Equal(zero))
 		})
 	})
 
@@ -191,13 +191,13 @@ var _ = Describe("Int1024 bitwise operations", func() {
 
 			for _, tc := range cases {
 				tmp, err := FromString(tc[0].(string))
-				Ω(err).Should(BeNil())
-				Ω(tmp.IsBitSet(tc[1].(int))).Should(Equal(tc[2].(bool)))
+				Expect(err).Should(BeNil())
+				Expect(tmp.IsBitSet(tc[1].(int))).Should(Equal(tc[2].(bool)))
 			}
 
 			for i := 0; i < SIZE; i++ {
-				Ω(max.IsBitSet(i))
-				Ω(zero.IsBitSet(i)).Should(BeFalse())
+				Expect(max.IsBitSet(i))
+				Expect(zero.IsBitSet(i)).Should(BeFalse())
 			}
 		})
 	})
