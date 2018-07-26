@@ -83,15 +83,16 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 
 // Connect implements the Network interface.
 func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
-	k := int64(2 * (len(addrs) + 1) / 3)
 
+	k := int64(2 * (len(addrs) + 1) / 3)
 	log.Printf("[info] connecting to network %v with thresold = (%v, %v)", networkID, len(addrs), k)
 
-	network.networkMu.Lock()
-	defer network.networkMu.Unlock()
-
-	network.networkSenders[networkID] = map[identity.Address]Sender{}
-	network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
+	func() {
+		network.networkMu.Lock()
+		defer network.networkMu.Unlock()
+		network.networkSenders[networkID] = map[identity.Address]Sender{}
+		network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
+	}()
 
 	go dispatch.CoForAll(addrs, func(i int) {
 		addr := addrs[i]
@@ -100,43 +101,27 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			return
 		}
 
-		var sender Sender
-		var err error
+		// Create and store a context for connections
 		ctx, cancel := context.WithCancel(context.Background())
+		func() {
+			network.networkMu.Lock()
+			defer network.networkMu.Unlock()
+			network.networkCancels[networkID][addr] = cancel
+		}()
 
-		// Always query because it encourages network coverage
-		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
-		multiAddr, err := network.query(addr)
-		if err != nil {
-			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
-			if addr < network.swarmer.MultiAddress().Address() {
-				return
-			}
+		// Connect, or listen for a connection, and store the sending handle
+		sender := network.connectOrListen(ctx, networkID, addr)
+		if sender == nil {
+			return
 		}
 
-		if addr < network.swarmer.MultiAddress().Address() {
-			log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
-			sender, err = network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
-			if err != nil {
-				log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
-				return
+		func() {
+			network.networkMu.Lock()
+			defer network.networkMu.Unlock()
+			if _, ok := network.networkSenders[networkID]; ok {
+				network.networkSenders[networkID][addr] = sender
 			}
-			log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
-		} else {
-			log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
-			sender, err = network.conn.Listen(ctx, networkID, addr, network.receiver)
-			if err != nil {
-				log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
-				return
-			}
-			log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
-		}
-
-		network.networkMu.Lock()
-		defer network.networkMu.Unlock()
-
-		network.networkSenders[networkID][addr] = sender
-		network.networkCancels[networkID][addr] = cancel
+		}()
 	})
 }
 
@@ -210,4 +195,39 @@ func (network *network) query(q identity.Address) (identity.MultiAddress, error)
 		return multiAddr, fmt.Errorf("cannot query peer %v: %v", q, err)
 	}
 	return multiAddr, nil
+}
+
+func (network *network) connectOrListen(ctx context.Context, networkID NetworkID, addr identity.Address) Sender {
+	if addr < network.swarmer.MultiAddress().Address() {
+
+		// Query for the multi-address
+		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
+		multiAddr, err := network.query(addr)
+		if err != nil {
+			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+			if addr < network.swarmer.MultiAddress().Address() {
+				return nil
+			}
+		}
+
+		// Connect to the remote server
+		log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
+		sender, err := network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
+		if err != nil {
+			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
+			return nil
+		}
+		log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
+		return sender
+	}
+
+	// Wait for the client to connect to us
+	log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
+	sender, err := network.conn.Listen(ctx, networkID, addr, network.receiver)
+	if err != nil {
+		log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
+		return nil
+	}
+	log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
+	return sender
 }
