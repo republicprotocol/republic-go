@@ -108,7 +108,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot create swarmer: %v", err)
 	}
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Second)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
 	swarmService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
@@ -275,5 +275,5 @@ func pingNetwork(swarmer swarm.Swarmer) {
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
 	}
-	log.Printf("connected to %v peers", len(peers))
+	log.Printf("connected to %v peers", len(peers)-1)
 }
