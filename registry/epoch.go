@@ -38,22 +38,3 @@ func (ξ *Epoch) Pod(addr identity.Address) (Pod, error) {
 	}
 	return Pod{}, ErrPodNotFound
 }
-
-// A Pod stores its hash, the combined hash of all Darknodes, and an ordered
-// list of Darknode identity.Addresses.
-type Pod struct {
-	Position  int
-	Hash      [32]byte
-	Darknodes []identity.Address
-}
-
-// Size returns the number of Darknodes in the Pod.
-func (pod *Pod) Size() int {
-	return len(pod.Darknodes)
-}
-
-// Threshold returns the minimum number of Darknodes needed to run the order
-// matching engine. It is the ceiling of 2/3rds of the Pod size.
-func (pod *Pod) Threshold() int {
-	return (2 * (len(pod.Darknodes) + 1)) / 3
-}
