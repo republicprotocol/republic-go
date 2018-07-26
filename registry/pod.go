@@ -56,7 +56,7 @@ type PodPath ([]Pod)
 
 // IndexOfPod returns the position of a Pod in the path. The returned boolean
 // is true if the Pod is in the path, and false otherwise.
-func (path PodPath) IndexOfPod(pod Pod) (int, bool) {
+func (path PodPath) IndexOfPod(pod *Pod) (int, bool) {
 	for i := range path {
 		if bytes.Equal(path[i].Hash[:], pod.Hash[:]) {
 			return i, true

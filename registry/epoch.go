@@ -12,8 +12,8 @@ import (
 // identity.Addresses that are registered for the epoch.
 type Epoch struct {
 	Hash      [32]byte
-	Pods      []Pod
-	Darknodes []identity.Address
+	Pods      PodHeap
+	Darknodes identity.Addresses
 
 	BlockNumber   *big.Int
 	BlockInterval *big.Int

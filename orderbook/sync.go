@@ -3,15 +3,22 @@ package orderbook
 import (
 	"fmt"
 	"log"
+	"sync"
+
+	"github.com/republicprotocol/republic-go/identity"
 
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 type Syncer interface {
+	OnChangeEpoch(epoch registry.Epoch)
 	Sync() (Notifications, error)
 }
 
 type syncer struct {
+	addr identity.Address
+
 	// Stores for storing and loading data
 	pointerStore PointerStorer
 	orderStore   OrderStorer
@@ -21,17 +28,48 @@ type syncer struct {
 	contractBinder ContractBinder
 	limit          int
 	resyncPointer  int
+
+	epochMu   *sync.Mutex
+	currEpoch *registry.Epoch
+	prevEpoch *registry.Epoch
+	currPod   *registry.Pod
+	prevPod   *registry.Pod
 }
 
-func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, contractBinder ContractBinder, limit int) Syncer {
+func NewSyncer(addr identity.Address, pointerStore PointerStorer, orderStore OrderStorer, contractBinder ContractBinder, limit int) Syncer {
 	return &syncer{
+		addr: addr,
+
 		pointerStore: pointerStore,
 		orderStore:   orderStore,
 
 		contractBinder: contractBinder,
 		limit:          limit,
 		resyncPointer:  0,
+
+		epochMu:   new(sync.Mutex),
+		currEpoch: nil,
+		prevEpoch: nil,
+		currPod:   nil,
+		prevPod:   nil,
 	}
+}
+
+// Sync implements the Syncer interface.
+func (syncer *syncer) OnChangeEpoch(epoch registry.Epoch) {
+	syncer.epochMu.Lock()
+	defer syncer.epochMu.Unlock()
+
+	syncer.prevEpoch = syncer.currEpoch
+	syncer.prevPod = syncer.prevPod
+
+	syncer.currEpoch = &epoch
+	currPod, err := syncer.currEpoch.Pod(syncer.addr)
+	if err != nil {
+		syncer.currPod = nil
+		return
+	}
+	syncer.currPod = &currPod
 }
 
 // Sync implements the Syncer interface.
@@ -88,6 +126,10 @@ func (syncer *syncer) sync(notifications *Notifications) error {
 	}()
 
 	for i, orderID := range orderIDs {
+		// Filter away orders that do not include us in their path
+		if !syncer.isInPath(orderID) {
+			continue
+		}
 		switch orderStatuses[i] {
 		case order.Open:
 			numOpenOrders++
@@ -183,4 +225,18 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		}
 	}
 	return nil
+}
+
+func (syncer *syncer) isInPath(orderID order.ID) bool {
+	syncer.epochMu.Lock()
+	defer syncer.epochMu.Unlock()
+	return syncer.isInPathOfEpoch(syncer.currEpoch, syncer.currPod, orderID) || syncer.isInPathOfEpoch(syncer.prevEpoch, syncer.prevPod, orderID)
+}
+
+func (syncer *syncer) isInPathOfEpoch(epoch *registry.Epoch, pod *registry.Pod, orderID order.ID) bool {
+	if epoch == nil || pod == nil || epoch.Pods == nil || len(epoch.Pods) == 0 {
+		return false
+	}
+	index, ok := epoch.Pods.PathOfOrder(orderID).IndexOfPod(pod)
+	return index >= 0 && ok
 }
