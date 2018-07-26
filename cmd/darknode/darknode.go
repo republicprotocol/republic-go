@@ -91,6 +91,15 @@ func main() {
 	}
 	defer store.Release()
 
+	// Get own nonce from leveldb, if present and store multiaddress.
+	_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+	if err != nil && err != swarm.ErrMultiAddressNotFound {
+		logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
+	}
+	if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce+1); err != nil {
+		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
+	}
+
 	// New gRPC components
 	server := grpc.NewServer()
 
