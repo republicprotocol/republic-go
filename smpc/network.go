@@ -118,7 +118,9 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		func() {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
-			network.networkSenders[networkID][addr] = sender
+			if _, ok := network.networkSenders[networkID]; ok {
+				network.networkSenders[networkID][addr] = sender
+			}
 		}()
 	})
 }
@@ -217,7 +219,6 @@ func (network *network) connectOrListen(ctx context.Context, networkID NetworkID
 		}
 		log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
 		return sender
-
 	}
 
 	// Wait for the client to connect to us
