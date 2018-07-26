@@ -11,6 +11,11 @@ import (
 // be implemented in contract.Binder
 type ContractBinder interface {
 	PublicKey(addr identity.Address) (rsa.PublicKey, error)
-
 	IsRegistered(addr identity.Address) (bool, error)
+
+	EpochHash() ([32]byte, error)
+	PreviousEpochHash() ([32]byte, error)
+
+	Darknodes() (identity.Addresses, error)
+	PreviousDarknodes() (identity.Addresses, error)
 }
