@@ -181,6 +181,16 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 			}
 		}
 	}
+
+	multiaAddrs, err := swarmer.Peers()
+	if err != nil {
+		log.Println("cannot get peers")
+	}
+	log.Println("cannot find query address")
+	for _, multiAddr := range multiaAddrs {
+		log.Println(multiAddr.Address())
+	}
+
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
 }
 
