@@ -1078,11 +1078,11 @@ func (binder *Binder) CurrentBlockNumber() (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	block, err := binder.conn.Client.BlockByNumber(context.Background(), nil)
+	header, err := binder.conn.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return nil, err
 	}
-	return block.Number(), err
+	return header.Number, err
 }
 
 func toByte(id []byte) ([20]byte, error) {
