@@ -309,15 +309,18 @@ func (server *server) Query(ctx context.Context, query identity.Address) (identi
 func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, α int) (identity.MultiAddresses, error) {
 	multiAddr, _, err := storer.MultiAddress(query)
 	if err == nil {
+		log.Printf("got multiaddress: %v", multiAddr.Address())
 		return []identity.MultiAddress{multiAddr}, nil
 	}
 
 	multiAddrsIter, err := storer.MultiAddresses()
 	if err != nil {
+		log.Printf("error at getting multiaddresses: %v", err)
 		return identity.MultiAddresses{}, err
 	}
 	multiAddrs, _, err := multiAddrsIter.Collect()
 	if err != nil {
+		log.Printf("error at collecting multiaddresses: %v", err)
 		return identity.MultiAddresses{}, err
 	}
 	if len(multiAddrs) <= α {
