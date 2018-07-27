@@ -21,7 +21,7 @@ var ErrNonceTooLow = errors.New("nonce too low")
 // LevelDB. It contains additional timestamping information so that LevelDB can
 // provide pruning.
 type SwarmMultiAddressValue struct {
-	Nonce        uint64                `json:"multiAddressNonce"`
+	Nonce        uint64                `json:"nonce"`
 	MultiAddress identity.MultiAddress `json:"multiAddress"`
 	Timestamp    time.Time             `json:"timestamp"`
 }
