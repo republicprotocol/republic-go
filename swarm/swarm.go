@@ -134,6 +134,8 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
+	log.Printf("got %v random multiaddrs", len(randomMultiAddrs))
+
 	keys := map[identity.Address]struct{}{}
 
 	// Query α closer multiaddrs until the node is reached or there are no
@@ -188,8 +190,12 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				randomMultiAddrs = append(randomMultiAddrs, multi)
 			}
 		}
+		log.Printf("new %v random multiaddrs", len(randomMultiAddrs))
 	}
 
+	for key := range keys {
+		log.Printf("saw %v", key)
+	}
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
 }
 
