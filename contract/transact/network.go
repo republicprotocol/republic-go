@@ -75,7 +75,7 @@ func defaultNetwork(id string) (network Network) {
 			Orderbook:        common.HexToAddress("0x8356e57aa32547685149a859293ad83c144b800c"),
 			RewardVault:      common.HexToAddress("0x7214c4584ab01e61355244e2325ab3f40aca4d85"),
 			RenExBalances:    common.HexToAddress("0xc2c126e1eb32e6ad50c611fb92d009b4b4518b00"),
-			RenExSettlement:  common.HexToAddress("0xaa14f741b8dc7fc9166807144d881b016f0ee92f"),
+			RenExSettlement:  common.HexToAddress("0x65712325c41fb39b9205e08483b43142d919cc42"),
 		}
 
 	case "local":
