@@ -96,7 +96,7 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress, nonce uint64) (bool, error) {
 	isNew := false
-	log.Printf("storing........ %v", multiAddress)
+
 	value := SwarmMultiAddressValue{
 		Nonce:        nonce,
 		MultiAddress: multiAddress,
@@ -119,6 +119,7 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.Multi
 	if err != nil {
 		return isNew, err
 	}
+	log.Printf("storing........ %v", value.MultiAddress)
 	return isNew, table.db.Put(table.key(multiAddress.Address().Hash()), data, nil)
 }
 
