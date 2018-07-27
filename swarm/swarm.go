@@ -128,7 +128,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 	}
 
 	// If multiaddress is not present in the store, query for closer nodes.
-	multiAddrsCloser, err := closerMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), query, swarmer.α)
+	randomMultiAddrs, err := randomMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), query, swarmer.α)
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
@@ -137,9 +137,9 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 	// Query α closer multiaddrs until the node is reached or there are no
 	// more newer multiaddresses in the store.
-	for i := 0; len(multiAddrsCloser) > 0; i++ {
-		multiAddr := multiAddrsCloser[0]
-		multiAddrsCloser = multiAddrsCloser[1:]
+	for len(randomMultiAddrs) > 0 {
+		multiAddr := randomMultiAddrs[0]
+		randomMultiAddrs = randomMultiAddrs[1:]
 		if _, ok := keys[multiAddr.Address()]; ok {
 			continue
 		}
@@ -154,37 +154,39 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 			return multiAddr, nil
 		}
 
-		// Query for closer addresses.
-		closer, err := swarmer.client.Query(ctx, multiAddr, query)
+		// Query for more random multiaddresses addresses.
+		multiAddrs, err := swarmer.client.Query(ctx, multiAddr, query)
 		if err != nil {
 			log.Printf("cannot query %v: %v", multiAddr.Address(), err)
 			continue
 		}
 
-		for _, multi := range closer {
+		for _, multi := range multiAddrs {
 			if multi.Address() == query {
 				return multi, nil
 			}
 
-			if _, ok := keys[multiAddr.Address()]; ok {
+			if _, ok := keys[multi.Address()]; ok {
 				continue
 			}
 
-			_, err := swarmer.storer.PutMultiAddress(multi, 1)
+			// Get nonce of multiaddress if present in store and
+			// store it back to the store.
+			_, nonce, err := swarmer.storer.MultiAddress(multi.Address())
+			if err != nil && err != ErrMultiAddressNotFound {
+				continue
+			}
+
+			_, err = swarmer.storer.PutMultiAddress(multi, nonce)
 			if err != nil {
 				log.Printf("cannot store %v: %v", multi.Address(), err)
 				continue
 			}
 
 			if _, ok := keys[multi.Address()]; !ok {
-				multiAddrsCloser = append(multiAddrsCloser, multi)
+				randomMultiAddrs = append(randomMultiAddrs, multi)
 			}
 		}
-	}
-
-	log.Println("cannot find query address")
-	for addr := range keys {
-		log.Println(addr)
 	}
 
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
@@ -204,6 +206,10 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 			continue
 		}
 		keys[i] = struct{}{}
+
+		if multiAddrs[i].Address() == multiAddr.Address() {
+			continue
+		}
 
 		if err := swarmer.client.Ping(ctx, multiAddrs[i], multiAddr, nonce); err != nil {
 			log.Printf("cannot ping node with address %v: %v", multiAddrs[i], err)
@@ -279,10 +285,10 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress, nonc
 }
 
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
-	return closerMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), query, server.α)
+	return randomMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), query, server.α)
 }
 
-func closerMultiAddrs(storer MultiAddressStorer, addr, query identity.Address, α int) (identity.MultiAddresses, error) {
+func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, α int) (identity.MultiAddresses, error) {
 	multiAddr, _, err := storer.MultiAddress(query)
 	if err == nil {
 		return []identity.MultiAddress{multiAddr}, nil
@@ -311,7 +317,7 @@ func closerMultiAddrs(storer MultiAddressStorer, addr, query identity.Address, �
 		multiAddrs = multiAddrs[:len(multiAddrs)-1]
 
 		// Do not return own multi-address
-		if multiAddr.Address() == addr {
+		if multiAddr.Address() == self {
 			continue
 		}
 		results = append(results, multiAddr)
