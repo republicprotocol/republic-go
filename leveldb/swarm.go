@@ -54,6 +54,8 @@ func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, uint64
 	if err := json.Unmarshal(data, &value); err != nil {
 		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
 	}
+	log.Printf("cursor returns ..... %v", value.MultiAddress)
+
 	return value.MultiAddress, value.Nonce, iter.inner.Error()
 }
 
