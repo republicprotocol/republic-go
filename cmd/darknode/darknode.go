@@ -179,9 +179,11 @@ func main() {
 		fmtStr := "bootstrapping\n"
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			// Get nonce of the bootstrap multiaddress, if present in the store.
+			log.Printf("bootstrap addr: %v", multiAddr.Address())
 			_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap nonce details from store: %v", err))
+				continue
 			}
 			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
