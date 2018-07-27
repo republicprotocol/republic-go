@@ -67,6 +67,8 @@ func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, []u
 			return multiaddresses, nonces, err
 		}
 
+		log.Printf("iterating..... got %v", multiaddress)
+
 		multiaddresses = append(multiaddresses, multiaddress)
 		nonces = append(nonces, nonce)
 	}
@@ -94,7 +96,7 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
 func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress, nonce uint64) (bool, error) {
 	isNew := false
-	log.Printf("storing %v", multiAddress.Address())
+	// log.Printf("storing %v", multiAddress.Address())
 	value := SwarmMultiAddressValue{
 		Nonce:        nonce,
 		MultiAddress: multiAddress,
