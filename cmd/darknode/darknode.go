@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	netHttp "net/http"
 	"os"
@@ -159,6 +160,7 @@ func main() {
 	go func() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
+		rand.Seed(time.Now().UnixNano())
 
 		// Wait until registration
 		isRegistered, err := contractBinder.IsRegistered(config.Address)
@@ -213,6 +215,7 @@ func main() {
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(5 * time.Second)
+				rand.Seed(time.Now().UnixNano())
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
