@@ -3,7 +3,6 @@ package swarm
 import (
 	"context"
 	"log"
-	"math"
 	"math/rand"
 	"time"
 
@@ -147,17 +146,17 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 	log.Printf("got %v random multiaddrs for a total of %v in store", len(randomMultiAddrs), len(mas))
 
-	keys := map[identity.Address]struct{}{}
+	seenAddrs := map[identity.Address]struct{}{}
 
 	// Query α closer multiaddrs until the node is reached or there are no
 	// more newer multiaddresses in the store.
 	for len(randomMultiAddrs) > 0 {
 		multiAddr := randomMultiAddrs[0]
 		randomMultiAddrs = randomMultiAddrs[1:]
-		if _, ok := keys[multiAddr.Address()]; ok {
+		if _, ok := seenAddrs[multiAddr.Address()]; ok {
 			continue
 		}
-		keys[multiAddr.Address()] = struct{}{}
+		seenAddrs[multiAddr.Address()] = struct{}{}
 
 		// Check if same address is returned
 		if multiAddr.Address() == swarmer.MultiAddress().Address() {
@@ -180,7 +179,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				return multi, nil
 			}
 
-			if _, ok := keys[multi.Address()]; ok {
+			if _, ok := seenAddrs[multi.Address()]; ok {
 				continue
 			}
 
@@ -197,14 +196,14 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				continue
 			}
 
-			if _, ok := keys[multi.Address()]; !ok {
+			if _, ok := seenAddrs[multi.Address()]; !ok {
 				randomMultiAddrs = append(randomMultiAddrs, multi)
 			}
 		}
 		log.Printf("new %v random multiaddrs", len(randomMultiAddrs))
 	}
 
-	for key := range keys {
+	for key := range seenAddrs {
 		log.Printf("saw %v", key)
 	}
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
@@ -217,13 +216,26 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		return err
 	}
 
-	keys := map[int]struct{}{}
-	for len(keys) < int(math.Min(float64(swarmer.α), float64(len(multiAddrs)))) {
+	if len(multiAddrs) <= swarmer.α {
+		for _, multi := range multiAddrs {
+			if multi.Address() == multiAddr.Address() {
+				continue
+			}
+
+			if err := swarmer.client.Ping(ctx, multi, multiAddr, nonce); err != nil {
+				log.Printf("cannot ping node with address %v: %v", multi, err)
+			}
+		}
+		return nil
+	}
+
+	seenAddrs := map[int]struct{}{}
+	for len(seenAddrs) < swarmer.α {
 		i := rand.Intn(len(multiAddrs))
-		if _, ok := keys[i]; ok {
+		if _, ok := seenAddrs[i]; ok {
 			continue
 		}
-		keys[i] = struct{}{}
+		seenAddrs[i] = struct{}{}
 
 		if multiAddrs[i].Address() == multiAddr.Address() {
 			continue
