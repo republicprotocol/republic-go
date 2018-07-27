@@ -135,18 +135,18 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
-	multiAddrsIt, err := swarmer.storer.MultiAddresses()
-	if err != nil {
-		log.Println(err)
-		// return identity.MultiAddress{}, err
-	}
-	mas, _, err := multiAddrsIt.Collect()
-	if err != nil {
-		log.Println(err)
-		// return identity.MultiAddress{}, err
-	}
+	// multiAddrsIt, err := swarmer.storer.MultiAddresses()
+	// if err != nil {
+	// 	log.Println(err)
+	// 	// return identity.MultiAddress{}, err
+	// }
+	// mas, _, err := multiAddrsIt.Collect()
+	// if err != nil {
+	// 	log.Println(err)
+	// 	// return identity.MultiAddress{}, err
+	// }
 
-	log.Printf("got %v random multiaddrs for a total of %v in store", len(randomMultiAddrs), len(mas))
+	// log.Printf("got %v random multiaddrs for a total of %v in store", len(randomMultiAddrs), len(mas))
 
 	seenAddrs := map[identity.Address]struct{}{}
 
@@ -335,6 +335,9 @@ func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, Î
 		log.Printf("error at getting multiaddresses: %v", err)
 		return identity.MultiAddresses{}, err
 	}
+
+	defer multiAddrsIter.Release()
+
 	multiAddrs, _, err := multiAddrsIter.Collect()
 	if err != nil {
 		log.Printf("error at collecting multiaddresses: %v", err)
