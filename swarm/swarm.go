@@ -229,6 +229,7 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 			continue
 		}
 
+		log.Printf("multiaddress: %v", multiAddrs[i])
 		if err := swarmer.client.Ping(ctx, multiAddrs[i], multiAddr, nonce); err != nil {
 			log.Printf("cannot ping node with address %v: %v", multiAddrs[i], err)
 		}
