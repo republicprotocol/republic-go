@@ -134,7 +134,18 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
-	log.Printf("got %v random multiaddrs", len(randomMultiAddrs))
+	multiAddrsIt, err := swarmer.storer.MultiAddresses()
+	if err != nil {
+		log.Println(err)
+		// return identity.MultiAddress{}, err
+	}
+	mas, _, err := multiAddrsIt.Collect()
+	if err != nil {
+		log.Println(err)
+		// return identity.MultiAddress{}, err
+	}
+
+	log.Printf("got %v random multiaddrs for a total of %v in store", len(randomMultiAddrs), len(mas))
 
 	keys := map[identity.Address]struct{}{}
 
