@@ -321,6 +321,10 @@ func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, Î
 		return identity.MultiAddresses{}, err
 	}
 	if len(multiAddrs) <= Î± {
+		log.Println("here")
+		for _, m := range multiAddrs {
+			log.Printf("got %v", m.Address())
+		}
 		return multiAddrs, nil
 	}
 
