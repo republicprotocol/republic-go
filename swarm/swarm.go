@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 )
@@ -305,6 +306,8 @@ func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, �
 	if len(multiAddrs) <= α {
 		return multiAddrs, nil
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	results := identity.MultiAddresses{}
 	for len(results) < α {
