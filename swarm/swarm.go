@@ -105,6 +105,8 @@ func (swarmer *swarmer) Peers() (identity.MultiAddresses, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer multiaddressesIterator.Release()
+
 	multiAddrs, _, err := multiaddressesIterator.Collect()
 	if err != nil {
 		return nil, err
