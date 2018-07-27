@@ -307,6 +307,7 @@ func (server *server) Query(ctx context.Context, query identity.Address) (identi
 }
 
 func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, α int) (identity.MultiAddresses, error) {
+	log.Printf("Alpha: %v", α)
 	multiAddr, _, err := storer.MultiAddress(query)
 	if err == nil {
 		log.Printf("got multiaddress: %v", multiAddr.Address())
