@@ -29,7 +29,7 @@ var _ = Describe("Swarm", func() {
 	Context("when bootstrapping", func() {
 
 		It("should be able to query any peer after bootstrapping", func() {
-			numberOfClients := 75
+			numberOfClients := 100
 			numberOfBootstrapClients := 5
 			α := 4
 

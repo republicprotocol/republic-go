@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	netHttp "net/http"
 	"os"
@@ -91,6 +92,15 @@ func main() {
 	}
 	defer store.Release()
 
+	// Get own nonce from leveldb, if present and store multiaddress.
+	_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+	if err != nil && err != swarm.ErrMultiAddressNotFound {
+		logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
+	}
+	if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce+1); err != nil {
+		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
+	}
+
 	// New gRPC components
 	server := grpc.NewServer()
 
@@ -99,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot create swarmer: %v", err)
 	}
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Second)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
 	swarmService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
@@ -150,6 +160,7 @@ func main() {
 	go func() {
 		// Wait for the gRPC server to boot
 		time.Sleep(time.Second)
+		rand.Seed(time.Now().UnixNano())
 
 		// Wait until registration
 		isRegistered, err := contractBinder.IsRegistered(config.Address)
@@ -171,6 +182,7 @@ func main() {
 			_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap nonce details from store: %v", err))
+				continue
 			}
 			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
@@ -204,6 +216,7 @@ func main() {
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(5 * time.Second)
+				rand.Seed(time.Now().UnixNano())
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
@@ -260,11 +273,11 @@ func getIPAddress() (string, error) {
 
 func pingNetwork(swarmer swarm.Swarmer) {
 	if err := swarmer.Ping(context.Background()); err != nil {
-		log.Printf("bootstrap: %v", err)
+		log.Printf("cannot bootstrap: %v", err)
 	}
 	peers, err := swarmer.Peers()
 	if err != nil {
 		logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
 	}
-	log.Printf("connected to %v peers", len(peers))
+	log.Printf("connected to %v peers", len(peers)-1)
 }
