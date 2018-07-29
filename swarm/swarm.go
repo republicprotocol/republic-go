@@ -135,19 +135,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
-	// multiAddrsIt, err := swarmer.storer.MultiAddresses()
-	// if err != nil {
-	// 	log.Println(err)
-	// 	// return identity.MultiAddress{}, err
-	// }
-	// mas, _, err := multiAddrsIt.Collect()
-	// if err != nil {
-	// 	log.Println(err)
-	// 	// return identity.MultiAddress{}, err
-	// }
-
-	// log.Printf("got %v random multiaddrs for a total of %v in store", len(randomMultiAddrs), len(mas))
-
 	seenAddrs := map[identity.Address]struct{}{}
 
 	// Query α closer multiaddrs until the node is reached or there are no
@@ -202,12 +189,8 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				randomMultiAddrs = append(randomMultiAddrs, multi)
 			}
 		}
-		log.Printf("new %v random multiaddrs", len(randomMultiAddrs))
 	}
 
-	for key := range seenAddrs {
-		log.Printf("saw %v", key)
-	}
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
 }
 
@@ -224,9 +207,9 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 				continue
 			}
 
-			log.Printf("multiaddress: %v", multi)
 			if err := swarmer.client.Ping(ctx, multi, multiAddr, nonce); err != nil {
 				log.Printf("cannot ping node with address %v: %v", multi, err)
+				continue
 			}
 		}
 		return nil
@@ -244,7 +227,6 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 			continue
 		}
 
-		log.Printf("multiaddress: %v", multiAddrs[i])
 		if err := swarmer.client.Ping(ctx, multiAddrs[i], multiAddr, nonce); err != nil {
 			log.Printf("cannot ping node with address %v: %v", multiAddrs[i], err)
 		}
@@ -323,10 +305,8 @@ func (server *server) Query(ctx context.Context, query identity.Address) (identi
 }
 
 func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, α int) (identity.MultiAddresses, error) {
-	log.Printf("Alpha: %v", α)
 	multiAddr, _, err := storer.MultiAddress(query)
 	if err == nil {
-		log.Printf("got multiaddress: %v", multiAddr.Address())
 		return []identity.MultiAddress{multiAddr}, nil
 	}
 
@@ -344,10 +324,6 @@ func randomMultiAddrs(storer MultiAddressStorer, self, query identity.Address, �
 		return identity.MultiAddresses{}, err
 	}
 	if len(multiAddrs) <= α {
-		// log.Println("here")
-		// for _, m := range multiAddrs {
-			// log.Printf("got %v", m.Address())
-		// }
 		return multiAddrs, nil
 	}
 

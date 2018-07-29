@@ -3,7 +3,6 @@ package leveldb
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -54,7 +53,6 @@ func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, uint64
 	if err := json.Unmarshal(data, &value); err != nil {
 		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
 	}
-	log.Printf("cursor returns ..... %v", value)
 
 	return value.MultiAddress, value.Nonce, iter.inner.Error()
 }
@@ -68,8 +66,6 @@ func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, []u
 		if err != nil {
 			return multiaddresses, nonces, err
 		}
-
-		log.Printf("iterating..... got %v", multiaddress)
 
 		multiaddresses = append(multiaddresses, multiaddress)
 		nonces = append(nonces, nonce)
@@ -121,7 +117,6 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.Multi
 	if err != nil {
 		return isNew, err
 	}
-	log.Printf("storing........ %v", value.MultiAddress)
 	return isNew, table.db.Put(table.key(multiAddress.Address().Hash()), data, nil)
 }
 
