@@ -12,12 +12,12 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// ErrNonceTooLow is returned if the nonce of the multiaddress is lower than the
+// ErrNonceTooLow is returned if the nonce of the multiAddress is lower than the
 // one present in the local store.
 var ErrNonceTooLow = errors.New("nonce too low")
 
-// SwarmMultiAddressValue is the storage format for multiaddresses being stored in
-// LevelDB. It contains additional timestamping information so that LevelDB can
+// SwarmMultiAddressValue is the storage format for multiAddresses being stored in
+// LevelDB. It contains additional timestamp information so that LevelDB can
 // provide pruning.
 type SwarmMultiAddressValue struct {
 	MultiAddress identity.MultiAddress `json:"multiAddress"`
