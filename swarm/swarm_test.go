@@ -21,17 +21,19 @@ import (
 
 var _ = Describe("Swarm", func() {
 
-	AfterEach(func() {
-		os.RemoveAll("./tmp")
-	})
+	var (
+		numberOfClients          = 100
+		numberOfBootstrapClients = 5
+		α                        = 4
+	)
 
-	Context("when bootstrapping", func() {
+	Context("when querying after bootstrapping", func() {
 
-		It("should be able to query any peer after bootstrapping", func() {
-			numberOfClients := 100
-			numberOfBootstrapClients := 5
-			α := 4
+		AfterEach(func() {
+			os.RemoveAll("./tmp")
+		})
 
+		It("should be able to find most peers in the network", func() {
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
@@ -46,7 +48,7 @@ var _ = Describe("Swarm", func() {
 			}
 
 			for i := 0; i < numberOfClients; i++ {
-				client, store, err := newMockClientToServer(serverHub, i)
+				client, store, err := newMockClientToServer(serverHub, i, i > numberOfClients/2)
 				Expect(err).ShouldNot(HaveOccurred())
 				clients[i] = &client
 				multiAddresses[i] = clients[i].MultiAddress()
@@ -101,6 +103,7 @@ var _ = Describe("Swarm", func() {
 
 			dispatch.CoForAll(numberOfClients, func(i int) {
 				defer GinkgoRecover()
+
 				peers, err := swarmers[i].Peers()
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(len(peers)).To(BeNumerically(">=", (numberOfClients - (numberOfClients / 10))))
@@ -145,12 +148,13 @@ func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
 }
 
 type mockClientToServer struct {
-	store     MultiAddressStorer
-	multiAddr identity.MultiAddress
-	serverHub *mockServerHub
+	store       MultiAddressStorer
+	multiAddr   identity.MultiAddress
+	isAdversary bool
+	serverHub   *mockServerHub
 }
 
-func newMockClientToServer(mockServerHub *mockServerHub, i int) (mockClientToServer, MultiAddressStorer, error) {
+func newMockClientToServer(mockServerHub *mockServerHub, i int, isAdversary bool) (mockClientToServer, MultiAddressStorer, error) {
 	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return mockClientToServer{}, nil, err
@@ -164,9 +168,10 @@ func newMockClientToServer(mockServerHub *mockServerHub, i int) (mockClientToSer
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return mockClientToServer{
-		store:     store,
-		multiAddr: multiAddr,
-		serverHub: mockServerHub,
+		store:       store,
+		multiAddr:   multiAddr,
+		isAdversary: isAdversary,
+		serverHub:   mockServerHub,
 	}, store, nil
 }
 
@@ -212,6 +217,10 @@ func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.M
 func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
 	var server Server
 	isActive := false
+
+	if client.isAdversary && rand.Uint64()%2 == 0 {
+		return identity.MultiAddresses{}, nil
+	}
 
 	client.serverHub.connsMu.Lock()
 	if isActive, _ = client.serverHub.active[to.Address()]; isActive {
