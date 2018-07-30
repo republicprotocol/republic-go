@@ -57,8 +57,8 @@ func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, error)
 }
 
 // Collect implements the swarm.MultiAddressIterator interface.
-func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, error) {
-	multiaddresses := []identity.MultiAddress{}
+func (iter *SwarmMultiAddressesIterator) Collect() (identity.MultiAddresses, error) {
+	multiaddresses := identity.MultiAddresses{}
 	for iter.Next() {
 		multiaddress, err := iter.Cursor()
 		if err != nil {
