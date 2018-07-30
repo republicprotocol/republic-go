@@ -69,6 +69,9 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				for j := 0; j < numberOfBootstrapClients; j++ {
+					if i == j {
+						continue
+					}
 					if _, err := stores[i].PutMultiAddress(multiAddresses[j]); err != nil {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
