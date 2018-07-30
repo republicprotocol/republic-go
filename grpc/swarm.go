@@ -33,7 +33,7 @@ func NewSwarmClient(store swarm.MultiAddressStorer, addr identity.Address) swarm
 }
 
 // Ping implements the swarm.Client interface.
-func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress, nonce uint64) error {
+func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -173,9 +173,8 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
 		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
-
 	from.Signature = request.GetMultiAddress().GetSignature()
-	from.Nonce := request.GetMultiAddress().GetMultiAddressNonce()
+	from.Nonce = request.GetMultiAddress().GetMultiAddressNonce()
 
 	err = service.server.Ping(ctx, from)
 	if err != nil {
@@ -203,7 +202,7 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 	}
 
 	from.Signature = request.GetMultiAddress().GetSignature()
-	from.Nonce := request.GetMultiAddress().GetMultiAddressNonce()
+	from.Nonce = request.GetMultiAddress().GetMultiAddressNonce()
 
 	err = service.server.Pong(ctx, from)
 	if err != nil {

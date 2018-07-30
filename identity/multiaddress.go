@@ -44,26 +44,26 @@ type MultiAddresses []MultiAddress
 
 // NewMultiAddressFromString parses and validates an input string. It returns a
 // MultiAddress, or an error.
-func NewMultiAddressFromString(s string) (*MultiAddress, error) {
+func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	multiAddress, err := multiaddr.NewMultiaddr(s)
 	if err != nil {
-		return nil, err
+		return MultiAddress{}, err
 	}
 	address, err := multiAddress.ValueForProtocol(RepublicCode)
 	if err != nil {
-		return nil, err
+		return MultiAddress{}, err
 	}
 	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
 	if err != nil {
-		return nil, err
+		return MultiAddress{}, err
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return &MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
+	return MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
 }
 
 // ValueForProtocol returns the value of the specific protocol in the MultiAddress
-func (multiAddress *MultiAddress) ValueForProtocol(code int) (string, error) {
+func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
 	if code == RepublicCode {
 		return multiAddress.address.String(), nil
 	}
@@ -71,29 +71,29 @@ func (multiAddress *MultiAddress) ValueForProtocol(code int) (string, error) {
 }
 
 // Address returns the Republic address of a MultiAddress.
-func (multiAddress *MultiAddress) Address() Address {
+func (multiAddress MultiAddress) Address() Address {
 	return multiAddress.address
 }
 
 // ID returns the Republic ID of a MultiAddress.
-func (multiAddress *MultiAddress) ID() ID {
+func (multiAddress MultiAddress) ID() ID {
 	return multiAddress.address.ID()
 }
 
 // String returns the MultiAddress as a plain string.
-func (multiAddress *MultiAddress) String() string {
+func (multiAddress MultiAddress) String() string {
 	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
 }
 
 // Hash returns the Keccak256 hash of a multiAddress. This hash is used to create
 // signatures for a multiaddress.
-func (multiAddress *MultiAddress) Hash() []byte {
+func (multiAddress MultiAddress) Hash() []byte {
 	multiaddrBytes := append([]byte(multiAddress.String()), []byte{byte(multiAddress.Nonce)}...)
 	return crypto.Keccak256(multiaddrBytes)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddress *MultiAddress) MarshalJSON() ([]byte, error) {
+func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
 	if multiAddress.address.String() == "" {
 		return json.Marshal("")
 	}
@@ -101,7 +101,7 @@ func (multiAddress *MultiAddress) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
+func (multiAddress MultiAddress) UnmarshalJSON(data []byte) error {
 	multiAddressAsString := ""
 	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
 		return err
