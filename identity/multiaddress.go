@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
-	rCrypto "github.com/republicprotocol/republic-go/crypto"
 )
 
 // Codes for extracting specific protocol values from a MultiAddress.
@@ -45,26 +44,26 @@ type MultiAddresses []MultiAddress
 
 // NewMultiAddressFromString parses and validates an input string. It returns a
 // MultiAddress, or an error.
-func NewMultiAddressFromString(s string) (MultiAddress, error) {
+func NewMultiAddressFromString(s string) (*MultiAddress, error) {
 	multiAddress, err := multiaddr.NewMultiaddr(s)
 	if err != nil {
-		return MultiAddress{}, err
+		return nil, err
 	}
 	address, err := multiAddress.ValueForProtocol(RepublicCode)
 	if err != nil {
-		return MultiAddress{}, err
+		return nil, err
 	}
 	addressAsMultiAddress, err := multiaddr.NewMultiaddr("/republic/" + address)
 	if err != nil {
-		return MultiAddress{}, err
+		return nil, err
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
+	return &MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
 }
 
 // ValueForProtocol returns the value of the specific protocol in the MultiAddress
-func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
+func (multiAddress *MultiAddress) ValueForProtocol(code int) (string, error) {
 	if code == RepublicCode {
 		return multiAddress.address.String(), nil
 	}
@@ -72,24 +71,18 @@ func (multiAddress MultiAddress) ValueForProtocol(code int) (string, error) {
 }
 
 // Address returns the Republic address of a MultiAddress.
-func (multiAddress MultiAddress) Address() Address {
+func (multiAddress *MultiAddress) Address() Address {
 	return multiAddress.address
 }
 
 // ID returns the Republic ID of a MultiAddress.
-func (multiAddress MultiAddress) ID() ID {
+func (multiAddress *MultiAddress) ID() ID {
 	return multiAddress.address.ID()
 }
 
 // String returns the MultiAddress as a plain string.
-func (multiAddress MultiAddress) String() string {
+func (multiAddress *MultiAddress) String() string {
 	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
-}
-
-// Sign takes a crypto.Singer and sing the hash of the multiAddress.
-func (multiAddress *MultiAddress) Sign(signer rCrypto.Signer) (err error) {
-	multiAddress.Signature, err = signer.Sign(multiAddress.Hash())
-	return
 }
 
 // Hash returns the Keccak256 hash of a multiAddress. This hash is used to create
@@ -100,7 +93,7 @@ func (multiAddress *MultiAddress) Hash() []byte {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
+func (multiAddress *MultiAddress) MarshalJSON() ([]byte, error) {
 	if multiAddress.address.String() == "" {
 		return json.Marshal("")
 	}
