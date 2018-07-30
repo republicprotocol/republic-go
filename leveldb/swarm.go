@@ -101,12 +101,18 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.Multi
 		isNew = true
 	}
 	// Return err if nonce is too low
-	if err == nil && oldMultiAddr.Nonce >= multiAddress.Nonce {
-		return isNew, ErrNonceTooLow
-	}
-	// If there is a change in the multiaddress stored, then return true
-	if err == nil && oldMultiAddr.String() != multiAddress.String() {
-		isNew = true
+	if err == nil {
+		if oldMultiAddr.Nonce > multiAddress.Nonce {
+			return isNew, ErrNonceTooLow
+		}
+		if oldMultiAddr.Nonce == multiAddress.Nonce {
+			return isNew, nil
+		}
+
+		// If there is a change in the multiaddress stored, then return true
+		if oldMultiAddr.String() != multiAddress.String() {
+			isNew = true
+		}
 	}
 
 	data, err := json.Marshal(value)

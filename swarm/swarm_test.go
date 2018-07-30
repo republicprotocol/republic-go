@@ -34,14 +34,13 @@ var _ = Describe("Swarm", func() {
 			os.RemoveAll("./tmp")
 		})
 
-		It("should be able to find most peers in the network", func(done Done) {
-			defer close(done)
-
+		It("should be able to find most peers in the network", func() {
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
 			multiAddresses := make(identity.MultiAddresses, numberOfClients)
 			swarmers := make([]Swarmer, numberOfClients)
+			ecdsaKeys := make([]crypto.EcdsaKey, numberOfClients)
 
 			// Creating a common server hub for all clients to use.
 			serverHub := &mockServerHub{
@@ -50,16 +49,21 @@ var _ = Describe("Swarm", func() {
 				active:  map[identity.Address]bool{},
 			}
 
+			var err error
 			// Initialize all the clients
 			for i := 0; i < numberOfClients; i++ {
-				client, store, err := newMockClientToServer(serverHub, i, i < numberOfClients/4)
+				ecdsaKeys[i], err = crypto.RandomEcdsaKey()
+				Expect(err).ShouldNot(HaveOccurred())
+				client, store, err := newMockClientToServer(serverHub, i, ecdsaKeys[i])
 				Expect(err).ShouldNot(HaveOccurred())
 				clients[i] = &client
 				multiAddresses[i] = clients[i].MultiAddress()
 				stores[i] = store
 
-				ecdsaKey, err := crypto.RandomEcdsaKey()
-				swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKey)
+				swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKeys[i])
+				signature, err := ecdsaKeys[i].Sign(multiAddresses[i].Hash())
+				Expect(err).ShouldNot(HaveOccurred())
+				multiAddresses[i].Signature = signature
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
@@ -70,9 +74,6 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				for j := 0; j < numberOfBootstrapClients; j++ {
-					if i == j {
-						continue
-					}
 					if _, err := stores[i].PutMultiAddress(multiAddresses[j]); err != nil {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
@@ -87,6 +88,10 @@ var _ = Describe("Swarm", func() {
 
 				err := swarmers[i].Ping(ctx)
 				Expect(err).ShouldNot(HaveOccurred())
+				multiAddresses[i].Nonce++
+				signature, err := ecdsaKeys[i].Sign(multiAddresses[i].Hash())
+				Expect(err).ShouldNot(HaveOccurred())
+				multiAddresses[i].Signature = signature
 
 				for j := 0; j < numberOfClients; j++ {
 					if i == j {
@@ -149,17 +154,20 @@ func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
 }
 
 type mockClientToServer struct {
-	store       MultiAddressStorer
-	multiAddr   identity.MultiAddress
-	isAdversary bool
-	serverHub   *mockServerHub
+	store     MultiAddressStorer
+	multiAddr identity.MultiAddress
+	serverHub *mockServerHub
 }
 
-func newMockClientToServer(mockServerHub *mockServerHub, i int, isAdversary bool) (mockClientToServer, MultiAddressStorer, error) {
+func newMockClientToServer(mockServerHub *mockServerHub, i int, key crypto.EcdsaKey) (mockClientToServer, MultiAddressStorer, error) {
 	multiAddr, err := testutils.RandomMultiAddress()
 	if err != nil {
 		return mockClientToServer{}, nil, err
 	}
+	multiAddr.Nonce = 1
+	signature, err := key.Sign(multiAddr.Hash())
+	Expect(err).ShouldNot(HaveOccurred())
+	multiAddr.Signature = signature
 
 	// Create leveldb store and store own multiaddress.
 	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
@@ -169,10 +177,9 @@ func newMockClientToServer(mockServerHub *mockServerHub, i int, isAdversary bool
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return mockClientToServer{
-		store:       store,
-		multiAddr:   multiAddr,
-		isAdversary: isAdversary,
-		serverHub:   mockServerHub,
+		store:     store,
+		multiAddr: multiAddr,
+		serverHub: mockServerHub,
 	}, store, nil
 }
 
@@ -219,9 +226,9 @@ func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAd
 	var server Server
 	isActive := false
 
-	if client.isAdversary && rand.Uint64()%2 == 0 {
-		return identity.MultiAddresses{}, nil
-	}
+	// if client.isAdversary && rand.Uint64()%2 == 0 {
+	// 	return identity.MultiAddresses{}, nil
+	// }
 
 	client.serverHub.connsMu.Lock()
 	if isActive, _ = client.serverHub.active[to.Address()]; isActive {
