@@ -69,3 +69,14 @@ func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.C
 	callback(join.ID, values)
 	return nil
 }
+
+// Receiver is a mock implementation of the smpc.Receiver interface.
+type Receiver struct {
+}
+
+func NewSmpcReceiver() *Receiver {
+	return &Receiver{}
+}
+
+func (receiver *Receiver) Receive(from identity.Address, message smpc.Message) {
+}
