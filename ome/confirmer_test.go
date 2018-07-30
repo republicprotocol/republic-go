@@ -1,7 +1,6 @@
 package ome_test
 
 import (
-	"fmt"
 	"os"
 	"time"
 

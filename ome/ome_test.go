@@ -49,7 +49,11 @@ var _ = Describe("Ome", func() {
 			addr, epoch, err = testutils.RandomEpoch(0)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			computationsGenerator = NewComputationGenerator()
+			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			Expect(err).ShouldNot(HaveOccurred())
+			storer = store.SomerComputationStore()
+
+			computationsGenerator = NewComputationGenerator(store.SomerOrderFragmentStore())
 			rsaKey, err := crypto.RandomRsaKey()
 			Expect(err).ShouldNot(HaveOccurred())
 			book = testutils.NewRandOrderbook(rsaKey)
@@ -61,10 +65,6 @@ var _ = Describe("Ome", func() {
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
 			settler = NewSettler(storer, smpcer, contract)
-
-			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
-			Expect(err).ShouldNot(HaveOccurred())
-			storer = store.SomerComputationStore()
 		})
 
 		AfterEach(func() {
@@ -103,9 +103,9 @@ var _ = Describe("Ome", func() {
 			_, epoch, err := testutils.RandomEpoch(0)
 			Expect(err).ShouldNot(HaveOccurred())
 
-				ome.OnChangeEpoch(epoch)
-				time.Sleep(2 * time.Second)
-			}()
+			ome.OnChangeEpoch(epoch)
+			time.Sleep(2 * time.Second)
+
 		})
 	})
 })
