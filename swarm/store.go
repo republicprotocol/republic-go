@@ -17,8 +17,8 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // MultiAddressStorer for the identity.MultiAddresses that are registered with
 // the dark node registry.
 type MultiAddressStorer interface {
-	PutMultiAddress(multiaddress identity.MultiAddress, nonce uint64) (bool, error)
-	MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error)
+	PutMultiAddress(multiaddress identity.MultiAddress) (bool, error)
+	MultiAddress(address identity.Address) (identity.MultiAddress, error)
 	MultiAddresses() (MultiAddressIterator, error)
 }
 
@@ -31,10 +31,10 @@ type MultiAddressIterator interface {
 
 	// Cursor returns the identity.MultiAddress at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (identity.MultiAddress, uint64, error)
+	Cursor() (identity.MultiAddress, error)
 
 	// Collect all identity.MultiAddresses in the iterator into slices.
-	Collect() ([]identity.MultiAddress, []uint64, error)
+	Collect() ([]identity.MultiAddress, error)
 
 	// Release the resources allocated by the iterator.
 	Release()
