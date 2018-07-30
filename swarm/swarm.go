@@ -243,7 +243,7 @@ type Server interface {
 	Ping(ctx context.Context, from identity.MultiAddress) error
 
 	// Pong will handle responses from unseen nodes and register their
-	// multiaddresses in the storer.
+	// multiAddresses in the storer.
 	Pong(ctx context.Context, from identity.MultiAddress) error
 
 	// Query will return the multiaddress of the query, if available in
