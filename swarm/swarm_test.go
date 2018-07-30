@@ -161,7 +161,7 @@ func newMockClientToServer(mockServerHub *mockServerHub, i int, isAdversary bool
 		return mockClientToServer{}, nil, err
 	}
 
-	// Create leveldb store and store own multiaddress.
+	// Create leveldb store and store own multiAddress.
 	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer.%v.out", i+1), 72*time.Hour)
 	Expect(err).ShouldNot(HaveOccurred())
 	store := db.SwarmMultiAddressStore()

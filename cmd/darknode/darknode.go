@@ -84,6 +84,7 @@ func main() {
 		log.Fatalf("cannot sign own multiaddress: %v", err)
 	}
 	multiAddr.Signature = multiAddrSignature
+	multiAddr.Nonce = 1
 
 	// New database for persistent storage
 	store, err := leveldb.NewStore(*dataParam, 72*time.Hour)
@@ -93,11 +94,11 @@ func main() {
 	defer store.Release()
 
 	// Get own nonce from leveldb, if present and store multiaddress.
-	_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+	_, err = store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil && err != swarm.ErrMultiAddressNotFound {
 		logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
 	}
-	if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce+1); err != nil {
+	if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
 		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
 	}
 
@@ -105,10 +106,7 @@ func main() {
 	server := grpc.NewServer()
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
-	swarmer, err := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha)
-	if err != nil {
-		log.Fatalf("cannot create swarmer: %v", err)
-	}
+	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &config.Keystore.EcdsaKey)
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
 	swarmService.Register(server)
 
@@ -179,12 +177,12 @@ func main() {
 		fmtStr := "bootstrapping\n"
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			// Get nonce of the bootstrap multiaddress, if present in the store.
-			_, nonce, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+			_, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap nonce details from store: %v", err))
 				continue
 			}
-			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr, nonce); err != nil {
+			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 			}
 			fmtStr += "  " + multiAddr.String() + "\n"
