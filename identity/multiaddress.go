@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
+	rCrypto "github.com/republicprotocol/republic-go/crypto"
 )
 
 // Codes for extracting specific protocol values from a MultiAddress.
@@ -85,9 +86,15 @@ func (multiAddress MultiAddress) String() string {
 	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
 }
 
-// Hash returns the Keccak256 hash of a multiaddrfess. This hash is used to create
+// Sign takes a crypto.Singer and sing the hash of the multiAddress.
+func (multiAddress *MultiAddress) Sign(signer rCrypto.Signer) (err error) {
+	multiAddress.Signature, err = signer.Sign(multiAddress.Hash())
+	return
+}
+
+// Hash returns the Keccak256 hash of a multiAddress. This hash is used to create
 // signatures for a multiaddress.
-func (multiAddress MultiAddress) Hash() []byte {
+func (multiAddress *MultiAddress) Hash() []byte {
 	multiaddrBytes := append([]byte(multiAddress.String()), []byte{byte(multiAddress.Nonce)}...)
 	return crypto.Keccak256(multiaddrBytes)
 }
