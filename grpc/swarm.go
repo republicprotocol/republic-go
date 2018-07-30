@@ -45,7 +45,7 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 		MultiAddress: &MultiAddress{
 			Signature:         multiAddr.Signature,
 			MultiAddress:      multiAddr.String(),
-			MultiAddressNonce: nonce,
+			MultiAddressNonce: multiAddr.Nonce,
 		},
 	}
 
@@ -63,7 +63,7 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 	}
 	defer conn.Close()
 
-	multiAddr, nonce, err := client.store.MultiAddress(client.addr)
+	multiAddr, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot get self details: %v", err))
 		return fmt.Errorf("cannot get self details: %v", err)
@@ -73,7 +73,7 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 		MultiAddress: &MultiAddress{
 			Signature:         multiAddr.Signature,
 			MultiAddress:      multiAddr.String(),
-			MultiAddressNonce: nonce,
+			MultiAddressNonce: multiAddr.Nonce,
 		},
 	}
 
@@ -119,7 +119,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 
 // MultiAddress implements the swarm.Client interface.
 func (client *swarmClient) MultiAddress() identity.MultiAddress {
-	multiAddr, _, err := client.store.MultiAddress(client.addr)
+	multiAddr, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot retrieve own multiaddress: %v", err))
 		return identity.MultiAddress{}
@@ -175,9 +175,9 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 	}
 
 	from.Signature = request.GetMultiAddress().GetSignature()
-	nonce := request.GetMultiAddress().GetMultiAddressNonce()
+	from.Nonce := request.GetMultiAddress().GetMultiAddressNonce()
 
-	err = service.server.Ping(ctx, from, nonce)
+	err = service.server.Ping(ctx, from)
 	if err != nil {
 		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update store with: %v", err))
 		return &PingResponse{}, fmt.Errorf("cannot update store: %v", err)
@@ -190,7 +190,7 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // and the SwarmService delegates the responsibility of handling this signed
 // identity.MultiAddress to its swarm.Server. If its swarm.Server accepts the
 // signed identity.MultiAddress of the client it will return its own signed
-// identity.MultiAddress in a PingResponse.
+// identity.MultiAddress in a PongResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
@@ -203,9 +203,9 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 	}
 
 	from.Signature = request.GetMultiAddress().GetSignature()
-	nonce := request.GetMultiAddress().GetMultiAddressNonce()
+	from.Nonce := request.GetMultiAddress().GetMultiAddressNonce()
 
-	err = service.server.Pong(ctx, from, nonce)
+	err = service.server.Pong(ctx, from)
 	if err != nil {
 		logger.Network(logger.LevelInfo, fmt.Sprintf("cannot update storer with %v: %v", request.GetMultiAddress(), err))
 		return &PongResponse{}, fmt.Errorf("cannot update storer: %v", err)
