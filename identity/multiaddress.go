@@ -39,6 +39,14 @@ type MultiAddress struct {
 	baseMultiAddress multiaddr.Multiaddr
 }
 
+type multiAddressJsonValue struct {
+	Signature []byte `json:"signature"`
+	Nonce     uint64 `json:"nonce"`
+
+	Address          Address `json:"address"`
+	BaseMultiAddress string  `json:"baseMultiAddress"`
+}
+
 // MultiAddresses is an alias.
 type MultiAddresses []MultiAddress
 
@@ -94,28 +102,29 @@ func (multiAddress MultiAddress) Hash() []byte {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
-	if multiAddress.address.String() == "" {
-		return json.Marshal("")
+	val := multiAddressJsonValue{
+		Signature:        multiAddress.Signature,
+		Nonce:            multiAddress.Nonce,
+		Address:          multiAddress.address,
+		BaseMultiAddress: multiAddress.baseMultiAddress.String(),
 	}
-	return json.Marshal(multiAddress.String())
+	return json.Marshal(val)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (multiAddress MultiAddress) UnmarshalJSON(data []byte) error {
-	multiAddressAsString := ""
-	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
+func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
+	val := multiAddressJsonValue{}
+	if err := json.Unmarshal(data, &val); err != nil {
 		return err
 	}
-	if multiAddressAsString == "" {
-		return nil
-	}
-	newMultiAddress, err := NewMultiAddressFromString(multiAddressAsString)
+	newMultiAddress, err := multiaddr.NewMultiaddr(val.BaseMultiAddress)
 	if err != nil {
 		return err
 	}
-	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
-	multiAddress.address = newMultiAddress.address
-	multiAddress.Nonce = newMultiAddress.Nonce
+	multiAddress.Signature = val.Signature
+	multiAddress.Nonce = val.Nonce
+	multiAddress.address = val.Address
+	multiAddress.baseMultiAddress = newMultiAddress
 	return nil
 }
 

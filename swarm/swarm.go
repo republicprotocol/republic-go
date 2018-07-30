@@ -63,15 +63,13 @@ type swarmer struct {
 }
 
 // NewSwarmer will return an object that implements the Swarmer interface.
-func NewSwarmer(client Client, storer MultiAddressStorer, α int, key *crypto.EcdsaKey) (Swarmer, error) {
-	swarmer := &swarmer{
+func NewSwarmer(client Client, storer MultiAddressStorer, α int, key *crypto.EcdsaKey) Swarmer {
+	return &swarmer{
 		client: client,
 		key:    key,
 		storer: storer,
 		α:      α,
 	}
-
-	return swarmer, nil
 }
 
 // Ping will update the multiAddress and nonce in the storer and send
@@ -291,7 +289,7 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 	return server.swarmer.BroadcastMultiAddress(ctx, multiAddr)
 }
 
-// Pong will store unseen multiaddresses in the storer.
+// Pong will store unseen multiAddresses in the storer.
 func (server *server) Pong(ctx context.Context, from identity.MultiAddress) error {
 	_, err := server.multiAddrStore.PutMultiAddress(from)
 	return err

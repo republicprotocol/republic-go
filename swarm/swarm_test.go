@@ -11,9 +11,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
 	. "github.com/republicprotocol/republic-go/swarm"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
@@ -34,7 +34,9 @@ var _ = Describe("Swarm", func() {
 			os.RemoveAll("./tmp")
 		})
 
-		It("should be able to find most peers in the network", func() {
+		It("should be able to find most peers in the network", func(done Done) {
+			defer close(done)
+
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
@@ -48,6 +50,7 @@ var _ = Describe("Swarm", func() {
 				active:  map[identity.Address]bool{},
 			}
 
+			// Initialize all the clients
 			for i := 0; i < numberOfClients; i++ {
 				client, store, err := newMockClientToServer(serverHub, i, i < numberOfClients/4)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -56,9 +59,7 @@ var _ = Describe("Swarm", func() {
 				stores[i] = store
 
 				ecdsaKey, err := crypto.RandomEcdsaKey()
-				// Creating swarmer for the client.
-				swarmers[i], err = NewSwarmer(clients[i], stores[i], α, &ecdsaKey)
-				Expect(err).ShouldNot(HaveOccurred())
+				swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKey)
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
@@ -106,7 +107,7 @@ var _ = Describe("Swarm", func() {
 
 				peers, err := swarmers[i].Peers()
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(len(peers)).To(BeNumerically(">=", (numberOfClients - (numberOfClients / 10))))
+				Expect(len(peers)).To(BeNumerically(">=", numberOfClients*9/10))
 			})
 		})
 	})
