@@ -33,6 +33,7 @@ func init() {
 // MultiAddress is an alias.
 type MultiAddress struct {
 	Signature []byte
+	Nonce     uint64
 
 	address          Address
 	baseMultiAddress multiaddr.Multiaddr
@@ -58,7 +59,7 @@ func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return MultiAddress{[]byte{}, Address(address), baseMultiAddress}, err
+	return MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
 }
 
 // ValueForProtocol returns the value of the specific protocol in the MultiAddress
@@ -87,7 +88,8 @@ func (multiAddress MultiAddress) String() string {
 // Hash returns the Keccak256 hash of a multiaddrfess. This hash is used to create
 // signatures for a multiaddress.
 func (multiAddress MultiAddress) Hash() []byte {
-	return crypto.Keccak256([]byte(multiAddress.String()))
+	multiaddrBytes := append([]byte(multiAddress.String()), []byte{byte(multiAddress.Nonce)}...)
+	return crypto.Keccak256(multiaddrBytes)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -113,6 +115,7 @@ func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	}
 	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
 	multiAddress.address = newMultiAddress.address
+	multiAddress.Nonce = newMultiAddress.Nonce
 	return nil
 }
 
