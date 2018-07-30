@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -56,8 +55,6 @@ var _ = Describe("Swarm", func() {
 				// Creating swarmer for the client.
 				swarmers[i], err = NewSwarmer(clients[i], stores[i], α)
 				Expect(err).ShouldNot(HaveOccurred())
-				server := NewServer(swarmers[i], stores[i], α)
-				serverHub.Register(multiAddresses[i].Address(), server)
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
@@ -74,26 +71,40 @@ var _ = Describe("Swarm", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 					if _, err := stores[i].PutMultiAddress(multiAddresses[j], nonce); err != nil {
-						log.Println(err)
+						Expect(err).ShouldNot(HaveOccurred())
 					}
 				}
-				err := swarmers[i].Ping(ctx)
-				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			// Query for clients
-			for i := 0; i < numberOfClients; i++ {
+			dispatch.CoForAll(numberOfClients, func(i int) {
+				defer GinkgoRecover()
+
+				server := NewServer(swarmers[i], stores[i], α)
+				serverHub.Register(multiAddresses[i].Address(), server)
+
+				err := swarmers[i].Ping(ctx)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				for j := 0; j < numberOfClients; j++ {
 					if i == j {
 						continue
 					}
-					multiAddr, err := swarmers[i].Query(ctx, multiAddresses[j].Address())
-					if err != nil && serverHub.IsRegistered(multiAddresses[j].Address()) {
-						Expect(err).ShouldNot(HaveOccurred())
+					if serverHub.IsRegistered(multiAddresses[j].Address()) {
+						multiAddr, err := swarmers[i].Query(ctx, multiAddresses[j].Address())
+						if err != nil {
+							continue
+						}
+						Expect(multiAddr.String()).To(Equal(multiAddresses[j].String()))
 					}
-					Expect(multiAddr.String()).To(Equal(multiAddresses[j].String()))
 				}
-			}
+			})
+
+			dispatch.CoForAll(numberOfClients, func(i int) {
+				defer GinkgoRecover()
+				peers, err := swarmers[i].Peers()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(len(peers)).To(BeNumerically(">=", (numberOfClients - (numberOfClients / 10))))
+			})
 		})
 	})
 })
