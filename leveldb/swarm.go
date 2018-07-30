@@ -20,7 +20,6 @@ var ErrNonceTooLow = errors.New("nonce too low")
 // LevelDB. It contains additional timestamping information so that LevelDB can
 // provide pruning.
 type SwarmMultiAddressValue struct {
-	Nonce        uint64                `json:"nonce"`
 	MultiAddress identity.MultiAddress `json:"multiAddress"`
 	Timestamp    time.Time             `json:"timestamp"`
 }
@@ -43,34 +42,32 @@ func (iter *SwarmMultiAddressesIterator) Next() bool {
 }
 
 // Cursor implements the swarm.MultiAddressIterator interface.
-func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, uint64, error) {
+func (iter *SwarmMultiAddressesIterator) Cursor() (identity.MultiAddress, error) {
 	if !iter.inner.Valid() {
-		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
+		return identity.MultiAddress{}, swarm.ErrCursorOutOfRange
 	}
 
 	value := SwarmMultiAddressValue{}
 	data := iter.inner.Value()
 	if err := json.Unmarshal(data, &value); err != nil {
-		return identity.MultiAddress{}, 0, swarm.ErrCursorOutOfRange
+		return identity.MultiAddress{}, swarm.ErrCursorOutOfRange
 	}
 
-	return value.MultiAddress, value.Nonce, iter.inner.Error()
+	return value.MultiAddress, iter.inner.Error()
 }
 
 // Collect implements the swarm.MultiAddressIterator interface.
-func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, []uint64, error) {
+func (iter *SwarmMultiAddressesIterator) Collect() ([]identity.MultiAddress, error) {
 	multiaddresses := []identity.MultiAddress{}
-	nonces := []uint64{}
 	for iter.Next() {
-		multiaddress, nonce, err := iter.Cursor()
+		multiaddress, err := iter.Cursor()
 		if err != nil {
-			return multiaddresses, nonces, err
+			return multiaddresses, err
 		}
 
 		multiaddresses = append(multiaddresses, multiaddress)
-		nonces = append(nonces, nonce)
 	}
-	return multiaddresses, nonces, iter.inner.Error()
+	return multiaddresses, iter.inner.Error()
 }
 
 // Release implements the swarm.MultiAddressIterator interface.
@@ -92,20 +89,19 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 }
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress, nonce uint64) (bool, error) {
+func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress) (bool, error) {
 	isNew := false
 
 	value := SwarmMultiAddressValue{
-		Nonce:        nonce,
 		MultiAddress: multiAddress,
 		Timestamp:    time.Now(),
 	}
-	oldMultiAddr, oldNonce, err := table.MultiAddress(multiAddress.Address())
+	oldMultiAddr, err := table.MultiAddress(multiAddress.Address())
 	if err != nil && err == swarm.ErrMultiAddressNotFound {
 		isNew = true
 	}
 	// Return err if nonce is too low
-	if oldNonce > nonce {
+	if oldMultiAddr.Nonce >= multiAddress.Nonce {
 		return isNew, ErrNonceTooLow
 	}
 	// If there is a change in the multiaddress stored, then return true
@@ -121,19 +117,19 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.Multi
 }
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *SwarmMultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, uint64, error) {
+func (table *SwarmMultiAddressTable) MultiAddress(address identity.Address) (identity.MultiAddress, error) {
 	data, err := table.db.Get(table.key(address.Hash()), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = swarm.ErrMultiAddressNotFound
 		}
-		return identity.MultiAddress{}, 0, err
+		return identity.MultiAddress{}, err
 	}
 	value := SwarmMultiAddressValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return identity.MultiAddress{}, 0, err
+		return identity.MultiAddress{}, err
 	}
-	return value.MultiAddress, value.Nonce, nil
+	return value.MultiAddress, nil
 }
 
 // MultiAddresses implements the swarm.MultiAddressStorer interface.

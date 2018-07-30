@@ -38,14 +38,13 @@ var _ = Describe("Swarm storage", func() {
 
 			// Put the multiAddresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
-				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i], 1)
+				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < len(multiAddresses); i++ {
-				multiAddr, nonce, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
+				multiAddr, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(multiAddr.String()).Should(Equal(multiAddresses[i].String()))
-				Expect(nonce).Should(Equal(uint64(1)))
 			}
 
 			// Sleep and then prune to expire the data
@@ -56,11 +55,10 @@ var _ = Describe("Swarm storage", func() {
 			multiAddrsIter, err := swarmMultiAddressTable.MultiAddresses()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer multiAddrsIter.Release()
-			multiAddrs, nonces, err := multiAddrsIter.Collect()
+			multiAddrs, err := multiAddrsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Expect(multiAddrs).Should(HaveLen(0))
-			Expect(nonces).Should(HaveLen(0))
 		})
 	})
 
@@ -71,25 +69,24 @@ var _ = Describe("Swarm storage", func() {
 
 			// Put the multiAddresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
-				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i], 1)
+				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < len(multiAddresses); i++ {
-				multiAddr, nonce, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
+				multiAddr, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(multiAddr.String()).Should(Equal(multiAddresses[i].String()))
-				Expect(nonce).Should(Equal(uint64(1)))
 			}
 
 			multiAddrsIter, err := swarmMultiAddressTable.MultiAddresses()
 			defer multiAddrsIter.Release()
 			for multiAddrsIter.Next() {
-				_, _, err := multiAddrsIter.Cursor()
+				_, err := multiAddrsIter.Cursor()
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
 			// This is out of range so we should expect an error
-			_, _, err = multiAddrsIter.Cursor()
+			_, err = multiAddrsIter.Cursor()
 			Expect(err).Should(Equal(swarm.ErrCursorOutOfRange))
 		})
 	})
