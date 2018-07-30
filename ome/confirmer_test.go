@@ -33,7 +33,7 @@ var _ = Describe("Confirmer", func() {
 		os.RemoveAll("./data.out")
 	})
 
-	It("should be able to confirm order on the ren ledger", func(d Done) {
+	XIt("should be able to confirm order on the ren ledger", func(d Done) {
 		defer close(d)
 
 		done := make(chan struct{})
