@@ -43,7 +43,7 @@ var _ = Describe("Swarm", func() {
 				return nil, nil, serverHub, err
 			}
 			clientType := testutils.Honest
-			if !honest {
+			if !honest && i > numberOfBootstrapClients {
 				clientType = testutils.ClientTypes[rand.Intn(len(testutils.ClientTypes))]
 			}
 			client, store, err := testutils.NewMockSwarmClient(serverHub, &key, clientType)
