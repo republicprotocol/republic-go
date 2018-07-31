@@ -9,7 +9,6 @@ import (
 
 type MockMultiAddr struct {
 	multiAddr identity.MultiAddress
-	nonce     uint64
 }
 
 // Swarmer is a mock implementation of the swarm.Swarmer interface.
@@ -35,7 +34,7 @@ func (swarmer *Swarmer) Pong(ctx context.Context, to identity.MultiAddress) erro
 	return nil
 }
 
-func (swarmer *Swarmer) BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress, nonce uint64) error {
+func (swarmer *Swarmer) BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress) error {
 	return nil
 }
 
@@ -51,12 +50,11 @@ func (swarmer *Swarmer) Peers() (identity.MultiAddresses, error) {
 	return make([]identity.MultiAddress, len(swarmer.multiAddrs)), nil
 }
 
-func (swarmer *Swarmer) PutMultiAddress(multiAddr identity.MultiAddress, nonce uint64) {
+func (swarmer *Swarmer) PutMultiAddress(multiAddr identity.MultiAddress) {
 	swarmer.multiAddrsMu.Lock()
 	defer swarmer.multiAddrsMu.Unlock()
 	swarmer.multiAddrs[multiAddr.Address()] = MockMultiAddr{
 		multiAddr: multiAddr,
-		nonce:     nonce,
 	}
 }
 
