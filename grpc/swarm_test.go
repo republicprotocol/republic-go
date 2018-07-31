@@ -5,13 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/republicprotocol/republic-go/dispatch"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/swarm"
@@ -28,6 +27,7 @@ var _ = Describe("Swarming", func() {
 	var client swarm.Client
 	var clientDb swarm.MultiAddressStorer
 	var swarmer swarm.Swarmer
+	var ecdsaKey crypto.EcdsaKey
 
 	BeforeEach(func() {
 		var err error
@@ -35,10 +35,10 @@ var _ = Describe("Swarming", func() {
 		db, err := leveldb.NewStore("./tmp/swarm.1.out", 10*time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		serviceClientDb = db.SwarmMultiAddressStore()
-		serviceClient, err = newSwarmClient(serviceClientDb)
+		serviceClient, ecdsaKey, err = newSwarmClient(serviceClientDb)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		swarmer, err = swarm.NewSwarmer(serviceClient, serviceClientDb, 10)
+		swarmer = swarm.NewSwarmer(serviceClient, serviceClientDb, 10, &ecdsaKey)
 		Expect(err).ShouldNot(HaveOccurred())
 		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10), time.Microsecond)
 		serviceMultiAddr = serviceClient.MultiAddress()
@@ -48,7 +48,7 @@ var _ = Describe("Swarming", func() {
 		db, err = leveldb.NewStore("./tmp/swarm.2.out", 10*time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		clientDb = db.SwarmMultiAddressStore()
-		client, err = newSwarmClient(clientDb)
+		client, _, err = newSwarmClient(clientDb)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -70,7 +70,7 @@ var _ = Describe("Swarming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
+			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -85,11 +85,11 @@ var _ = Describe("Swarming", func() {
 			}()
 			time.Sleep(time.Millisecond)
 
-			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
+			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress())
 			Expect(err).ShouldNot(HaveOccurred())
 			multiAddrIter, err := serviceClientDb.MultiAddresses()
 			Expect(err).ShouldNot(HaveOccurred())
-			multiAddrs, _, err := multiAddrIter.Collect()
+			multiAddrs, err := multiAddrIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(multiAddrs).Should(HaveLen(2))
 		})
@@ -108,7 +108,7 @@ var _ = Describe("Swarming", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
 
-			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), 1)
+			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress())
 			Expect(err).ShouldNot(HaveOccurred())
 
 			multiAddrs, err := client.Query(context.Background(), serviceMultiAddr, client.MultiAddress().Address())
@@ -131,7 +131,7 @@ var _ = Describe("Swarming", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
 
-			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress(), uint64(0))
+			err := client.Ping(context.Background(), serviceMultiAddr, client.MultiAddress())
 			Expect(err).ShouldNot(HaveOccurred())
 
 			dispatch.CoForAll(10, func(i int) {
@@ -148,18 +148,23 @@ var _ = Describe("Swarming", func() {
 	})
 })
 
-func newSwarmClient(db swarm.MultiAddressStorer) (swarm.Client, error) {
+func newSwarmClient(db swarm.MultiAddressStorer) (swarm.Client, crypto.EcdsaKey, error) {
 	ecdsaKey, err := crypto.RandomEcdsaKey()
 	if err != nil {
-		return nil, err
+		return nil, crypto.EcdsaKey{}, err
 	}
 	addr := identity.Address(ecdsaKey.Address())
 	multiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", addr))
 	if err != nil {
-		return nil, err
+		return nil, crypto.EcdsaKey{}, err
 	}
-
-	db.PutMultiAddress(multiAddr, 0)
+	multiAddr.Nonce = 1
+	signature, err := ecdsaKey.Sign(multiAddr.Hash())
+	if err != nil {
+		return nil, crypto.EcdsaKey{}, err
+	}
+	multiAddr.Signature = signature
+	db.PutMultiAddress(multiAddr)
 	client := NewSwarmClient(db, multiAddr.Address())
-	return client, nil
+	return client, ecdsaKey, nil
 }
