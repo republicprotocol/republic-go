@@ -63,6 +63,9 @@ message EncryptedOrderFragment {
     EncryptedCoExpShare volume        = 10;
     EncryptedCoExpShare minimumVolume = 11;
     bytes               nonce         = 12;
+
+    bytes                       s       = 13; // Encrypted blinding exponent `s` in `E(x, s)`
+    repeated PedersenCommitment commits = 14; // Random sample of public commitments
 }
 
 enum OrderType {
@@ -82,6 +85,19 @@ enum OrderSettlement {
 }
 
 message EncryptedCoExpShare {
+    bytes co  = 1;
+    bytes exp = 2;
+}
+
+message PedersenCommitment {
+    uint64 index = 1;
+
+    PedersenCoExpCommitment price         = 2;
+    PedersenCoExpCommitment volume        = 3;
+    PedersenCoExpCommitment minimumVolume = 4;
+}
+
+message PedersenCoExpCommitment {
     bytes co  = 1;
     bytes exp = 2;
 }

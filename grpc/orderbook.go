@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -78,6 +79,9 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		Volume:        marshalEncryptedCoExpShare(orderFragmentIn.Volume),
 		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
+
+		S:       []byte(orderFragmentIn.S),
+		Commits: marshalPedersenCommitments(orderFragmentIn.Commits),
 	}
 }
 
@@ -94,6 +98,9 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		Volume:        unmarshalEncryptedCoExpShare(orderFragmentIn.Volume),
 		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
+
+		S:       order.EncryptedPedersenS(orderFragmentIn.S),
+		Commits: unmarshalPedersenCommitments(orderFragmentIn.Commits),
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
@@ -112,4 +119,48 @@ func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) order.EncryptedCoE
 		Co:  value.Co,
 		Exp: value.Exp,
 	}
+}
+
+func marshalPedersenCommitments(values []order.PedersenCommitment) []*PedersenCommitment {
+	commits := make([]*PedersenCommitment, len(values))
+	for i := range commits {
+		commits[i] = &PedersenCommitment{
+			Index: values[i].Index,
+			Price: &PedersenCoExpCommitment{
+				Co:  values[i].Price.Co.Bytes(),
+				Exp: values[i].Price.Exp.Bytes(),
+			},
+			Volume: &PedersenCoExpCommitment{
+				Co:  values[i].Price.Co.Bytes(),
+				Exp: values[i].Price.Exp.Bytes(),
+			},
+			MinimumVolume: &PedersenCoExpCommitment{
+				Co:  values[i].Price.Co.Bytes(),
+				Exp: values[i].Price.Exp.Bytes(),
+			},
+		}
+	}
+	return commits
+}
+
+func unmarshalPedersenCommitments(values []*PedersenCommitment) []order.PedersenCommitment {
+	commits := make([]order.PedersenCommitment, len(values))
+	for i := range commits {
+		commits[i] = order.PedersenCommitment{
+			Index: values[i].Index,
+			Price: order.PedersenCoExpCommitment{
+				Co:  big.NewInt(0).SetBytes(values[i].Price.Co),
+				Exp: big.NewInt(0).SetBytes(values[i].Price.Exp),
+			},
+			Volume: order.PedersenCoExpCommitment{
+				Co:  big.NewInt(0).SetBytes(values[i].Volume.Co),
+				Exp: big.NewInt(0).SetBytes(values[i].Volume.Exp),
+			},
+			MinimumVolume: order.PedersenCoExpCommitment{
+				Co:  big.NewInt(0).SetBytes(values[i].MinimumVolume.Co),
+				Exp: big.NewInt(0).SetBytes(values[i].MinimumVolume.Exp),
+			},
+		}
+	}
+	return commits
 }
