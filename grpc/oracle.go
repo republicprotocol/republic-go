@@ -10,24 +10,18 @@ import (
 
 type OracleClient struct {
 	signature []byte
-	tokens    uint64
-	price     uint64
-	nonce     uint64
 }
 
 // NewOracleClient returns an implementation of the OracleClient interface.
-func NewOracleClient(signature []byte, tokens, price, nonce uint64) OracleClient {
+func NewOracleClient(signature []byte) OracleClient {
 	return OracleClient{
 		signature: signature,
-		tokens:    tokens,
-		price:     price,
-		nonce:     nonce,
 	}
 }
 
-// UpdateMidpoint is used to connect to a peer and propogate price information
-// OracleClient to the rest of the network.
-func (client *OracleClient) UpdateMidpoint(ctx context.Context, to identity.MultiAddress) error {
+// UpdateMidpoint is used to send updated midpoint information to a given
+// multiaddress.
+func (client *OracleClient) UpdateMidpoint(ctx context.Context, to identity.MultiAddress, tokens, price, nonce uint64) error {
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -37,9 +31,9 @@ func (client *OracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 
 	request := &UpdateMidpointRequest{
 		Signature: client.signature,
-		Tokens:    client.tokens,
-		Price:     client.price,
-		Nonce:     client.nonce,
+		Tokens:    tokens,
+		Price:     price,
+		Nonce:     nonce,
 	}
 	if err := Backoff(ctx, func() error {
 		_, err = NewOracleServiceClient(conn).UpdateMidpoint(ctx, request)
