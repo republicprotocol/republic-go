@@ -8,6 +8,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/shamir"
 	"golang.org/x/net/context"
 )
 
@@ -80,8 +81,8 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		S:       []byte(orderFragmentIn.S),
-		Commits: marshalPedersenCommitments(orderFragmentIn.Commits),
+		Blind:   []byte(orderFragmentIn.Blind),
+		Commits: marshalCommitments(orderFragmentIn.Commits),
 	}
 }
 
@@ -99,8 +100,8 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		S:       order.EncryptedPedersenS(orderFragmentIn.S),
-		Commits: unmarshalPedersenCommitments(orderFragmentIn.Commits),
+		Blind:   shamir.EncryptedBlind(orderFragmentIn.Blind),
+		Commits: unmarshalCommitments(orderFragmentIn.Commits),
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
@@ -121,20 +122,20 @@ func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) order.EncryptedCoE
 	}
 }
 
-func marshalPedersenCommitments(values []order.PedersenCommitment) []*PedersenCommitment {
-	commits := make([]*PedersenCommitment, len(values))
+func marshalCommitments(values []order.Commitment) []*Commitment {
+	commits := make([]*Commitment, len(values))
 	for i := range commits {
-		commits[i] = &PedersenCommitment{
+		commits[i] = &Commitment{
 			Index: values[i].Index,
-			Price: &PedersenCoExpCommitment{
+			Price: &CoExpCommitment{
 				Co:  values[i].Price.Co.Bytes(),
 				Exp: values[i].Price.Exp.Bytes(),
 			},
-			Volume: &PedersenCoExpCommitment{
+			Volume: &CoExpCommitment{
 				Co:  values[i].Price.Co.Bytes(),
 				Exp: values[i].Price.Exp.Bytes(),
 			},
-			MinimumVolume: &PedersenCoExpCommitment{
+			MinimumVolume: &CoExpCommitment{
 				Co:  values[i].Price.Co.Bytes(),
 				Exp: values[i].Price.Exp.Bytes(),
 			},
@@ -143,20 +144,20 @@ func marshalPedersenCommitments(values []order.PedersenCommitment) []*PedersenCo
 	return commits
 }
 
-func unmarshalPedersenCommitments(values []*PedersenCommitment) []order.PedersenCommitment {
-	commits := make([]order.PedersenCommitment, len(values))
+func unmarshalCommitments(values []*Commitment) []order.Commitment {
+	commits := make([]order.Commitment, len(values))
 	for i := range commits {
-		commits[i] = order.PedersenCommitment{
+		commits[i] = order.Commitment{
 			Index: values[i].Index,
-			Price: order.PedersenCoExpCommitment{
+			Price: order.CoExpCommitment{
 				Co:  big.NewInt(0).SetBytes(values[i].Price.Co),
 				Exp: big.NewInt(0).SetBytes(values[i].Price.Exp),
 			},
-			Volume: order.PedersenCoExpCommitment{
+			Volume: order.CoExpCommitment{
 				Co:  big.NewInt(0).SetBytes(values[i].Volume.Co),
 				Exp: big.NewInt(0).SetBytes(values[i].Volume.Exp),
 			},
-			MinimumVolume: order.PedersenCoExpCommitment{
+			MinimumVolume: order.CoExpCommitment{
 				Co:  big.NewInt(0).SetBytes(values[i].MinimumVolume.Co),
 				Exp: big.NewInt(0).SetBytes(values[i].MinimumVolume.Exp),
 			},

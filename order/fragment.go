@@ -45,8 +45,8 @@ type Fragment struct {
 	MinimumVolume CoExpShare   `json:"minimumVolume"`
 	Nonce         shamir.Share `json:"nonce"`
 
-	S       PedersenS            `json:"s"`
-	Commits []PedersenCommitment `json:"commitments"`
+	Blind   shamir.Blind `json:"blind"`
+	Commits []Commitment `json:"commitments"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
@@ -168,7 +168,7 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 	if err != nil {
 		return encryptedFragment, err
 	}
-	encryptedFragment.S, err = fragment.S.Encrypt(pubKey)
+	encryptedFragment.Blind, err = fragment.Blind.Encrypt(pubKey)
 	if err != nil {
 		return encryptedFragment, err
 	}
@@ -192,8 +192,8 @@ type EncryptedFragment struct {
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
 
-	S       EncryptedPedersenS   `json:"s"`
-	Commits []PedersenCommitment `json:"commitments"`
+	Blind   shamir.EncryptedBlind `json:"blind"`
+	Commits []Commitment          `json:"commitments"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
@@ -230,7 +230,7 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 	if err != nil {
 		return decryptedFragment, err
 	}
-	decryptedFragment.S, err = fragment.S.Decrypt(privKey)
+	decryptedFragment.Blind, err = fragment.Blind.Decrypt(privKey)
 	if err != nil {
 		return decryptedFragment, err
 	}
