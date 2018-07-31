@@ -25,7 +25,7 @@ var _ = Describe("Status", func() {
 			var err error
 			confAddr, err = testutils.RandomAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			swarmer = testutils.NewMockSwarmer(identity.MultiAddress{})
+			swarmer = testutils.NewMockSwarmer()
 			prov = NewProvider(&swarmer)
 		})
 
