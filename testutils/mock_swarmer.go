@@ -1,17 +1,9 @@
 package testutils
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"math/rand"
 	"sync"
-	"time"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 

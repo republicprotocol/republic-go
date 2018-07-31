@@ -121,7 +121,7 @@ func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
 func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	val := multiAddressJsonValue{}
 	if err := json.Unmarshal(data, &val); err != nil {
-		return err
+		return multiAddress.UnmarshalStringJSON(data)
 	}
 	newMultiAddress, err := multiaddr.NewMultiaddr(val.BaseMultiAddress)
 	if err != nil {
@@ -131,6 +131,26 @@ func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	multiAddress.Nonce = val.Nonce
 	multiAddress.address = val.Address
 	multiAddress.baseMultiAddress = newMultiAddress
+	return nil
+}
+
+// UnmarshalStringJSON will unmarshal multi-addresses that are in string
+// format to a standard multi-address struct.
+func (multiAddress *MultiAddress) UnmarshalStringJSON(data []byte) error {
+	multiAddressAsString := ""
+	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
+		return err
+	}
+	if multiAddressAsString == "" {
+		return nil
+	}
+	newMultiAddress, err := NewMultiAddressFromString(multiAddressAsString)
+	if err != nil {
+		return err
+	}
+	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
+	multiAddress.address = newMultiAddress.address
+	multiAddress.Nonce = 0
 	return nil
 }
 

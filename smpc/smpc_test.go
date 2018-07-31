@@ -58,7 +58,7 @@ var _ = Describe("Smpcer", func() {
 			dispatch.CoForAll(nodes, func(i int) {
 				defer GinkgoRecover()
 				for j := 0; j < numBootstrap; j++ {
-					stores[i].PutMultiAddress(bootstraps[j], 1)
+					stores[i].PutMultiAddress(bootstraps[j])
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
@@ -176,16 +176,19 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 
-		_, err = stores[i].PutMultiAddress(multiAddr, 0)
+		_, err = stores[i].PutMultiAddress(multiAddr)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
 		swarmClient := grpc.NewSwarmClient(stores[i], multiAddr.Address())
-		swarmer, err := swarm.NewSwarmer(swarmClient, stores[i], α)
+
+		key, err := crypto.RandomEcdsaKey()
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		swarmer := swarm.NewSwarmer(swarmClient, stores[i], α, &key)
+
 		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α), time.Microsecond)
 
 		streamer := grpc.NewConnectorListener(addr, testutils.NewCrypter(), testutils.NewCrypter())
