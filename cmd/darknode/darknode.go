@@ -26,6 +26,7 @@ import (
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/oracle"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -115,6 +116,11 @@ func main() {
 	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &config.Keystore.EcdsaKey)
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
 	swarmService.Register(server)
+
+	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
+	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha) // TODO: Custom alpha for oracler
+	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, multiAddr.Address(), store.SwarmMultiAddressStore(), oracle.NewMidpointPriceStorer(), config.Alpha), time.Millisecond)
+	oracleService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
