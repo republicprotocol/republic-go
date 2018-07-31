@@ -1,9 +1,17 @@
 package testutils
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"math/rand"
 	"sync"
+	"time"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -11,6 +19,7 @@ import (
 type mockServerHub struct {
 	connsMu *sync.Mutex
 	conns   map[identity.Address]swarm.Server
+	active  map[identity.Address]bool
 }
 
 func (serverHub *mockServerHub) Register(serverAddr identity.Address, server swarm.Server) {
@@ -18,13 +27,27 @@ func (serverHub *mockServerHub) Register(serverAddr identity.Address, server swa
 	defer serverHub.connsMu.Unlock()
 
 	serverHub.conns[serverAddr] = server
+	serverHub.active[serverAddr] = true
 }
 
-func (serverHub *mockServerHub) Deregister(serverAddr identity.Address) {
+func (serverHub *mockServerHub) Deregister(serverAddr identity.Address) bool {
 	serverHub.connsMu.Lock()
 	defer serverHub.connsMu.Unlock()
 
-	delete(serverHub.conns, serverAddr)
+	isActive, _ := serverHub.active[serverAddr]
+	if isActive {
+		serverHub.active[serverAddr] = false
+	}
+	return isActive
+}
+
+func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
+	serverHub.connsMu.Lock()
+	defer serverHub.connsMu.Unlock()
+
+	isActive, _ := serverHub.active[serverAddr]
+
+	return isActive
 }
 
 // ClientType defines different clients in terms of behaviour in
@@ -108,7 +131,7 @@ func (client *mockSwarmClient) Pong(ctx context.Context, multiAddr identity.Mult
 	}
 	client.serverHub.connsMu.Unlock()
 
-	multi, err := client.store.MultiAddress(client.multiAddr.Address())
+	multi, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		return err
 	}
@@ -142,7 +165,7 @@ func (client *mockSwarmClient) Query(ctx context.Context, to identity.MultiAddre
 }
 
 func (client *mockSwarmClient) MultiAddress() identity.MultiAddress {
-	multi, err := client.store.MultiAddress(client.multiAddr.Address())
+	multi, err := client.store.MultiAddress(client.addr)
 	if err != nil {
 		log.Println("err in getting the multiaddress in store")
 	}
@@ -151,6 +174,7 @@ func (client *mockSwarmClient) MultiAddress() identity.MultiAddress {
 }
 
 func randomSleep() {
+	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(120)
 	time.Sleep(time.Duration(r) * time.Millisecond)
 }
