@@ -105,10 +105,9 @@ func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.Multi
 		if oldMultiAddr.Nonce > multiAddress.Nonce {
 			return isNew, ErrNonceTooLow
 		}
-		if oldMultiAddr.Nonce == multiAddress.Nonce {
+		if oldMultiAddr.Nonce == multiAddress.Nonce && oldMultiAddr.String() == multiAddress.String() {
 			return isNew, nil
 		}
-
 		// If there is a change in the multiaddress stored, then return true
 		if oldMultiAddr.String() != multiAddress.String() {
 			isNew = true
