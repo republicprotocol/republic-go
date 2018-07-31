@@ -19,6 +19,7 @@ type Config struct {
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
+	Alpha                   int                     `json:"alpha"`
 }
 
 func NewConfigFromJSONFile(filename string) (Config, error) {

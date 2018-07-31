@@ -38,7 +38,7 @@ package stackint_test
 // 				actM := leftM.MontMul(&rightM)
 // 				act := actM.ToInt1024()
 
-// 				Ω(act).Should(Equal(expected))
+// 				Expect(act).Should(Equal(expected))
 
 // 				// for i := 0; i < 1000; i++ {
 // 				// 	expected = left.MulModulo(&right, &prime)
@@ -50,7 +50,7 @@ package stackint_test
 // 				actM = leftM.MontAdd(&oneM)
 // 				act = actM.ToInt1024()
 
-// 				Ω(act).Should(Equal(expected))
+// 				Expect(act).Should(Equal(expected))
 // 			}
 // 		})
 // 	})
@@ -62,7 +62,7 @@ package stackint_test
 // 			invM := twoM.MontInv()
 // 			inv := invM.ToInt1024()
 // 			expInv := two.ModInverse(&prime)
-// 			Ω(inv).Should(Equal(expInv))
+// 			Expect(inv).Should(Equal(expInv))
 
 // 		})
 // 	})
@@ -76,7 +76,7 @@ package stackint_test
 // 			actM := leftM.MontAdd(&oneM)
 // 			act := actM.ToInt1024()
 
-// 			Ω(act).Should(Equal(expected))
+// 			Expect(act).Should(Equal(expected))
 // 		})
 // 	})
 
@@ -91,7 +91,7 @@ package stackint_test
 // 			// fmt.Println(actM.String())
 // 			act := actM.ToInt1024()
 
-// 			Ω(act).Should(Equal(expected))
+// 			Expect(act).Should(Equal(expected))
 // 		})
 // 	})
 // })
