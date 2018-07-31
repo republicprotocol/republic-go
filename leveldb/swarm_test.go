@@ -31,12 +31,40 @@ var _ = Describe("Swarm storage", func() {
 		os.RemoveAll(dbFolder)
 	})
 
+	Context("when adding new data", func() {
+		It("should not store new multi-addresses that have lower nonce", func() {
+			db := newDB(dbFile)
+			swarmMultiAddressTable := NewSwarmMultiAddressTable(db, 2*time.Second)
+
+			// Put the multi-addresses repeatedly into the table.
+			for i := 0; i < len(multiAddresses); i++ {
+				changed, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(changed).To(BeTrue())
+
+				// Attempting to store the multi-address with the same nonce
+				// should not return an error.
+				changed, err = swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(changed).To(BeFalse())
+
+				// Attempting to store the multi-address with a lower nonce
+				// should return an error.
+				multiAddresses[i].Nonce = 0
+				changed, err = swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				Expect(err).Should(HaveOccurred())
+				Expect(err).Should(Equal(ErrNonceTooLow))
+				Expect(changed).To(BeFalse())
+			}
+		})
+	})
+
 	Context("when pruning data", func() {
 		It("should not retrieve expired data", func() {
 			db := newDB(dbFile)
 			swarmMultiAddressTable := NewSwarmMultiAddressTable(db, 2*time.Second)
 
-			// Put the multiAddresses into the table and attempt to retrieve
+			// Put the multi-addresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
 				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
@@ -67,7 +95,7 @@ var _ = Describe("Swarm storage", func() {
 			db := newDB(dbFile)
 			swarmMultiAddressTable := NewSwarmMultiAddressTable(db, 2*time.Second)
 
-			// Put the multiAddresses into the table and attempt to retrieve
+			// Put the multi-addresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
 				_, err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
