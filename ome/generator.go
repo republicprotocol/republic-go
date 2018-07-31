@@ -15,7 +15,7 @@ import (
 
 type computationWeight struct {
 	computation Computation
-	weight      int
+	weight      uint64
 }
 
 type ComputationGenerator interface {
@@ -222,34 +222,44 @@ func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-cha
 		defer close(computations)
 		defer close(errs)
 
-		for {
-			select {
-			case <-done:
-				return
-			case <-mat.sortedComputationsSignal:
-
-				mat.sortedComputationsMu.Lock()
-				if len(mat.sortedComputations) == 0 {
-					mat.sortedComputationsMu.Unlock()
-					continue
+		dispatch.CoBegin(
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					case notification, ok := <-notifications:
+						if !ok {
+							return
+						}
+						mat.handleNotification(notification, done, computations, errs)
+					}
 				}
-				computationWeight := mat.sortedComputations[0]
-				mat.sortedComputations = mat.sortedComputations[1:]
-				mat.sortedComputationsMu.Unlock()
+			},
+			func() {
+				for {
+					select {
+					case <-done:
+						return
+					case <-mat.sortedComputationsSignal:
 
-				select {
-				case <-done:
-					return
-				case computations <- computationWeight.computation:
-				}
+						mat.sortedComputationsMu.Lock()
+						if len(mat.sortedComputations) == 0 {
+							mat.sortedComputationsMu.Unlock()
+							continue
+						}
+						computationWeight := mat.sortedComputations[0]
+						mat.sortedComputations = mat.sortedComputations[1:]
+						mat.sortedComputationsMu.Unlock()
 
-			case notification, ok := <-notifications:
-				if !ok {
-					return
+						select {
+						case <-done:
+							return
+						case computations <- computationWeight.computation:
+						}
+					}
 				}
-				mat.handleNotification(notification, done, computations, errs)
-			}
-		}
+			})
 	}()
 
 	return computations, errs
@@ -289,7 +299,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	var err error
 
 	if notification.OrderFragment.OrderParity == order.ParityBuy {
-		if err := mat.orderFragmentStore.PutBuyOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader); err != nil {
+		if err := mat.orderFragmentStore.PutBuyOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
 			log.Printf("[error] (generator) cannot store buy order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
@@ -300,7 +310,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		defer oppositeOrderFragmentIter.Release()
 	} else {
-		if err := mat.orderFragmentStore.PutSellOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader); err != nil {
+		if err := mat.orderFragmentStore.PutSellOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
 			log.Printf("[error] (generator) cannot store sell order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
@@ -319,17 +329,13 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	// maintain priority through persistent storage.
 
 	// Iterate through the opposing list and generate computations
+	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
-		orderFragment, trader, err := oppositeOrderFragmentIter.Cursor()
+		orderFragment, trader, priority, err := oppositeOrderFragmentIter.Cursor()
 		if err != nil {
 			log.Printf("[error] (generator) cannot load cursor: %v", err)
 			continue
 		}
-
-		// TODO: Order fragments are opened on a hierarchical path through the
-		// Darknode pods. Pods should prioritise computations for which they
-		// are the first pod along that path (this is how pods break ties for
-		// computations that otherwise have the same priority).
 
 		// Traders should not match against themselves
 		if trader == notification.Trader {
@@ -358,23 +364,30 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			log.Printf("[error] (generator) received orders with divergent paths")
 			continue
 		}
-		adjustment := len(commonPath) - (index + 1)
-		computationWeight := computationWeight{weight: len(mat.sortedComputations) + adjustment, computation: computation}
+		adjustment := uint64(len(commonPath) - (index + 1))
+		computationWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
 
-		// Insert sort
-		if len(mat.sortedComputations) == 0 {
-			mat.sortedComputations = append(mat.sortedComputations, computationWeight)
-			continue
-		}
-		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-			return i+adjustment > mat.sortedComputations[i].weight
-		})
-		mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+		// Insert sort into the list of sorted computations
+		didGenerateNewComputation = true
+		func() {
+			mat.sortedComputationsMu.Lock()
+			defer mat.sortedComputationsMu.Unlock()
+
+			if len(mat.sortedComputations) == 0 {
+				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+				return
+			}
+			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
+				return computationWeight.weight >= mat.sortedComputations[i].weight
+			})
+			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+		}()
 	}
-
-	select {
-	case <-done:
-	case mat.sortedComputationsSignal <- struct{}{}:
+	if didGenerateNewComputation {
+		select {
+		case <-done:
+		case mat.sortedComputationsSignal <- struct{}{}:
+		}
 	}
 }
 

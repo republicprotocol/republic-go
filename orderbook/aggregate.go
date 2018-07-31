@@ -16,7 +16,7 @@ type Aggregator interface {
 	// InsertOrder status into the Aggregator. Returns a Notification
 	// if the respective order fragment has already been inserted, and the
 	// order was inserted with the open status.
-	InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error)
+	InsertOrder(orderID order.ID, orderStatus order.Status, trader string, priority uint) (Notification, error)
 
 	// InsertOrderFragment into the Aggregator. Returns a Notification
 	// if the respective order is currently inserted with the open status.
@@ -48,7 +48,7 @@ func NewAggregator(addr identity.Address, epoch registry.Epoch, orderStore Order
 }
 
 // InsertOrder implements the Aggregator interface.
-func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error) {
+func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string, priority uint) (Notification, error) {
 	if !agg.isInPathOfEpoch(orderID) {
 		return nil, nil
 	}
@@ -61,7 +61,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		return nil, nil
 	}
 	// Store the order
-	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader); err != nil {
+	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader, priority); err != nil {
 		return nil, err
 	}
 	// Fetch the order fragment
@@ -79,6 +79,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}, nil
 }
 
@@ -93,7 +94,7 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		return nil, err
 	}
 	// Fetch the order
-	orderStatus, trader, err := agg.orderStore.Order(orderFragment.OrderID)
+	orderStatus, trader, priority, err := agg.orderStore.Order(orderFragment.OrderID)
 	if err != nil {
 		if err == ErrOrderNotFound {
 			// No order was found
@@ -117,6 +118,7 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}, nil
 }
 

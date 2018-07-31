@@ -173,7 +173,7 @@ func (orderbook *orderbook) sync(done <-chan struct{}) {
 func (orderbook *orderbook) routeNotification(done <-chan struct{}, notification Notification) error {
 	switch n := notification.(type) {
 	case NotificationOpenOrder:
-		return orderbook.routeOrder(done, n.OrderID, order.Open, n.Trader)
+		return orderbook.routeOrder(done, n.OrderID, order.Open, n.Trader, n.Priority)
 	default:
 		select {
 		case <-done:
@@ -183,7 +183,7 @@ func (orderbook *orderbook) routeNotification(done <-chan struct{}, notification
 	return nil
 }
 
-func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, orderStatus order.Status, trader string) error {
+func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, orderStatus order.Status, trader string, priority uint) error {
 
 	ns, err := func() (ns [2]Notification, err error) {
 		orderbook.aggMu.RLock()
@@ -192,11 +192,11 @@ func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, o
 		if orderbook.aggCurr == nil {
 			return
 		}
-		ns[0], err = orderbook.aggCurr.InsertOrder(orderID, orderStatus, trader)
+		ns[0], err = orderbook.aggCurr.InsertOrder(orderID, orderStatus, trader, priority)
 		if orderbook.aggPrev == nil {
 			return
 		}
-		ns[1], err = orderbook.aggPrev.InsertOrder(orderID, orderStatus, trader)
+		ns[1], err = orderbook.aggPrev.InsertOrder(orderID, orderStatus, trader, priority)
 		return
 	}()
 
