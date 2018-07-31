@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"io/ioutil"
+
+	"github.com/republicprotocol/republic-go/order"
 )
 
 // ErrUnexpectedMessageType is returned when a message has an unexpected
@@ -100,7 +102,9 @@ func (message *Message) IsMessage() {}
 // A MessageJoin is used to broadcast a Join between nodes in the same network.
 type MessageJoin struct {
 	NetworkID
-	Join Join
+
+	Join      Join
+	Blindings order.Blindings // Used to verify the computation
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.

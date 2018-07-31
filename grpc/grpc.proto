@@ -64,8 +64,8 @@ message EncryptedOrderFragment {
     EncryptedCoExpShare minimumVolume = 11;
     bytes               nonce         = 12;
 
-    bytes               blind   = 13; // Encrypted blinding exponent
-    repeated Commitment commits = 14; // Random sample of public commitments
+    bytes               blinding = 13; // Encrypted blinding exponent
+    repeated Commitment commits  = 14; // Random sample of public commitments
 }
 
 enum OrderType {

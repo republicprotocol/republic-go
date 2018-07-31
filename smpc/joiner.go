@@ -36,7 +36,6 @@ type Join struct {
 	ID     JoinID
 	Index  JoinIndex
 	Shares shamir.Shares
-	Blinds shamir.Blinds
 }
 
 // MarshalBinary implements the encoding.Marshaler interface.

@@ -81,8 +81,8 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		Blind:   []byte(orderFragmentIn.Blind),
-		Commits: marshalCommitments(orderFragmentIn.Commits),
+		Blinding: []byte(orderFragmentIn.Blinding),
+		Commits:  marshalCommitments(orderFragmentIn.Commits),
 	}
 }
 
@@ -100,8 +100,8 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		Blind:   shamir.EncryptedBlind(orderFragmentIn.Blind),
-		Commits: unmarshalCommitments(orderFragmentIn.Commits),
+		Blinding: shamir.EncryptedBlind(orderFragmentIn.Blinding),
+		Commits:  unmarshalCommitments(orderFragmentIn.Commits),
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
