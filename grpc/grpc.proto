@@ -98,3 +98,17 @@ message StatusResponse {
     bool   bootstrapped = 2;
     int64  peers        = 3;
 }
+
+service OracleService {
+    rpc UpdateMidpoint(UpdateMidpointRequest) returns (UpdateMidpointResponse);
+}
+
+message UpdateMidpointRequest {
+    bytes  signature = 1;
+    uint64 tokens    = 2;
+    uint64 price     = 3;
+    uint64 nonce     = 4;
+}
+
+message UpdateMidpointResponse {
+}
