@@ -102,6 +102,9 @@ func (multiAddress MultiAddress) Hash() []byte {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
+	if multiAddress.baseMultiAddress == nil {
+		return []byte{}, errors.New("baseMultiAddress cannot be nil")
+	}
 	val := multiAddressJsonValue{
 		Signature:        multiAddress.Signature,
 		Nonce:            multiAddress.Nonce,

@@ -2,6 +2,7 @@ package identity_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/republicprotocol/republic-go/testutils"
@@ -73,17 +74,10 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			Expect(multi.String()).Should(Equal(newMulti.String()))
 		})
 
-		It("should correctly encode empty Address", func() {
+		It("should return error when marshaling empty MultiAddress", func() {
 			empty := identity.MultiAddress{}
-			data, err := empty.MarshalJSON()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(string(data)).Should(Equal("\"\""))
-
-			newEmpty := &identity.MultiAddress{}
-			err = newEmpty.UnmarshalJSON(data)
-			Expect(err).ShouldNot(HaveOccurred())
-			fmt.Println(newEmpty.Address())
-			Expect(empty.Address()).Should(Equal(newEmpty.Address()))
+			_, err := empty.MarshalJSON()
+			Expect(err).Should(HaveOccurred())
 		})
 
 		It("should error when trying to decoding wrong-formatted error", func() {
@@ -91,6 +85,25 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			badData := []byte("this is not a valid MultiAddress")
 			err := newMulti.UnmarshalJSON(badData)
 			Expect(err).Should(HaveOccurred())
+		})
+
+		It("should get the origin multiAdress after marshaling and unmarshaling", func() {
+			key, err := crypto.RandomEcdsaKey()
+			addr := identity.Address(key.Address())
+			Expect(err).ShouldNot(HaveOccurred())
+			multi, err := identity.NewMultiAddressFromString("/republic/" + addr.String())
+			Expect(err).ShouldNot(HaveOccurred())
+			multi.Nonce = 1
+			signature, err := key.Sign(multi.Hash())
+			Expect(err).ShouldNot(HaveOccurred())
+			multi.Signature = signature
+
+			data, err := json.Marshal(multi)
+			Expect(err).ShouldNot(HaveOccurred())
+			newMulti := new(identity.MultiAddress)
+			err = json.Unmarshal(data, newMulti)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(multi).Should(Equal(*newMulti))
 		})
 	})
 
@@ -119,4 +132,5 @@ var _ = Describe("MultiAddresses with support for Republic Protocol", func() {
 			Expect(bytes.Equal(multiAddress.Hash(), multiAddressOther.Hash())).Should(BeTrue())
 		})
 	})
+
 })
