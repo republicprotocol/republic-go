@@ -168,11 +168,10 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 
 	// FIXME: Check for nil message components
 
-	from := identity.MultiAddress{}
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress %v: %v", request.GetMultiAddress().GetMultiAddress(), err))
-		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v: %v", request.GetMultiAddress().GetMultiAddress(), err)
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
+		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 	from.Signature = request.GetMultiAddress().GetSignature()
 	from.Nonce = request.GetMultiAddress().GetMultiAddressNonce()
@@ -198,8 +197,8 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress %v: %v", request.GetMultiAddress().GetMultiAddress(), err))
-		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v: %v", request.GetMultiAddress().GetMultiAddress(), err)
+		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
+		return nil, fmt.Errorf("cannot unmarshal multiaddress: %v", err)
 	}
 
 	from.Signature = request.GetMultiAddress().GetSignature()
