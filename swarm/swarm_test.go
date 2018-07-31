@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -17,14 +18,17 @@ import (
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
-	"github.com/republicprotocol/republic-go/testutils"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 var _ = Describe("Swarm", func() {
 
 	var (
 		numberOfClients          = 100
-		numberOfBootstrapClients = 5
+		numberOfBootstrapClients = 6
 		α                        = 4
 	)
 
@@ -38,7 +42,6 @@ var _ = Describe("Swarm", func() {
 			// Creating clients.
 			stores := make([]MultiAddressStorer, numberOfClients)
 			clients := make([]Client, numberOfClients)
-			multiAddresses := make(identity.MultiAddresses, numberOfClients)
 			swarmers := make([]Swarmer, numberOfClients)
 			ecdsaKeys := make([]crypto.EcdsaKey, numberOfClients)
 
@@ -54,16 +57,12 @@ var _ = Describe("Swarm", func() {
 			for i := 0; i < numberOfClients; i++ {
 				ecdsaKeys[i], err = crypto.RandomEcdsaKey()
 				Expect(err).ShouldNot(HaveOccurred())
-				client, store, err := newMockClientToServer(serverHub, i, ecdsaKeys[i])
+				client, store, err := newMockSwarmClient(serverHub, i, &ecdsaKeys[i])
 				Expect(err).ShouldNot(HaveOccurred())
 				clients[i] = &client
-				multiAddresses[i] = clients[i].MultiAddress()
 				stores[i] = store
 
 				swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKeys[i])
-				signature, err := ecdsaKeys[i].Sign(multiAddresses[i].Hash())
-				Expect(err).ShouldNot(HaveOccurred())
-				multiAddresses[i].Signature = signature
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
@@ -74,7 +73,7 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				for j := 0; j < numberOfBootstrapClients; j++ {
-					if _, err := stores[i].PutMultiAddress(multiAddresses[j]); err != nil {
+					if _, err := stores[i].PutMultiAddress(clients[j].MultiAddress()); err != nil {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
 				}
@@ -84,25 +83,25 @@ var _ = Describe("Swarm", func() {
 				defer GinkgoRecover()
 
 				server := NewServer(swarmers[i], stores[i], α)
-				serverHub.Register(multiAddresses[i].Address(), server)
+				serverHub.Register(clients[i].MultiAddress().Address(), server)
+			})
+
+			dispatch.CoForAll(numberOfClients, func(i int) {
+				defer GinkgoRecover()
 
 				err := swarmers[i].Ping(ctx)
 				Expect(err).ShouldNot(HaveOccurred())
-				multiAddresses[i].Nonce++
-				signature, err := ecdsaKeys[i].Sign(multiAddresses[i].Hash())
-				Expect(err).ShouldNot(HaveOccurred())
-				multiAddresses[i].Signature = signature
 
 				for j := 0; j < numberOfClients; j++ {
 					if i == j {
 						continue
 					}
-					if serverHub.IsRegistered(multiAddresses[j].Address()) {
-						multiAddr, err := swarmers[i].Query(ctx, multiAddresses[j].Address())
+					if serverHub.IsRegistered(clients[j].MultiAddress().Address()) {
+						multiAddr, err := swarmers[i].Query(ctx, clients[j].MultiAddress().Address())
 						if err != nil {
 							continue
 						}
-						Expect(multiAddr.String()).To(Equal(multiAddresses[j].String()))
+						Expect(multiAddr.String()).To(Equal(clients[j].MultiAddress().String()))
 					}
 				}
 			})
@@ -133,15 +132,12 @@ func (serverHub *mockServerHub) Register(serverAddr identity.Address, server Ser
 	serverHub.active[serverAddr] = true
 }
 
-func (serverHub *mockServerHub) Deregister(serverAddr identity.Address) bool {
+func (serverHub *mockServerHub) Deregister(serverAddr identity.Address) {
 	serverHub.connsMu.Lock()
 	defer serverHub.connsMu.Unlock()
 
-	isActive, _ := serverHub.active[serverAddr]
-	if isActive {
-		serverHub.active[serverAddr] = false
-	}
-	return isActive
+	delete(serverHub.conns, serverAddr)
+	serverHub.active[serverAddr] = false
 }
 
 func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
@@ -153,16 +149,17 @@ func (serverHub *mockServerHub) IsRegistered(serverAddr identity.Address) bool {
 	return isActive
 }
 
-type mockClientToServer struct {
+type mockSwarmClient struct {
 	store     MultiAddressStorer
 	multiAddr identity.MultiAddress
 	serverHub *mockServerHub
 }
 
-func newMockClientToServer(mockServerHub *mockServerHub, i int, key crypto.EcdsaKey) (mockClientToServer, MultiAddressStorer, error) {
-	multiAddr, err := testutils.RandomMultiAddress()
+func newMockSwarmClient(mockServerHub *mockServerHub, i int, key *crypto.EcdsaKey) (mockSwarmClient, MultiAddressStorer, error) {
+
+	multiAddr, err := identity.Address(key.Address()).MultiAddress()
 	if err != nil {
-		return mockClientToServer{}, nil, err
+		return mockSwarmClient{}, nil, err
 	}
 	multiAddr.Nonce = 1
 	signature, err := key.Sign(multiAddr.Hash())
@@ -176,14 +173,14 @@ func newMockClientToServer(mockServerHub *mockServerHub, i int, key crypto.Ecdsa
 	_, err = store.PutMultiAddress(multiAddr)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	return mockClientToServer{
+	return mockSwarmClient{
 		store:     store,
 		multiAddr: multiAddr,
 		serverHub: mockServerHub,
 	}, store, nil
 }
 
-func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
+func (client *mockSwarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
 	var server Server
 	isActive := false
 
@@ -200,7 +197,7 @@ func (client *mockClientToServer) Ping(ctx context.Context, to identity.MultiAdd
 	return errors.New("address not active")
 }
 
-func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.MultiAddress) error {
+func (client *mockSwarmClient) Pong(ctx context.Context, multiAddr identity.MultiAddress) error {
 	var server Server
 	isActive := false
 
@@ -210,19 +207,19 @@ func (client *mockClientToServer) Pong(ctx context.Context, multiAddr identity.M
 	}
 	client.serverHub.connsMu.Unlock()
 
-	_, err := client.store.MultiAddress(client.multiAddr.Address())
+	multi, err := client.store.MultiAddress(client.multiAddr.Address())
 	if err != nil {
 		return err
 	}
 
 	if isActive {
 		randomSleep()
-		return server.Pong(ctx, client.multiAddr)
+		return server.Pong(ctx, multi)
 	}
 	return errors.New("pong address not active")
 }
 
-func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
+func (client *mockSwarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
 	var server Server
 	isActive := false
 
@@ -243,12 +240,16 @@ func (client *mockClientToServer) Query(ctx context.Context, to identity.MultiAd
 	return identity.MultiAddresses{}, errors.New("server not active")
 }
 
-func (client *mockClientToServer) MultiAddress() identity.MultiAddress {
-	return client.multiAddr
+func (client *mockSwarmClient) MultiAddress() identity.MultiAddress {
+	multi, err := client.store.MultiAddress(client.multiAddr.Address())
+	if err != nil {
+		log.Println("err in getting the multiaddress in store")
+	}
+
+	return multi
 }
 
 func randomSleep() {
-	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(120)
 	time.Sleep(time.Duration(r) * time.Millisecond)
 }

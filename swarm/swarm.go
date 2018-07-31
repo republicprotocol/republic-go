@@ -151,6 +151,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 	// Query α multi-addresses until the node is reached or there are no
 	// more newer multi-addresses can be queried.
+	// todo : currently it's doing it sequetially, not concurrently
 	for len(randomMultiAddrs) > 0 {
 		multiAddr := randomMultiAddrs[0]
 		randomMultiAddrs = randomMultiAddrs[1:]
@@ -167,27 +168,33 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		}
 
 		for _, multi := range multiAddrs {
+			// Verify the multi address
+			verifier := crypto.NewEcdsaVerifier(multi.Address().String())
+			if err := verifier.Verify(multi.Hash(), multi.Signature); err != nil {
+				continue
+			}
+			if _, ok := seenAddrs[multi.Address()]; ok {
+				continue
+			}
 			if multi.Address() == query {
 				return multi, nil
 			}
 
-			if _, ok := seenAddrs[multi.Address()]; ok {
-				continue
-			}
-
-			// Get nonce of multi-address if present in store and
-			// store it back to the store.
-			_, err := swarmer.storer.MultiAddress(multi.Address())
+			// Put the new multi in our storer if it has a higher nonce
+			oldMulti, err := swarmer.storer.MultiAddress(multi.Address())
 			if err != nil && err != ErrMultiAddressNotFound {
 				log.Printf("cannot get nonce of %v : %v", multi.Address(), err)
 				continue
 			}
-
-			_, err = swarmer.storer.PutMultiAddress(multi)
-			if err != nil {
-				log.Printf("cannot store %v: %v", multi.Address(), err)
-				continue
+			if err == ErrMultiAddressNotFound || oldMulti.Nonce < multi.Nonce {
+				_, err = swarmer.storer.PutMultiAddress(multi)
+				if err != nil {
+					log.Printf("cannot store %v: %v", multi.Address(), err)
+					continue
+				}
 			}
+
+			// todo : do we need append the multi address in this case ?
 			randomMultiAddrs = append(randomMultiAddrs, multi)
 		}
 	}
@@ -234,6 +241,11 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 	}
 
 	return nil
+}
+
+func (swarmer *swarmer) verify(multi identity.MultiAddress) error {
+	verifier := crypto.NewEcdsaVerifier(multi.Address().String())
+	return verifier.Verify(multi.Hash(), multi.Signature)
 }
 
 type Server interface {

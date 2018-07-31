@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,7 +97,9 @@ func (multiAddress MultiAddress) String() string {
 // Hash returns the Keccak256 hash of a multiAddress. This hash is used to create
 // signatures for a multiaddress.
 func (multiAddress MultiAddress) Hash() []byte {
-	multiaddrBytes := append([]byte(multiAddress.String()), []byte{byte(multiAddress.Nonce)}...)
+	nonceBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(nonceBytes, multiAddress.Nonce)
+	multiaddrBytes := append([]byte(multiAddress.String()), nonceBytes...)
 	return crypto.Keccak256(multiaddrBytes)
 }
 
