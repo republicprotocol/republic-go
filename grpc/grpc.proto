@@ -113,10 +113,10 @@ service OracleService {
 }
 
 message UpdateMidpointRequest {
-    bytes  signature = 1;
-    uint64 tokens    = 2;
-    uint64 price     = 3;
-    uint64 nonce     = 4;
+             bytes  signature = 1;
+             uint64 nonce     = 2;
+    repeated uint64 tokens    = 3;
+    repeated uint64 price     = 4;
 }
 
 message UpdateMidpointResponse {
