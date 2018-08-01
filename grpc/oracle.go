@@ -41,7 +41,7 @@ func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 	request := &UpdateMidpointRequest{
 		Signature: midpointPrice.Signature,
 		Tokens:    midpointPrice.Tokens,
-		Price:     midpointPrice.Price,
+		Price:     midpointPrice.Prices,
 		Nonce:     midpointPrice.Nonce,
 	}
 	if err := Backoff(ctx, func() error {
@@ -103,14 +103,14 @@ func (service *OracleService) UpdateMidpoint(ctx context.Context, request *Updat
 	}
 
 	// Check for empty or nil request fields.
-	if request.Signature == nil || len(request.Signature) == 0 || request.Tokens == 0 || request.Price == 0 || request.Nonce == 0 {
+	if request.Signature == nil || len(request.Signature) == 0 || len(request.Tokens) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
 		return nil, fmt.Errorf("invalid midpoint data request")
 	}
 
 	midpointPrice := oracle.MidpointPrice{
 		Signature: request.Signature,
 		Tokens:    request.Tokens,
-		Price:     request.Price,
+		Price:     request.Prices,
 		Nonce:     request.Nonce,
 	}
 
