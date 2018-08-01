@@ -135,6 +135,7 @@ func main() {
 				continue
 			}
 			prices, err := iter.Collect()
+			log.Printf("have %d in the map", len(prices))
 			if err != nil {
 				log.Println("fail to get collect all prices from the iterator", err)
 				time.Sleep(15 * time.Second)

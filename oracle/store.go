@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -56,6 +57,9 @@ func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice)
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
 
+	if midpointPrice.Nonce == 0 {
+		log.Print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
 	storer.midpointPrices[midpointPrice.Tokens] = midpointPrice
 
 	return nil
