@@ -396,14 +396,15 @@ func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
 	}
 }
 
-// isCompatible checks the compatibility of the notification's order with another
-// order.
-// 1. If the trader is the same as the notification's trader, the 2 orders are
-// incompatible. (Traders should not match against themselves)
+// isCompatible checks if the notification's order is compatible with another order based
+// on the following conditions:
+// 1. If the trader is the same as the notification's trader, the 2 orders are incompatible.
 // 2. If both orders are Fill-or-Kill (FOK), they are incompatible.
 // 3. If one of the orders is a FOK, then both orders are incompatible if the other order
-// is of a higher priority.
+//    is of a higher priority.
 func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment order.Fragment, trader string, priority uint64) bool {
+
+	// Traders should not match against themselves
 	if trader == notification.Trader {
 		return false
 	}
