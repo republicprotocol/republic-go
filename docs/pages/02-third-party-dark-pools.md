@@ -16,7 +16,11 @@ for Darknodes to prepare orders for settlement, and a function
 function settle(bytes32 _buy, bytes32 _sell) returns (bool) { /* ... */ }
 ```
 
-for Darknodes to settle two prepared orders; a buy order, and a sell order. 
+for Darknodes to settle two prepared orders; a buy order, and a sell order.
+
+
+![Example settlement](../assets/images/02-third-party-dark-pools-diagram-example-settlement.jpg "Example settlement")
+
 
 ### Paying Fees
 
