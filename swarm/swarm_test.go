@@ -2,6 +2,7 @@ package swarm_test
 
 import (
 	"context"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -78,11 +79,11 @@ var _ = Describe("Swarm", func() {
 
 	Context("when connecting to the network", func() {
 
-		AfterEach(func() {
-			os.RemoveAll("./tmp")
-		})
-
 		Context("when traders are honest, they", func() {
+
+			AfterEach(func() {
+				os.RemoveAll("./tmp")
+			})
 
 			It("should be able to query most peers", func() {
 				ctx, cancelCtx := context.WithCancel(context.Background())
@@ -123,6 +124,10 @@ var _ = Describe("Swarm", func() {
 
 		Context("when some traders are dishonest, they", func() {
 
+			AfterEach(func() {
+				os.RemoveAll("./tmp")
+			})
+
 			It("should be able to connect to atleast the bootstrap nodes", func() {
 				ctx, cancelCtx := context.WithCancel(context.Background())
 				defer cancelCtx()
@@ -142,6 +147,7 @@ var _ = Describe("Swarm", func() {
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
+					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">", numberOfBootstrapClients))
 				})
 			})
