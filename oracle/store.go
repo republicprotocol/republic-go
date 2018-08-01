@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -11,16 +12,16 @@ import (
 
 type MidpointPrice struct {
 	Signature []byte
-	Tokens    uint64
-	Price     uint64
+	Tokens    []uint64
+	Prices    []uint64
 	Nonce     uint64
 }
 
 // Equals checks if two MidpointPrice objects have equivalent fields.
 func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 	return bytes.Compare(midpointPrice.Signature, other.Signature) == 0 &&
-		midpointPrice.Tokens == other.Tokens &&
-		midpointPrice.Price == other.Price &&
+		reflect.DeepEqual(midpointPrice.Tokens, other.Tokens) &&
+		reflect.DeepEqual(midpointPrice.Prices, other.Prices) &&
 		midpointPrice.Nonce == other.Nonce
 }
 
