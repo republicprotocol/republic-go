@@ -66,8 +66,11 @@ message EncryptedOrderFragment {
 }
 
 enum OrderType {
-    Midpoint = 0;
-    Limit    = 1;
+    Midpoint     = 0;
+    Limit        = 1;
+    FOK          = 2;
+    Midpoint_FOK = 3;
+    Limit_FOK    = 4;
 }
 
 enum OrderParity {

@@ -110,7 +110,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.RenExSettlementAddress = "0x8617dcd709bb8660602ef70ade78626b7408a210"
 		case NetworkNightly:
-			config.RenExSettlementAddress = "0xaa14f741b8dc7fc9166807144d881b016f0ee92f"
+			config.RenExSettlementAddress = "0x65712325c41fb39b9205e08483b43142d919cc42"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
