@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -33,9 +34,11 @@ type JoinID [33]byte
 // Join are all associated with different shared values. All shamir.Shares must
 // have the same index value.
 type Join struct {
-	ID     JoinID
-	Index  JoinIndex
-	Shares shamir.Shares
+	ID          JoinID
+	Index       JoinIndex
+	Shares      shamir.Shares
+	Blindings   order.Blindings
+	Commitments order.Commitments
 }
 
 // MarshalBinary implements the encoding.Marshaler interface.

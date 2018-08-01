@@ -7,17 +7,15 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 )
 
-type Commitment struct {
-	Index uint64 `json:"index"`
+type Commitments map[uint64]Commitment
 
-	Price         CoExpCommitment `json:"priceCommit"`
-	Volume        CoExpCommitment `json:"volumeCommit"`
-	MinimumVolume CoExpCommitment `json:"minimumVolumeCommit"`
+type Commitment struct {
+	*big.Int
 }
 
 type CoExpCommitment struct {
-	Co  *big.Int `json:"co"`
-	Exp *big.Int `json:"exp"`
+	Co  Commitment `json:"co"`
+	Exp Commitment `json:"exp"`
 }
 
 type Blindings []Blinding
