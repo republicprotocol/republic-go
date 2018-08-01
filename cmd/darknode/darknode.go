@@ -117,9 +117,10 @@ func main() {
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
 	swarmService.Register(server)
 
+	oracleAddr := identity.Address("8MJqU9vwduX4yY1NZU89dhADB72DwX")
 	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
 	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha) // TODO: Custom alpha for oracler
-	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, multiAddr.Address(), store.SwarmMultiAddressStore(), oracle.NewMidpointPriceStorer(), config.Alpha), time.Millisecond)
+	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, oracleAddr, store.SwarmMultiAddressStore(), oracle.NewMidpointPriceStorer(), config.Alpha), time.Millisecond)
 	oracleService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)

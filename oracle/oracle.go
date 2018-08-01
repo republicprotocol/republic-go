@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/republicprotocol/republic-go/logger"
-
-	"github.com/republicprotocol/republic-go/dispatch"
-
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -94,13 +92,16 @@ func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice Midpoint
 	if err := verifier.Verify(midpointPrice.Hash(), midpointPrice.Signature); err != nil {
 		return fmt.Errorf("failed to verify midpoint price signature: %v", err)
 	}
-
-	midpointPriceExists, err := server.midpointPriceStorer.PutMidpointPrice(midpointPrice)
+	oldPrice, err := server.midpointPriceStorer.MidpointPrice(midpointPrice.Tokens)
 	if err != nil {
-		return fmt.Errorf("cannot store midpoint price: %v", err)
+		return err
 	}
 
-	if !midpointPriceExists {
+	if oldPrice.Equals(MidpointPrice{}) || midpointPrice.Nonce > oldPrice.Nonce {
+		err := server.midpointPriceStorer.PutMidpointPrice(midpointPrice)
+		if err != nil {
+			return fmt.Errorf("cannot store midpoint price: %v", err)
+		}
 		return server.oracler.UpdateMidpoint(ctx, midpointPrice)
 	}
 

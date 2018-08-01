@@ -35,7 +35,7 @@ func (midpointPrice MidpointPrice) Hash() []byte {
 }
 
 type MidpointPriceStorer interface {
-	PutMidpointPrice(midpointPrice MidpointPrice) (bool, error)
+	PutMidpointPrice(midpointPrice MidpointPrice) error
 	MidpointPrice(tokens uint64) (MidpointPrice, error)
 	MidpointPrices() (MidpointPriceIterator, error)
 }
@@ -52,15 +52,13 @@ func NewMidpointPriceStorer() *midpointPriceStorer {
 	}
 }
 
-func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice) (bool, error) {
+func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice) error {
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
 
-	if !storer.midpointPrices[midpointPrice.Tokens].Equals(midpointPrice) {
-		storer.midpointPrices[midpointPrice.Tokens] = midpointPrice
-		return true, nil
-	}
-	return false, nil
+	storer.midpointPrices[midpointPrice.Tokens] = midpointPrice
+
+	return nil
 }
 
 func (storer *midpointPriceStorer) MidpointPrice(tokens uint64) (MidpointPrice, error) {
