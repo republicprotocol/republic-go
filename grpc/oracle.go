@@ -102,9 +102,12 @@ func (service *OracleService) UpdateMidpoint(ctx context.Context, request *Updat
 		return nil, err
 	}
 
-	// Check for empty or nil request fields.
+	// Check for empty or invalid request fields.
 	if request.Signature == nil || len(request.Signature) == 0 || len(request.Tokens) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
 		return nil, fmt.Errorf("invalid midpoint data request")
+	}
+	if len(request.Tokens) != len(request.Prices) {
+		return nil, fmt.Errorf("midpoint price and token length mismatch")
 	}
 
 	midpointPrice := oracle.MidpointPrice{
