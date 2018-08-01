@@ -325,9 +325,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	mat.sortedComputationsMu.Lock()
 	defer mat.sortedComputationsMu.Unlock()
 
-	// FIXME: Associate priority with the order fragment so that we can
-	// maintain priority through persistent storage.
-
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
