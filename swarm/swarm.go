@@ -97,7 +97,7 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 		return err
 	}
 
-	return swarmer.pingNodes(ctx, swarmer.MultiAddress())
+	return swarmer.pingNodes(ctx, multi)
 }
 
 func (swarmer *swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
@@ -167,7 +167,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				logger.Error("cannot get multiAddress from the storer")
 				return identity.MultiAddress{}, err
 			}
-			log.Println("found !!!!")
 			return target, nil
 		}
 
@@ -199,7 +198,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 				// Verify the multi address
 				multi := multiAddrs[j]
-				log.Println("querying", multi.Address().String())
 				verifier := crypto.NewEcdsaVerifier(multi.Address().String())
 				if err := verifier.Verify(multi.Hash(), multi.Signature); err != nil {
 					return
@@ -319,15 +317,15 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 	}
 	// Compare the nonce and see if we need to gossip the ping.
 	oldMulti, err := server.multiAddrStore.MultiAddress(multiAddr.Address())
-	if err != nil {
-		return err
-	}
-	if oldMulti.Nonce < multiAddr.Nonce {
+	if err == ErrMultiAddressNotFound || oldMulti.Nonce < multiAddr.Nonce {
 		err := server.multiAddrStore.PutMultiAddress(multiAddr)
 		if err != nil {
 			return err
 		}
 		return server.swarmer.BroadcastMultiAddress(ctx, multiAddr)
+	}
+	if err != nil && err != ErrMultiAddressNotFound {
+		return err
 	}
 
 	return nil
@@ -343,15 +341,15 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 
 	// Compare the nonce and see if we need to gossip the ping.
 	oldMulti, err := server.multiAddrStore.MultiAddress(from.Address())
-	if err != nil {
-		return err
-	}
-	if oldMulti.Nonce < from.Nonce {
+	if err == ErrMultiAddressNotFound || oldMulti.Nonce < from.Nonce {
 		err := server.multiAddrStore.PutMultiAddress(from)
 		if err != nil {
 			return err
 		}
 		return server.swarmer.BroadcastMultiAddress(ctx, from)
+	}
+	if err != nil && err != ErrMultiAddressNotFound {
+		return err
 	}
 
 	return nil

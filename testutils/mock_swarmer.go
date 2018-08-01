@@ -161,6 +161,7 @@ func NewMockSwarmClient(MockServerHub *MockServerHub, key *crypto.EcdsaKey, clie
 func (client *MockSwarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
 	client.serverHub.ConnsMu.Lock()
 	if isActive, _ := client.serverHub.Active[to.Address()]; !isActive {
+		client.serverHub.ConnsMu.Unlock()
 		return errors.New("server is not active")
 	}
 	server := client.serverHub.Conns[to.Address()]
@@ -188,6 +189,7 @@ func (client *MockSwarmClient) Ping(ctx context.Context, to identity.MultiAddres
 func (client *MockSwarmClient) Pong(ctx context.Context, multiAddr identity.MultiAddress) error {
 	client.serverHub.ConnsMu.Lock()
 	if isActive, _ := client.serverHub.Active[multiAddr.Address()]; !isActive {
+		client.serverHub.ConnsMu.Unlock()
 		return errors.New("server is not active")
 	}
 	server := client.serverHub.Conns[multiAddr.Address()]
@@ -214,6 +216,7 @@ func (client *MockSwarmClient) Pong(ctx context.Context, multiAddr identity.Mult
 func (client *MockSwarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
 	client.serverHub.ConnsMu.Lock()
 	if isActive, _ := client.serverHub.Active[to.Address()]; !isActive {
+		client.serverHub.ConnsMu.Unlock()
 		return identity.MultiAddresses{}, errors.New("server is not active")
 	}
 	server := client.serverHub.Conns[to.Address()]
@@ -232,7 +235,8 @@ func (client *MockSwarmClient) Query(ctx context.Context, to identity.MultiAddre
 func (client *MockSwarmClient) MultiAddress() identity.MultiAddress {
 	multi, err := client.store.MultiAddress(client.addr)
 	if err != nil {
-		log.Println("error retrieving multiaddress from store")
+		log.Println("error retrieving multiAddress from store", err)
+		return identity.MultiAddress{}
 	}
 	return multi
 }
