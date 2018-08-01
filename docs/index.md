@@ -8,3 +8,12 @@ Republic Protocol is an open-source protocol powering decentralised dark pools. 
 ## How it works
 
 ![Overview](./assets/images/00-index-diagram.jpg "Overview")
+
+
+**Traders** open orders by submitting a transaction to the Orderbook and sending order fragments to the network of Darknodes. On the Orderbook, the trader designates a [dark pool](./pages/02-third-party-dark-pools.md) for the order and the Orderbook verifies that the order has been signed by the required brokers.
+
+**Darknodes** synchronise orders from the Orderbook and receive order fragments directly from the traders. After receiving its order fragment, a Darknode runs a secure multi-party computation with other Darknodes to find a matching order without exposing the price and volume. Unless the majority of Darknodes are acting maliciously, the security of orders and the integrity of the order matching rules cannot be corrupted.
+
+**Orderbook** stores the priority, and the state, of orders. It stores this data against the order hash of the order, exposing nothing about the price and volume.
+
+**Settlemnet** is defined differently by different dark pools, but all adhere to a common interface defined by Republic Protocol.
