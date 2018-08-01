@@ -44,7 +44,7 @@ type OrderIterator interface {
 	Cursor() (order.ID, order.Status, string, uint, error)
 
 	// Collect all order.IDs and order.Statuses in the iterator into slices.
-	Collect() ([]order.ID, []order.Status, []string, uint, error)
+	Collect() ([]order.ID, []order.Status, []string, []uint, error)
 
 	// Release the resources allocated by the iterator.
 	Release()

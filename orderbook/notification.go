@@ -37,30 +37,6 @@ type NotificationOpenOrder struct {
 // IsNotification implements the Notification interface.
 func (notification NotificationOpenOrder) IsNotification() {}
 
-// IsCompatible checks the compatibility of the notification's order with another
-// order.
-// 1. If the trader is the same as the notification's trader, the 2 orders are
-// incompatible. (Traders should not match against themselves)
-// 2. If both orders are Fill-or-Kill (FOK), they are incompatible.
-// 3. If one of the orders is a FOK, then both orders are incompatible if the other order
-// is of a higher priority.
-func (notification NotificationOpenOrder) IsCompatible(orderFragment order.Fragment, trader string, priority uint64) bool {
-	if trader == notification.Trader {
-		return false
-	}
-
-	if orderFragment.OrderType >= order.TypeFOK {
-		if notification.OrderFragment.OrderType >= order.TypeFOK || uint64(notification.Priority) > priority {
-			return false
-		}
-		return true
-	}
-	if notification.OrderFragment.OrderType >= order.TypeFOK && priority > uint64(notification.Priority) {
-		return false
-	}
-	return true
-}
-
 // NotificationConfirmOrder is used to signal the confirmation of an
 // order.ID. This happens when an order.Order has been matched with another
 // order.Order, and consensus has been reached for the match.
