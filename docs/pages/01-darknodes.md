@@ -8,9 +8,7 @@ The Darknode Registry is an Ethereum smart contract used to register, and deregi
 
 The core purpose of the Darknode Registry is to break time down into discrete periods, called *epochs*. The registration of a Darknode is considered pending until the beginning of the next epoch. Likewise, the deregistration of an epoch is pending until the beginning of the next epoch. Once deregistration is approved, another full epoch must pass before the bond can be refunded.
 
-
 ![Registration and deregistration](../assets/images/01-darknodes-diagram-registration-and-deregistration.jpg "Registration and deregistration")
-
 
 **1. Register**
   The bond is sent to the Darknode Registry and the Darknode is in the *Pending Registration* state until the beginning of the next epoch. The account sending this transaction is consdered to be the Darknode operator.
@@ -35,7 +33,6 @@ The core purpose of the Darknode Registry is to break time down into discrete pe
 During an epoch, the number of registered Darknodes does not change — it can only change at the beginning of a new epoch. This allows Darknodes and traders to observe a static list of registered Darknodes for an epoch (whether it be the current epoch, or the previous epoch).
 
 The static list of registered Darknodes is shuffled according to the blockhash of the epoch. This shuffling occurs off-chain using a deterministic algorithm — partitioning registered Darknodes into *pods*. Each pod has *at least* 24 Darknodes, and is responsible for processing a subset of the computations required by the [Secure Order Matcher](./03-secure-order-matcher.md).
-
 
 ## Syncing the Orderbook
 

@@ -4,20 +4,23 @@ Dark pools are third-party exchanges, built on top of Republic Protocol, that us
 
 ## Settlement
 
-Dark pools must define a Settlement layer using an Ethereum smart contract that exposes a function
+Dark pools must define a settlment contract with an ABI for preparing orders for settlement, and for executing the settlement.
+
+### Preparing orders for settlement
 
 ```sol
 function submitOrder(bytes _order, uint8 _settlement, uint64 _tokens, uint256 _price, uint256 _volume, uint256 _minVolume) returns (bool) { /* ... */ }
 ```
 
-for Darknodes to prepare orders for settlement, and a function
+### Executing the settlement
 
 ```sol
 function settle(bytes32 _buy, bytes32 _sell) returns (bool) { /* ... */ }
 ```
 
-for Darknodes to settle two prepared orders; a buy order, and a sell order.
+### Example
 
+RenEx supports the settlement of Ethereum tokens using a set of Ethereum smart contracts.
 
 ![Example settlement](../assets/images/02-third-party-dark-pools-diagram-example-settlement.jpg "Example settlement")
 
