@@ -12,14 +12,19 @@ The core purpose of the Darknode Registry is to break time down into discrete pe
 
 **1. Register**
   The bond is sent to the Darknode Registry and the Darknode is in the *Pending Registration* state until the beginning of the next epoch. The account sending this transaction is consdered to be the Darknode operator.
+
 **2. Registered**
   The registration is approved and the Darknode is in the *Registered* state. The Darknode is now considerd active.
+
 **3. Deregister**
   The intent to deregister is sent to the Darknode Registry and the Darknode is in the *Pending Deregistration* state until the beginning of the next epoch. During this time, the Darknode is still considered to be active.
+
 **4. Deregistered**
   The deregistration is approved and the Darknode is in the *Deregistered* state. It is no longer considered active.
+
 **5. Cooling**
   The Darknode is no longer considered active. The bond cannot be refunded until the beginning of the next epoch.
+  
 **6. Refunded**
   The intent to refund is sent to the Darknode Registry and the bond is returned to the Darknode operator. The Darknode is removed from the Darknode Registry and can be regsitered again by any account.
 
