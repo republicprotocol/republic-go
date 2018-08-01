@@ -334,7 +334,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			continue
 		}
 
-		if !notification.IsCompatible(orderFragment, trader, priority) {
+		if !isCompatible(notification, orderFragment, trader, priority) {
 			continue
 		}
 
@@ -394,4 +394,40 @@ func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
 	if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
 		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
+}
+
+// isCompatible checks the compatibility of the notification's order with another
+// order.
+// 1. If the trader is the same as the notification's trader, the 2 orders are
+// incompatible. (Traders should not match against themselves)
+// 2. If both orders are Fill-or-Kill (FOK), they are incompatible.
+// 3. If one of the orders is a FOK, then both orders are incompatible if the other order
+// is of a higher priority.
+func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment order.Fragment, trader string, priority uint64) bool {
+	if trader == notification.Trader {
+		return false
+	}
+
+	switch orderFragment.OrderType {
+	case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
+		switch notification.OrderFragment.OrderType {
+		case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
+			return false
+
+		default:
+			if uint64(notification.Priority) > priority {
+				return false
+			}
+		}
+
+	default:
+		switch notification.OrderFragment.OrderType {
+		case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
+			if priority > uint64(notification.Priority) {
+				return false
+			}
+		default:
+		}
+	}
+	return true
 }
