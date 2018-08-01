@@ -11,9 +11,10 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
+// A Client exposes methods for invoking RPCs on a remote server.
 type Client interface {
 	// UpdateMidpoint is used to send updated midpoint information to a given
-	// multiaddress.
+	// multiAddress.
 	UpdateMidpoint(ctx context.Context, to identity.MultiAddress, midpointPrice MidpointPrice) error
 
 	// MultiAddress is used when finding random nodes to send information to.

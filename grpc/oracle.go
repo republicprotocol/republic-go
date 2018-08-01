@@ -41,7 +41,7 @@ func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 	request := &UpdateMidpointRequest{
 		Signature: midpointPrice.Signature,
 		Tokens:    midpointPrice.Tokens,
-		Price:     midpointPrice.Prices,
+		Prices:    midpointPrice.Prices,
 		Nonce:     midpointPrice.Nonce,
 	}
 	if err := Backoff(ctx, func() error {
