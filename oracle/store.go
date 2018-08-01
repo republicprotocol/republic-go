@@ -72,7 +72,7 @@ func (storer *midpointPriceStorer) MidpointPrices() (MidpointPriceIterator, erro
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
 
-	midpointPrices := make([]MidpointPrice, len(storer.midpointPrices))
+	midpointPrices := make([]MidpointPrice, 0)
 	for _, value := range storer.midpointPrices {
 		midpointPrices = append(midpointPrices, value)
 	}
