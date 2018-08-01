@@ -19,7 +19,7 @@ type oracleClient struct {
 	store swarm.MultiAddressStorer
 }
 
-// NewOracleClient returns an implementation of the OracleClient interface.
+// NewOracleClient returns an object that implements the oracle.Client interface.
 func NewOracleClient(addr identity.Address, store swarm.MultiAddressStorer) oracle.Client {
 	return &oracleClient{
 		addr:  addr,
@@ -27,8 +27,7 @@ func NewOracleClient(addr identity.Address, store swarm.MultiAddressStorer) orac
 	}
 }
 
-// UpdateMidpoint is used to send updated midpoint information to a given
-// multiaddress.
+// UpdateMidpoint implements the oracle.Client interface.
 func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.MultiAddress, midpointPrice oracle.MidpointPrice) error {
 	conn, err := Dial(ctx, to)
 	if err != nil {
@@ -37,6 +36,8 @@ func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 	}
 	defer conn.Close()
 
+	// Construct a request object and send midpoint information to a given
+	// multiaddress.
 	request := &UpdateMidpointRequest{
 		Signature: midpointPrice.Signature,
 		Tokens:    midpointPrice.Tokens,
@@ -53,6 +54,7 @@ func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 	return nil
 }
 
+// MultiAddress implements the oracle.Client interface.
 func (client *oracleClient) MultiAddress() identity.MultiAddress {
 	multiAddr, err := client.store.MultiAddress(client.addr)
 	if err != nil {
@@ -62,6 +64,9 @@ func (client *oracleClient) MultiAddress() identity.MultiAddress {
 	return multiAddr
 }
 
+// OracleService is a Service that implements the gRPC OracleService defined in
+// protobuf. It delegates responsibility for handling the UpdateMidpoint RPCs
+// to a oracle.Server.
 type OracleService struct {
 	server oracle.Server
 
@@ -70,6 +75,8 @@ type OracleService struct {
 	rateLimits   map[string]time.Time
 }
 
+// NewOracleService returns an OracleService that uses the oracle.Server as a
+// delegate.
 func NewOracleService(server oracle.Server, rate time.Duration) OracleService {
 	return OracleService{
 		server:       server,
@@ -79,15 +86,23 @@ func NewOracleService(server oracle.Server, rate time.Duration) OracleService {
 	}
 }
 
+// Register implements the Service interface.
 func (service *OracleService) Register(server *Server) {
 	RegisterOracleServiceServer(server.Server, service)
 }
 
+// UpdateMidpoint is an RPC used to notify a OracleService about the existence
+// of a client. In the UpdateMidpointRequest, the client sends a signed
+// identity.MultiAddress and the OracleService delegates the responsibility of
+// handling this signed identity.MultiAddress to its oracle.Server. If its
+// oracle.Server accepts the signed identity.MultiAddress of the client it will
+// return an empty UpdateMidpointResponse.
 func (service *OracleService) UpdateMidpoint(ctx context.Context, request *UpdateMidpointRequest) (*UpdateMidpointResponse, error) {
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}
 
+	// Check for empty or nil request fields.
 	if request.Signature == nil || len(request.Signature) == 0 || request.Tokens == 0 || request.Price == 0 || request.Nonce == 0 {
 		return nil, fmt.Errorf("invalid midpoint data request")
 	}
