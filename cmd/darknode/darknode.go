@@ -85,6 +85,8 @@ func main() {
 	}
 	defer store.Release()
 
+	midpointPriceStorer := oracle.NewMidpointPriceStorer()
+
 	// Get own nonce from leveldb, if present and store multiaddress.
 	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
@@ -120,8 +122,32 @@ func main() {
 	oracleAddr := identity.Address("8MJqU9vwduX4yY1NZU89dhADB72DwX")
 	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
 	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha) // TODO: Custom alpha for oracler
-	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, oracleAddr, store.SwarmMultiAddressStore(), oracle.NewMidpointPriceStorer(), config.Alpha), time.Millisecond)
+	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, oracleAddr, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
 	oracleService.Register(server)
+
+	// todo : remove me
+	go func() {
+		for {
+			iter, err := midpointPriceStorer.MidpointPrices()
+			if err != nil {
+				log.Println("fail to get iterator from the midprice storer", err)
+				time.Sleep(15 * time.Second)
+				continue
+			}
+			prices, err := iter.Collect()
+			if err != nil {
+				log.Println("fail to get collect all prices from the iterator", err)
+				time.Sleep(15 * time.Second)
+				continue
+			}
+			for _, price := range prices {
+				log.Printf("price: %d, token : %d, nonce: %d", price.Price, price.Tokens, price.Nonce)
+			}
+			time.Sleep(15 * time.Second)
+
+		}
+
+	}()
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
