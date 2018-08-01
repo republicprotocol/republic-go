@@ -116,7 +116,7 @@ message UpdateMidpointRequest {
              bytes  signature = 1;
              uint64 nonce     = 2;
     repeated uint64 tokens    = 3;
-    repeated uint64 price     = 4;
+    repeated uint64 prices    = 4;
 }
 
 message UpdateMidpointResponse {
