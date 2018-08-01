@@ -20,9 +20,9 @@ import (
 var _ = Describe("Swarm", func() {
 
 	var (
-		numberOfClients          = 100
-		numberOfBootstrapClients = 5
-		α                        = 4
+		numberOfClients          = 5
+		numberOfBootstrapClients = 2
+		α                        = 3
 	)
 
 	registerClientsAndBootstrap := func(ctx context.Context, honest bool) ([]Client, []Swarmer, *testutils.MockServerHub, error) {
@@ -62,7 +62,7 @@ var _ = Describe("Swarm", func() {
 			defer GinkgoRecover()
 
 			for j := 0; j < numberOfBootstrapClients; j++ {
-				if _, err := stores[i].PutMultiAddress(clients[j].MultiAddress()); err != nil {
+				if err := stores[i].PutMultiAddress(clients[j].MultiAddress()); err != nil {
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}
@@ -92,11 +92,17 @@ var _ = Describe("Swarm", func() {
 				clients, swarmers, serverHub, err := registerClientsAndBootstrap(ctx, true)
 				Expect(err).ShouldNot(HaveOccurred())
 
+				// Join the network by ping self-address
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
 					err := swarmers[i].Ping(ctx)
 					Expect(err).ShouldNot(HaveOccurred())
+				})
+
+				// Query others address
+				dispatch.CoForAll(numberOfClients, func(i int) {
+					defer GinkgoRecover()
 
 					for j := 0; j < numberOfClients; j++ {
 						if i == j {
@@ -105,6 +111,7 @@ var _ = Describe("Swarm", func() {
 						if serverHub.IsRegistered(clients[j].MultiAddress().Address()) {
 							multiAddr, err := swarmers[i].Query(ctx, clients[j].MultiAddress().Address())
 							if err != nil {
+								log.Printf("cannot query %v, %v", clients[j].MultiAddress().Address(), err)
 								continue
 							}
 							Expect(multiAddr.String()).To(Equal(clients[j].MultiAddress().String()))

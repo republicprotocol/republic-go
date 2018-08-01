@@ -145,7 +145,7 @@ func NewMockSwarmClient(MockServerHub *MockServerHub, key *crypto.EcdsaKey, clie
 		return MockSwarmClient{}, nil, err
 	}
 	store := db.SwarmMultiAddressStore()
-	_, err = store.PutMultiAddress(multiAddr)
+	err = store.PutMultiAddress(multiAddr)
 	if err != nil {
 		return MockSwarmClient{}, nil, err
 	}
@@ -238,7 +238,6 @@ func (client *MockSwarmClient) MultiAddress() identity.MultiAddress {
 }
 
 func randomSleep() {
-	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(120)
 	time.Sleep(time.Duration(r) * time.Millisecond)
 }
