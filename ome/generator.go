@@ -410,25 +410,34 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 	}
 
 	switch orderFragment.OrderType {
-	case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
-		switch notification.OrderFragment.OrderType {
-		case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
-			return false
 
+	// The orderFragment is a Fill-or-Kill order
+	case order.TypeMidpointFOK, order.TypeLimitFOK:
+		switch notification.OrderFragment.OrderType {
+		case order.TypeMidpointFOK, order.TypeLimitFOK:
+			// Both orders are FOK, thus, incompatible.
+			return false
 		default:
+			// Does notification.OrderFragment, which is not an FOK order, have a higher
+			// priority than the FOK order ?
 			if uint64(notification.Priority) > priority {
 				return false
 			}
+			return true
 		}
 
+	// The orderFragment is not a Fill-or-Kill order
 	default:
 		switch notification.OrderFragment.OrderType {
-		case order.TypeFOK, order.TypeMidpointFOK, order.TypeLimitFOK:
+		case order.TypeMidpointFOK, order.TypeLimitFOK:
+			// Does notification.OrderFragment, which is an FOK order, have a lower
+			// priority than the other order ?
 			if priority > uint64(notification.Priority) {
 				return false
 			}
+			return true
 		default:
+			return true
 		}
 	}
-	return true
 }
