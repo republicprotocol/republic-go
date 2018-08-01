@@ -117,8 +117,11 @@ type Type int8
 
 // Type values.
 const (
-	TypeMidpoint Type = 0
-	TypeLimit    Type = 1
+	TypeMidpoint    Type = 0
+	TypeLimit       Type = 1
+	TypeFOK         Type = 2
+	TypeMidpointFOK Type = 3
+	TypeLimitFOK    Type = 4
 )
 
 // The Parity of an Order determines whether it is buy or a sell.
