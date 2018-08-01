@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -57,9 +56,6 @@ func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice)
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
 
-	if midpointPrice.Nonce == 0 {
-		log.Print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	}
 	storer.midpointPrices[midpointPrice.Tokens] = midpointPrice
 
 	return nil
@@ -76,7 +72,11 @@ func (storer *midpointPriceStorer) MidpointPrices() (MidpointPriceIterator, erro
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
 
-	iter := NewMidpointPriceIterator(storer.midpointPrices)
+	midpointPrices := make([]MidpointPrice, len(storer.midpointPrices))
+	for _, value := range storer.midpointPrices {
+		midpointPrices = append(midpointPrices, value)
+	}
+	iter := NewMidpointPriceIterator(midpointPrices)
 	return &iter, nil
 }
 
@@ -92,11 +92,7 @@ type midpointPriceIterator struct {
 	cursor         int
 }
 
-func NewMidpointPriceIterator(midpointPricesMap map[uint64]MidpointPrice) midpointPriceIterator {
-	midpointPrices := make([]MidpointPrice, len(midpointPricesMap))
-	for _, value := range midpointPricesMap {
-		midpointPrices = append(midpointPrices, value)
-	}
+func NewMidpointPriceIterator(midpointPrices []MidpointPrice) midpointPriceIterator {
 	return midpointPriceIterator{
 		midpointPrices: midpointPrices,
 		cursor:         0,
