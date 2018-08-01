@@ -98,7 +98,7 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 
 		It("panic when dividing by zero", func() {
-			Ω(func() { one.Div(&zero) }).Should(Panic())
+			Expect(func() { one.Div(&zero) }).Should(Panic())
 		})
 	})
 
@@ -126,7 +126,7 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 
 		It("panic when taking the modulus by zero", func() {
-			Ω(func() { one.Div(&zero) }).Should(Panic())
+			Expect(func() { one.Div(&zero) }).Should(Panic())
 		})
 	})
 
@@ -147,7 +147,7 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 
 		It("panic when taking the modulus by zero", func() {
-			Ω(func() { one.SubModulo(&one, &zero) }).Should(Panic())
+			Expect(func() { one.SubModulo(&one, &zero) }).Should(Panic())
 		})
 	})
 
@@ -171,7 +171,7 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 
 		It("panic when taking the modulus by zero", func() {
-			Ω(func() { one.AddModulo(&one, &zero) }).Should(Panic())
+			Expect(func() { one.AddModulo(&one, &zero) }).Should(Panic())
 		})
 	})
 
@@ -196,28 +196,28 @@ var _ = Describe("Int1024 arithmetic", func() {
 		})
 
 		It("panic when taking the modulus by zero", func() {
-			Ω(func() { one.MulModulo(&one, &zero) }).Should(Panic())
+			Expect(func() { one.MulModulo(&one, &zero) }).Should(Panic())
 		})
 	})
 
 	Context("when taking the multiplicative inverse", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			threeInvModSeven := three.ModInverse(&seven)
-			Ω(threeInvModSeven.Equals(&five)).Should(BeTrue())
+			Expect(threeInvModSeven.Equals(&five)).Should(BeTrue())
 
-			Ω(func() { two.ModInverse(&four) }).Should(Panic())
+			Expect(func() { two.ModInverse(&four) }).Should(Panic())
 
 			oneInvTwo := one.ModInverse(&two)
-			Ω(oneInvTwo.Equals(&one)).Should(BeTrue())
+			Expect(oneInvTwo.Equals(&one)).Should(BeTrue())
 
 			twoInvEleven := two.ModInverse(&eleven)
-			Ω(twoInvEleven.Equals(&six)).Should(BeTrue())
+			Expect(twoInvEleven.Equals(&six)).Should(BeTrue())
 
 			n := FromUint(1234567)
 			m := FromUint(458948883992)
 			result := n.ModInverse(&m)
 			expected := FromUint(14332777583)
-			Ω(result.Equals(&expected)).Should(BeTrue())
+			Expect(result.Equals(&expected)).Should(BeTrue())
 
 			// fmt.Println(one.ModInverse(&one)) // Actual: 1, Expected?
 		})
@@ -226,32 +226,32 @@ var _ = Describe("Int1024 arithmetic", func() {
 	Context("when raising powers", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			oneExpOne := one.Exp(&one)
-			Ω(oneExpOne.Equals(&one)).Should(BeTrue())
+			Expect(oneExpOne.Equals(&one)).Should(BeTrue())
 
 			twoExpZero := two.Exp(&zero)
-			Ω(twoExpZero.Equals(&one)).Should(BeTrue())
+			Expect(twoExpZero.Equals(&one)).Should(BeTrue())
 
 			zeroExpZero := zero.Exp(&zero)
-			Ω(zeroExpZero.Equals(&one)).Should(BeTrue())
+			Expect(zeroExpZero.Equals(&one)).Should(BeTrue())
 
 			zeroExpOne := zero.Exp(&one)
-			Ω(zeroExpOne.Equals(&zero)).Should(BeTrue())
+			Expect(zeroExpOne.Equals(&zero)).Should(BeTrue())
 
 			threeExpThree := three.Exp(&three)
 			expected := FromUint(27)
-			Ω(threeExpThree.Equals(&expected)).Should(BeTrue())
+			Expect(threeExpThree.Equals(&expected)).Should(BeTrue())
 
 			oneLess := FromUint(4294967296)
 			lessExpTwo := oneLess.Exp(&two)
 			expected = oneWord.Add(&one)
-			Ω(lessExpTwo.Equals(&expected)).Should(BeTrue())
+			Expect(lessExpTwo.Equals(&expected)).Should(BeTrue())
 
 			sqrt, err := FromString("13407807929942597099574024998205846127479365820592393377723561443721764030073546976801874298166903427690031858186486050853753882811946569946433649006084095")
-			Ω(err).Should(BeNil())
+			Expect(err).Should(BeNil())
 			sqrtExpTwo := sqrt.Exp(&two)
 			expected, err = FromString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474097562152033539671286128252223189553839160721441767298250321715263238814402734379959506792230903356495130620869925267845538430714092411695463462326211969025")
-			Ω(err).Should(BeNil())
-			Ω(sqrtExpTwo.Equals(&expected)).Should(BeTrue())
+			Expect(err).Should(BeNil())
+			Expect(sqrtExpTwo.Equals(&expected)).Should(BeTrue())
 		})
 
 		It("should overflow", func() {
@@ -270,14 +270,14 @@ func RunCase(fn BinaryFn, test TestCase) {
 			bg, _ := big.NewInt(0).SetString(input, 0)
 			var err error
 			test.inputsInt[i], err = FromBytes(bg.Bytes()) // FromString(input)
-			Ω(err).Should(BeNil())
+			Expect(err).Should(BeNil())
 		}
 	}
 
 	if test.expectedInt == nil {
 		bg, _ := big.NewInt(0).SetString(test.expectedStr, 0)
 		tmp, err := FromBytes(bg.Bytes()) // FromString(test.expectedStr)
-		Ω(err).Should(BeNil())
+		Expect(err).Should(BeNil())
 		test.expectedInt = &tmp
 	}
 
@@ -288,8 +288,8 @@ func RunCase(fn BinaryFn, test TestCase) {
 	actual := fn(test.inputsInt...)
 	// actualStr := actual.ToBinary()
 
-	// Ω(actual.Equals(test.expectedInt)).Should(BeTrue())
-	Ω(actual).Should(Equal(*test.expectedInt))
+	// Expect(actual.Equals(test.expectedInt)).Should(BeTrue())
+	Expect(actual).Should(Equal(*test.expectedInt))
 }
 
 func RunAllCases(fn BinaryFn, testcases []TestCase) {

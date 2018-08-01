@@ -91,9 +91,9 @@ var _ = Describe("Order fragments", func() {
 			rhs, err := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, expiry, tokens, price, maxVolume, minVolume, nonce)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(true))
-			Ω(lhs.ID.String()).Should(Equal(rhs.ID.String()))
-			Ω(lhs.Equal(&rhs)).Should(Equal(true))
+			Expect(lhs.ID.Equal(rhs.ID)).Should(Equal(true))
+			Expect(lhs.ID.String()).Should(Equal(rhs.ID.String()))
+			Expect(lhs.Equal(&rhs)).Should(Equal(true))
 
 		})
 
@@ -107,9 +107,9 @@ var _ = Describe("Order fragments", func() {
 			rhs, err := NewFragment(orderID, TypeLimit, ParityBuy, SettlementRenEx, time.Now(), tokens, price, maxVolume, minVolume, nonce)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Ω(lhs.ID.Equal(rhs.ID)).Should(Equal(false))
-			Ω(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
-			Ω(lhs.Equal(&rhs)).Should(Equal(false))
+			Expect(lhs.ID.Equal(rhs.ID)).Should(Equal(false))
+			Expect(lhs.ID.String()).ShouldNot(Equal(rhs.ID.String()))
+			Expect(lhs.Equal(&rhs)).Should(Equal(false))
 		})
 	})
 

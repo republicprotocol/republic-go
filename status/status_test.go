@@ -6,10 +6,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/dht"
-	"github.com/republicprotocol/republic-go/identity"
 	. "github.com/republicprotocol/republic-go/status"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -19,15 +19,14 @@ var _ = Describe("Status", func() {
 	Context("when writing and reading to the provider", func() {
 		var prov Provider
 		var confAddr identity.Address
-		var _dht dht.DHT
+		var swarmer testutils.Swarmer
 
 		BeforeEach(func() {
 			var err error
 			confAddr, err = testutils.RandomAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			_dht = dht.NewDHT(confAddr, 64)
-			Expect(err).ShouldNot(HaveOccurred())
-			prov = NewProvider(&_dht)
+			swarmer = testutils.NewMockSwarmer()
+			prov = NewProvider(&swarmer)
 		})
 
 		It("should store network information correctly", func() {
@@ -80,20 +79,20 @@ var _ = Describe("Status", func() {
 
 			// should return 1 after adding a peer
 			multiAddr, err := testutils.RandomMultiAddress()
-			_dht.UpdateMultiAddress(multiAddr)
+			swarmer.PutMultiAddress(multiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 			peers, err = prov.Peers()
 			Expect(peers).Should(Equal(1))
 
 			// should return 2 after adding another peer
 			multiAddr, err = testutils.RandomMultiAddress()
-			_dht.UpdateMultiAddress(multiAddr)
+			swarmer.PutMultiAddress(multiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 			peers, err = prov.Peers()
 			Expect(peers).Should(Equal(2))
 
 			// should return 1 after removing a peer
-			_dht.RemoveMultiAddress(multiAddr)
+			swarmer.RemoveMultiAddress(multiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 			peers, err = prov.Peers()
 			Expect(peers).Should(Equal(1))

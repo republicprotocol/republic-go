@@ -9,7 +9,7 @@
 
 go build ./...
 GOMAXPROCS=1 CI=true ginkgo -v --race --cover --coverprofile coverprofile.out ./...
-covermerge crypto/coverprofile.out dht/coverprofile.out dispatch/coverprofile.out grpc/coverprofile.out http/coverprofile.out http/adapter/coverprofile.out identity/coverprofile.out leveldb/coverprofile.out logger/coverprofile.out ome/coverprofile.out order/coverprofile.out orderbook/coverprofile.out shamir/coverprofile.out smpc/coverprofile.out stackint/coverprofile.out stream/coverprofile.out swarm/coverprofile.out > coverprofile.out
+covermerge crypto/coverprofile.out dispatch/coverprofile.out grpc/coverprofile.out http/coverprofile.out http/adapter/coverprofile.out identity/coverprofile.out leveldb/coverprofile.out logger/coverprofile.out ome/coverprofile.out order/coverprofile.out orderbook/coverprofile.out shamir/coverprofile.out smpc/coverprofile.out stackint/coverprofile.out stream/coverprofile.out swarm/coverprofile.out > coverprofile.out
 
 sed -i '/.pb.go/d' coverprofile.out
 sed -i '/bindings/d' coverprofile.out

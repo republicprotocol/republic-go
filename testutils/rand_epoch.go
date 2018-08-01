@@ -8,7 +8,7 @@ import (
 )
 
 // RandomEpoch returns a new epoch with only one pod and one darknode.
-func RandomEpoch(i int) (identity.Address, registry.Epoch, error) {
+func RandomEpoch(blockNumber int) (identity.Address, registry.Epoch, error) {
 	addr, err := RandomAddress()
 	if err != nil {
 		return identity.Address(""), registry.Epoch{}, err
@@ -23,7 +23,7 @@ func RandomEpoch(i int) (identity.Address, registry.Epoch, error) {
 			},
 		},
 		Darknodes:     []identity.Address{addr},
-		BlockNumber:   big.NewInt(int64(i)),
-		BlockInterval: big.NewInt(int64(2)),
+		BlockNumber:   big.NewInt(int64(blockNumber)),
+		BlockInterval: big.NewInt(int64(1)),
 	}, nil
 }

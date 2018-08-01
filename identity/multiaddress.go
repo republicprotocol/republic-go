@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,9 +34,18 @@ func init() {
 // MultiAddress is an alias.
 type MultiAddress struct {
 	Signature []byte
+	Nonce     uint64
 
 	address          Address
 	baseMultiAddress multiaddr.Multiaddr
+}
+
+type multiAddressJsonValue struct {
+	Signature []byte `json:"signature"`
+	Nonce     uint64 `json:"nonce"`
+
+	Address          Address `json:"address"`
+	BaseMultiAddress string  `json:"baseMultiAddress"`
 }
 
 // MultiAddresses is an alias.
@@ -58,7 +68,7 @@ func NewMultiAddressFromString(s string) (MultiAddress, error) {
 	}
 	baseMultiAddress := multiAddress.Decapsulate(addressAsMultiAddress)
 
-	return MultiAddress{[]byte{}, Address(address), baseMultiAddress}, err
+	return MultiAddress{[]byte{}, uint64(1), Address(address), baseMultiAddress}, err
 }
 
 // ValueForProtocol returns the value of the specific protocol in the MultiAddress
@@ -84,22 +94,49 @@ func (multiAddress MultiAddress) String() string {
 	return fmt.Sprintf("%s/republic/%s", multiAddress.baseMultiAddress.String(), multiAddress.address.String())
 }
 
-// Hash returns the Keccak256 hash of a multiaddrfess. This hash is used to create
+// Hash returns the Keccak256 hash of a multiAddress. This hash is used to create
 // signatures for a multiaddress.
 func (multiAddress MultiAddress) Hash() []byte {
-	return crypto.Keccak256([]byte(multiAddress.String()))
+	nonceBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(nonceBytes, multiAddress.Nonce)
+	multiaddrBytes := append([]byte(multiAddress.String()), nonceBytes...)
+	return crypto.Keccak256(multiaddrBytes)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (multiAddress MultiAddress) MarshalJSON() ([]byte, error) {
-	if multiAddress.address.String() == "" {
-		return json.Marshal("")
+	if multiAddress.baseMultiAddress == nil {
+		return []byte{}, errors.New("baseMultiAddress cannot be nil")
 	}
-	return json.Marshal(multiAddress.String())
+	val := multiAddressJsonValue{
+		Signature:        multiAddress.Signature,
+		Nonce:            multiAddress.Nonce,
+		Address:          multiAddress.address,
+		BaseMultiAddress: multiAddress.baseMultiAddress.String(),
+	}
+	return json.Marshal(val)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
+	val := multiAddressJsonValue{}
+	if err := json.Unmarshal(data, &val); err != nil {
+		return multiAddress.UnmarshalStringJSON(data)
+	}
+	newMultiAddress, err := multiaddr.NewMultiaddr(val.BaseMultiAddress)
+	if err != nil {
+		return err
+	}
+	multiAddress.Signature = val.Signature
+	multiAddress.Nonce = val.Nonce
+	multiAddress.address = val.Address
+	multiAddress.baseMultiAddress = newMultiAddress
+	return nil
+}
+
+// UnmarshalStringJSON will unmarshal multi-addresses that are in string
+// format to a standard multi-address struct.
+func (multiAddress *MultiAddress) UnmarshalStringJSON(data []byte) error {
 	multiAddressAsString := ""
 	if err := json.Unmarshal(data, &multiAddressAsString); err != nil {
 		return err
@@ -113,6 +150,7 @@ func (multiAddress *MultiAddress) UnmarshalJSON(data []byte) error {
 	}
 	multiAddress.baseMultiAddress = newMultiAddress.baseMultiAddress
 	multiAddress.address = newMultiAddress.address
+	multiAddress.Nonce = 0
 	return nil
 }
 

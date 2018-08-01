@@ -218,6 +218,10 @@ func (binder *MockContractBinder) CurrentBlockNumber() (*big.Int, error) {
 	return big.NewInt(1), nil
 }
 
+func (binder *MockContractBinder) Depth(orderID order.ID) (uint, error) {
+	return 0, nil
+}
+
 func (binder *MockContractBinder) OpenMatchingOrders(n int, status order.Status) []order.Order {
 	binder.ordersMu.Lock()
 	defer binder.ordersMu.Unlock()
