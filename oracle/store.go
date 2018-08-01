@@ -16,6 +16,7 @@ type MidpointPrice struct {
 	Nonce     uint64
 }
 
+// Equals checks if two MidpointPrice objects have equivalent fields.
 func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 	return bytes.Compare(midpointPrice.Signature, other.Signature) == 0 &&
 		midpointPrice.Tokens == other.Tokens &&
@@ -23,6 +24,7 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 		midpointPrice.Nonce == other.Nonce
 }
 
+// Hash returns a keccak256 hash of a MidpointPrice object.
 func (midpointPrice MidpointPrice) Hash() []byte {
 	tokensBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tokensBytes, midpointPrice.Tokens)
@@ -34,9 +36,16 @@ func (midpointPrice MidpointPrice) Hash() []byte {
 	return crypto.Keccak256(midpointPriceBytes)
 }
 
+// MidpointPriceStorer for the latest MidpointPrice objects from the oracle.
 type MidpointPriceStorer interface {
+	// PutMidpointPrice stores the given MidpointPrice object.
 	PutMidpointPrice(midpointPrice MidpointPrice) error
+
+	// MidpointPrice returns the MidpointPrice stored for the given tokens.
 	MidpointPrice(tokens uint64) (MidpointPrice, error)
+
+	// MidpointPrices returns a new MidpointPriceIterator object using the
+	// MidpointPrice objects in the store.
 	MidpointPrices() (MidpointPriceIterator, error)
 }
 
@@ -45,6 +54,8 @@ type midpointPriceStorer struct {
 	midpointPrices map[uint64]MidpointPrice
 }
 
+// NewMidpointPriceStorer returns an object that implements the
+// MidpointPriceStorer interface.
 func NewMidpointPriceStorer() *midpointPriceStorer {
 	return &midpointPriceStorer{
 		mutex:          new(sync.Mutex),
@@ -52,6 +63,7 @@ func NewMidpointPriceStorer() *midpointPriceStorer {
 	}
 }
 
+// PutMidpointPrice implements the MidpointPriceStorer interface.
 func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice) error {
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
@@ -61,6 +73,7 @@ func (storer *midpointPriceStorer) PutMidpointPrice(midpointPrice MidpointPrice)
 	return nil
 }
 
+// MidpointPrice implements the MidpointPriceStorer interface.
 func (storer *midpointPriceStorer) MidpointPrice(tokens uint64) (MidpointPrice, error) {
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
@@ -68,6 +81,7 @@ func (storer *midpointPriceStorer) MidpointPrice(tokens uint64) (MidpointPrice, 
 	return storer.midpointPrices[tokens], nil
 }
 
+// MidpointPrices implements the MidpointPriceStorer interface.
 func (storer *midpointPriceStorer) MidpointPrices() (MidpointPriceIterator, error) {
 	storer.mutex.Lock()
 	defer storer.mutex.Unlock()
@@ -80,10 +94,20 @@ func (storer *midpointPriceStorer) MidpointPrices() (MidpointPriceIterator, erro
 	return &iter, nil
 }
 
+// MidpointPriceIterator is used to iterate over a MidpointPrice collection.
 type MidpointPriceIterator interface {
+	// Next progresses the cursor. Returns true if the new cursor is still in
+	// the range of the MidpointPrice collection, otherwise false.
 	Next() bool
+
+	// Cursor returns the MidpointPrice at the current cursor location. Returns
+	// an error if the cursor is out of range.
 	Cursor() (MidpointPrice, error)
+
+	// Collect all MidpointPrices in the iterator into slices.
 	Collect() ([]MidpointPrice, error)
+
+	// Release the resources allocated by the iterator.
 	Release()
 }
 
@@ -92,6 +116,8 @@ type midpointPriceIterator struct {
 	cursor         int
 }
 
+// NewMidpointPriceIterator returns an object that implements the
+// MidpointPriceIterator interface.
 func NewMidpointPriceIterator(midpointPrices []MidpointPrice) midpointPriceIterator {
 	return midpointPriceIterator{
 		midpointPrices: midpointPrices,
@@ -99,6 +125,7 @@ func NewMidpointPriceIterator(midpointPrices []MidpointPrice) midpointPriceItera
 	}
 }
 
+// Next implements the MidpointPriceIterator interface.
 func (iter *midpointPriceIterator) Next() bool {
 	if len(iter.midpointPrices) > iter.cursor {
 		return true
@@ -106,6 +133,7 @@ func (iter *midpointPriceIterator) Next() bool {
 	return false
 }
 
+// Cursor implements the MidpointPriceIterator interface.
 func (iter *midpointPriceIterator) Cursor() (MidpointPrice, error) {
 	if iter.cursor >= len(iter.midpointPrices) {
 		return MidpointPrice{}, fmt.Errorf("index out of range")
@@ -113,10 +141,12 @@ func (iter *midpointPriceIterator) Cursor() (MidpointPrice, error) {
 	return iter.midpointPrices[iter.cursor], nil
 }
 
+// Collect implements the MidpointPriceIterator interface.
 func (iter *midpointPriceIterator) Collect() ([]MidpointPrice, error) {
 	return iter.midpointPrices, nil
 }
 
+// Release implements the MidpointPriceIterator interface.
 func (iter *midpointPriceIterator) Release() {
 	return
 }
