@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
@@ -294,13 +295,15 @@ type server struct {
 	swarmer        Swarmer
 	multiAddrStore MultiAddressStorer
 	α              int
+	binder         contract.Binder
 }
 
-func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Server {
+func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int, binder contract.Binder) Server {
 	return &server{
 		swarmer:        swarmer,
 		multiAddrStore: multiAddrStore,
 		α:              α,
+		binder:         binder,
 	}
 }
 
@@ -310,6 +313,13 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 	if err := verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
 		return err
 	}
+	// registered, err := server.binder.IsRegistered(multiAddr.Address())
+	// if err != nil {
+	// 	return err
+	// }
+	// if !registered {
+	// 	return nil
+	// }
 
 	// Pong back
 	if err := server.swarmer.Pong(ctx, multiAddr); err != nil {
