@@ -334,8 +334,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			continue
 		}
 
-		// Traders should not match against themselves
-		if trader == notification.Trader {
+		if !notification.IsCompatible(orderFragment, trader, priority) {
 			continue
 		}
 
