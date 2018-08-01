@@ -3,7 +3,6 @@ package oracle
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -89,7 +88,6 @@ func NewServer(oracler Oracler, oracleAddr identity.Address, multiAddrStorer swa
 }
 
 func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice MidpointPrice) error {
-	log.Printf("receive new mid point price. token:%d, nonce:%d, price:%d,", midpointPrice.Tokens, midpointPrice.Nonce, midpointPrice.Price)
 	verifier := crypto.NewEcdsaVerifier(server.oracleAddr.String())
 	if err := verifier.Verify(midpointPrice.Hash(), midpointPrice.Signature); err != nil {
 		return fmt.Errorf("failed to verify midpoint price signature: %v", err)
@@ -106,7 +104,6 @@ func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice Midpoint
 		}
 		return server.oracler.UpdateMidpoint(ctx, midpointPrice)
 	}
-	log.Println("already have this mid point price, discard this message.")
 
 	return nil
 }

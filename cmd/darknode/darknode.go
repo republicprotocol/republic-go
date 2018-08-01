@@ -125,31 +125,6 @@ func main() {
 	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, oracleAddr, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
 	oracleService.Register(server)
 
-	// todo : remove me
-	go func() {
-		for {
-			iter, err := midpointPriceStorer.MidpointPrices()
-			if err != nil {
-				log.Println("fail to get iterator from the midprice storer", err)
-				time.Sleep(15 * time.Second)
-				continue
-			}
-			prices, err := iter.Collect()
-			log.Printf("have %d in the map", len(prices))
-			if err != nil {
-				log.Println("fail to get collect all prices from the iterator", err)
-				time.Sleep(15 * time.Second)
-				continue
-			}
-			for _, price := range prices {
-				log.Printf("price: %d, token : %d, nonce: %d", price.Price, price.Tokens, price.Nonce)
-			}
-			time.Sleep(15 * time.Second)
-
-		}
-
-	}()
-
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
