@@ -47,6 +47,6 @@ func randMidpointPrice() MidpointPrice {
 		Signature: []byte{},
 		Tokens:    tokens,
 		Prices:    prices,
-		Nonce:     rand.Uint64(),
+		Nonce:     uint64(time.Now().Unix()),
 	}
 }

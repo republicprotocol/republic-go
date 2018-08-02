@@ -3,17 +3,18 @@ package oracle_test
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/oracle"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/swarm"
 	"github.com/republicprotocol/republic-go/testutils"
 )
@@ -25,9 +26,9 @@ func init() {
 var _ = Describe("Oracle", func() {
 
 	var (
-		numberOfTester        = 10
-		numberOfBootrapTester = 5
-		α                     = 3
+		numberOfTester         = 100
+		numberOfBootsrapTester = 5
+		α                      = 5
 	)
 
 	Context("when sending and receiving new oracle prices", func() {
@@ -61,6 +62,7 @@ var _ = Describe("Oracle", func() {
 					Expect(testers[i].MultiStorer.PutMultiAddress(testers[j].Multi)).ShouldNot(HaveOccurred())
 				}
 			}
+
 		})
 
 		AfterEach(func() {
@@ -71,19 +73,29 @@ var _ = Describe("Oracle", func() {
 			ctx, cancelCtx := context.WithCancel(context.Background())
 			defer cancelCtx()
 
-			price := randMidpointPrice()
-			price.Signature, err = RenOraclerKey.Sign(price.Hash())
-			Expect(err).ShouldNot(HaveOccurred())
-
-			for i := 0; i < numberOfBootrapTester; i++ {
-				err = RenOracler.UpdateMidpoint(ctx, testers[i].Multi, price)
+			for times := 0; times < 5; times++ {
+				price := randMidpointPrice()
+				price.Signature, err = RenOraclerKey.Sign(price.Hash())
 				Expect(err).ShouldNot(HaveOccurred())
-			}
 
-			for i := range testers {
-				storedPrice, err := testers[i].MidPointPriceStore.MidpointPrice()
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(storedPrice.Equals(price)).Should(BeTrue())
+				for i := 0; i < numberOfBootsrapTester; i++ {
+					err = RenOracler.UpdateMidpoint(ctx, testers[i].Multi, price)
+					Expect(err).ShouldNot(HaveOccurred())
+				}
+
+				receivedTester := 0
+				for i := range testers {
+					storedPrice, err := testers[i].MidPointPriceStore.MidpointPrice()
+					Expect(err).ShouldNot(HaveOccurred())
+					if storedPrice.Equals(price) {
+						receivedTester++
+					}
+				}
+				log.Printf("%d out of %d tester received the new midpoint price", receivedTester, numberOfTester)
+				Expect(receivedTester).Should(BeNumerically(">=", numberOfTester*9/10))
+
+				// Update the nonce
+				time.Sleep(1 * time.Second)
 			}
 		})
 	})
@@ -115,6 +127,8 @@ func newTester(α int, hub map[identity.Address]Server, oracleAddress identity.A
 
 	// Create leveldb store and store own multiAddress.
 	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", key.Address()), 72*time.Hour)
+	Expect(err).ShouldNot(HaveOccurred())
+
 	if err != nil {
 		return Tester{}
 	}
