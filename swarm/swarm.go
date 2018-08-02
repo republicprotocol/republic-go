@@ -14,7 +14,7 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 )
 
-// ErrNonceTooLow is returned if the nonce of the multiAddress is lower than the
+// ErrNonceTooLow is returned if the nonce of the multi-address is lower than the
 // one present in the local store.
 var ErrNonceTooLow = errors.New("nonce too low")
 
@@ -23,7 +23,7 @@ type Client interface {
 
 	// Ping a remote server to propagate a multi-address throughout the
 	// network.
-	Ping(ctx context.Context, to, multi identity.MultiAddress) error
+	Ping(ctx context.Context, to, multiAddress identity.MultiAddress) error
 
 	// Pong a remote server with own multi-address in response to a Ping.
 	Pong(ctx context.Context, to identity.MultiAddress) error
@@ -49,7 +49,7 @@ type Swarmer interface {
 	Pong(ctx context.Context, to identity.MultiAddress) error
 
 	// BroadcastMultiAddress to a maximum of α randomly selected nodes.
-	BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress) error
+	BroadcastMultiAddress(ctx context.Context, multiAddress identity.MultiAddress) error
 
 	// Query a node for the identity.MultiAddress of an identity.Address.
 	// Returns a list of random identity.MultiAddresses from the node that
@@ -101,6 +101,7 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 	return swarmer.pingNodes(ctx, multi)
 }
 
+// Pong implements the Swarmer interface.
 func (swarmer *swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
 	return swarmer.client.Pong(ctx, to)
 }
@@ -120,6 +121,7 @@ func (swarmer *swarmer) MultiAddress() identity.MultiAddress {
 	return swarmer.client.MultiAddress()
 }
 
+// Peers implements the Swarmer interface.
 func (swarmer *swarmer) Peers() (identity.MultiAddresses, error) {
 	multiAddressesIterator, err := swarmer.storer.MultiAddresses()
 	if err != nil {
@@ -131,7 +133,7 @@ func (swarmer *swarmer) Peers() (identity.MultiAddresses, error) {
 }
 
 func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (identity.MultiAddress, error) {
-	// Is the multi-address same as the swarmer's multiAddress?
+	// Is the multi-address same as the swarmer's multi-address?
 	if swarmer.MultiAddress().Address() == query {
 		return swarmer.MultiAddress(), nil
 	}
@@ -199,8 +201,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 				// Verify the multi address
 				multi := multiAddrs[j]
-				verifier := crypto.NewEcdsaVerifier(multi.Address().String())
-				if err := verifier.Verify(multi.Hash(), multi.Signature); err != nil {
+				if err := verify(multi); err != nil {
 					return
 				}
 
@@ -221,8 +222,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 					return
 				}
 				if err == ErrMultiAddressNotFound || oldMulti.Nonce < multi.Nonce {
-					err = swarmer.storer.PutMultiAddress(multi)
-					if err != nil {
+					if err = swarmer.storer.PutMultiAddress(multi); err != nil {
 						log.Printf("cannot store %v: %v", multi.Address(), err)
 						return
 					}
@@ -241,13 +241,16 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		return err
 	}
 
+	pingNode := func(to identity.MultiAddress) error {
+		if to.Address() == multiAddr.Address() || to.Address() == swarmer.MultiAddress().Address() {
+			return nil
+		}
+		return swarmer.client.Ping(ctx, to, multiAddr)
+	}
+
 	if len(multiAddrs) <= swarmer.α {
 		for _, multi := range multiAddrs {
-			if multi.Address() == multiAddr.Address() {
-				continue
-			}
-
-			if err := swarmer.client.Ping(ctx, multi, multiAddr); err != nil {
+			if err := pingNode(multi); err != nil {
 				log.Printf("cannot ping node with address %v: %v", multi, err)
 				continue
 			}
@@ -255,21 +258,20 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		return nil
 	}
 
-	seenAddrs := map[int]struct{}{}
-	for len(seenAddrs) < swarmer.α {
+	seenAddrs := map[identity.Address]struct{}{}
+	for len(multiAddrs) > 0 && len(seenAddrs) < swarmer.α {
 		i := rand.Intn(len(multiAddrs))
-		if _, ok := seenAddrs[i]; ok {
+		multi := multiAddrs[i]
+
+		multiAddrs[i] = multiAddrs[len(multiAddrs)-1]
+		multiAddrs = multiAddrs[:len(multiAddrs)-1]
+
+		if err := pingNode(multi); err != nil {
+			log.Printf("cannot ping node with address %v: %v", multi, err)
 			continue
 		}
-		seenAddrs[i] = struct{}{}
 
-		if multiAddrs[i].Address() == multiAddr.Address() {
-			continue
-		}
-
-		if err := swarmer.client.Ping(ctx, multiAddrs[i], multiAddr); err != nil {
-			log.Printf("cannot ping node with address %v: %v", multiAddrs[i], err)
-		}
+		seenAddrs[multi.Address()] = struct{}{}
 	}
 
 	return nil
@@ -298,6 +300,7 @@ type server struct {
 	binder         contract.Binder
 }
 
+// NewServer returns a new server that adheres to the swarm.Server interface.
 func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Server {
 	return &server{
 		swarmer:        swarmer,
@@ -307,10 +310,10 @@ func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Serve
 	}
 }
 
+// Ping implements the Server interface.
 func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress) error {
-	// Verifies the signature
-	verifier := crypto.NewEcdsaVerifier(multiAddr.Address().String())
-	if err := verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
+	// Verify the signature
+	if err := verify(multiAddr); err != nil {
 		return err
 	}
 	// registered, err := server.binder.IsRegistered(multiAddr.Address())
@@ -327,15 +330,14 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 	}
 	// Compare the nonce and see if we need to gossip the ping.
 	oldMulti, err := server.multiAddrStore.MultiAddress(multiAddr.Address())
+	if err != nil && err != ErrMultiAddressNotFound {
+		return err
+	}
 	if err == ErrMultiAddressNotFound || oldMulti.Nonce < multiAddr.Nonce {
-		err := server.multiAddrStore.PutMultiAddress(multiAddr)
-		if err != nil {
+		if err := server.multiAddrStore.PutMultiAddress(multiAddr); err != nil {
 			return err
 		}
 		return server.swarmer.BroadcastMultiAddress(ctx, multiAddr)
-	}
-	if err != nil && err != ErrMultiAddressNotFound {
-		return err
 	}
 
 	return nil
@@ -343,9 +345,8 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 
 // Pong will store unseen multi-addresses in the storer.
 func (server *server) Pong(ctx context.Context, from identity.MultiAddress) error {
-	// Verifies the signature
-	verifier := crypto.NewEcdsaVerifier(from.Address().String())
-	if err := verifier.Verify(from.Hash(), from.Signature); err != nil {
+	// Verify the signature
+	if err := verify(from); err != nil {
 		return err
 	}
 
@@ -402,4 +403,9 @@ func randomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) 
 	}
 
 	return results, nil
+}
+
+func verify(multi identity.MultiAddress) error {
+	verifier := crypto.NewEcdsaVerifier(multi.Address().String())
+	return verifier.Verify(multi.Hash(), multi.Signature)
 }
