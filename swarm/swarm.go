@@ -144,7 +144,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 	}
 
 	// If multi-address is not present in the store, query for a maximum of α random nodes.
-	randomMultiAddrs, err := randomMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), swarmer.α)
+	randomMultiAddrs, err := RandomMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), swarmer.α)
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
@@ -360,11 +360,11 @@ func (server *server) Query(ctx context.Context, query identity.Address) (identi
 	if err == nil {
 		return []identity.MultiAddress{multiAddr}, nil
 	}
-	return randomMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), server.α)
+	return RandomMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), server.α)
 }
 
-// randomMultiAddrs returns maximum α random multi-addresses from the storer.
-func randomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) (identity.MultiAddresses, error) {
+// RandomMultiAddrs returns maximum α random multi-addresses from the storer.
+func RandomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) (identity.MultiAddresses, error) {
 	// Get all known multi-addresses from the storer.
 	multiAddrsIter, err := storer.MultiAddresses()
 	if err != nil {
