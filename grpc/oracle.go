@@ -39,10 +39,10 @@ func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.Mult
 	// Construct a request object and send midpoint information to a given
 	// multiaddress.
 	request := &UpdateMidpointRequest{
-		Signature: midpointPrice.Signature,
-		Tokens:    midpointPrice.Tokens,
-		Prices:    midpointPrice.Prices,
-		Nonce:     midpointPrice.Nonce,
+		Signature:  midpointPrice.Signature,
+		TokenPairs: midpointPrice.TokenPairs,
+		Prices:     midpointPrice.Prices,
+		Nonce:      midpointPrice.Nonce,
 	}
 	if err := Backoff(ctx, func() error {
 		_, err = NewOracleServiceClient(conn).UpdateMidpoint(ctx, request)
@@ -103,18 +103,18 @@ func (service *OracleService) UpdateMidpoint(ctx context.Context, request *Updat
 	}
 
 	// Check for empty or invalid request fields.
-	if request.Signature == nil || len(request.Signature) == 0 || len(request.Tokens) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
+	if request.Signature == nil || len(request.Signature) == 0 || len(request.TokenPairs) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
 		return nil, fmt.Errorf("invalid midpoint data request")
 	}
-	if len(request.Tokens) != len(request.Prices) {
+	if len(request.TokenPairs) != len(request.Prices) {
 		return nil, fmt.Errorf("midpoint price and token length mismatch")
 	}
 
 	midpointPrice := oracle.MidpointPrice{
-		Signature: request.Signature,
-		Tokens:    request.Tokens,
-		Prices:    request.Prices,
-		Nonce:     request.Nonce,
+		Signature:  request.Signature,
+		TokenPairs: request.TokenPairs,
+		Prices:     request.Prices,
+		Nonce:      request.Nonce,
 	}
 
 	return &UpdateMidpointResponse{}, service.server.UpdateMidpoint(ctx, midpointPrice)

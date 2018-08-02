@@ -61,7 +61,7 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{Tokens: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
+			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
@@ -69,8 +69,8 @@ var _ = Describe("Oracle", func() {
 
 			prices, err := midpointPriceStorer.MidpointPrice()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.Tokens).Should(HaveLen(2))
-			Expect(prices.Tokens).Should(Equal(midpointPrice.Tokens))
+			Expect(prices.TokenPairs).Should(HaveLen(2))
+			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(2))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))
@@ -86,13 +86,13 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{Tokens: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
+			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			midpointPrice = &oracle.MidpointPrice{Tokens: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 2}
+			midpointPrice = &oracle.MidpointPrice{TokenPairs: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 2}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
@@ -100,8 +100,8 @@ var _ = Describe("Oracle", func() {
 
 			prices, err := midpointPriceStorer.MidpointPrice()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.Tokens).Should(HaveLen(3))
-			Expect(prices.Tokens).Should(Equal(midpointPrice.Tokens))
+			Expect(prices.TokenPairs).Should(HaveLen(3))
+			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(3))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))
@@ -117,7 +117,7 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{Tokens: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 2}
+			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 2}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
@@ -125,7 +125,7 @@ var _ = Describe("Oracle", func() {
 
 			// This midpoint price should not be stored as it has a lower
 			// nonce.
-			oldMidpointPrice := &oracle.MidpointPrice{Tokens: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 1}
+			oldMidpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 1}
 			oldMidpointPrice.Signature, err = ecdsaKey.Sign(oldMidpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *oldMidpointPrice)
@@ -133,8 +133,8 @@ var _ = Describe("Oracle", func() {
 
 			prices, err := midpointPriceStorer.MidpointPrice()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.Tokens).Should(HaveLen(2))
-			Expect(prices.Tokens).Should(Equal(midpointPrice.Tokens))
+			Expect(prices.TokenPairs).Should(HaveLen(2))
+			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(2))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))

@@ -37,16 +37,16 @@ var _ = Describe("MidpointPrice storage", func() {
 
 // randMidpointPrice returns a random MidpointPrice
 func randMidpointPrice() MidpointPrice {
-	tokens, prices := make([]uint64, 10), make([]uint64, 10)
-	for i := range tokens {
-		tokens[i] = rand.Uint64()
+	tokenPairs, prices := make([]uint64, 10), make([]uint64, 10)
+	for i := range tokenPairs {
+		tokenPairs[i] = rand.Uint64()
 		prices[i] = rand.Uint64()
 	}
 
 	return MidpointPrice{
-		Signature: []byte{},
-		Tokens:    tokens,
-		Prices:    prices,
-		Nonce:     uint64(time.Now().Unix()),
+		Signature:  []byte{},
+		TokenPairs: tokenPairs,
+		Prices:     prices,
+		Nonce:      uint64(time.Now().Unix()),
 	}
 }
