@@ -351,6 +351,7 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 	return err
 }
 
+// Query implements the Server interface.
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
 	multiAddr, err := server.multiAddrStore.MultiAddress(query)
 	if err == nil {
