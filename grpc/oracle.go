@@ -93,10 +93,9 @@ func (service *OracleService) Register(server *Server) {
 
 // UpdateMidpoint is an RPC used to notify a OracleService about updated
 // midpoint data. In the UpdateMidpointRequest, the client sends a signed
-// identity.MultiAddress and the OracleService delegates the responsibility of
-// handling this signed identity.MultiAddress to its oracle.Server. If its
-// oracle.Server accepts data from the client it will return an empty
-// UpdateMidpointResponse.
+// MidpointPrice object and the OracleService delegates the responsibility of
+// handling this signed object to its oracle.Server. If its oracle.Server
+// accepts data from the client it will return an empty UpdateMidpointResponse.
 func (service *OracleService) UpdateMidpoint(ctx context.Context, request *UpdateMidpointRequest) (*UpdateMidpointResponse, error) {
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
