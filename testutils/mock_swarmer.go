@@ -127,30 +127,30 @@ type MockSwarmClient struct {
 	clientType ClientType
 }
 
-func NewMockSwarmClient(MockServerHub *MockServerHub, key *crypto.EcdsaKey, clientType ClientType) (MockSwarmClient, swarm.MultiAddressStorer, error) {
+func NewMockSwarmClient(MockServerHub *MockServerHub, key *crypto.EcdsaKey, clientType ClientType) (swarm.Client, swarm.MultiAddressStorer, error) {
 	multiAddr, err := identity.Address(key.Address()).MultiAddress()
 	if err != nil {
-		return MockSwarmClient{}, nil, err
+		return nil, nil, err
 	}
 	multiAddr.Nonce = 1
 	signature, err := key.Sign(multiAddr.Hash())
 	if err != nil {
-		return MockSwarmClient{}, nil, err
+		return nil, nil, err
 	}
 	multiAddr.Signature = signature
 
 	// Create leveldb store and store own multiAddress.
 	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", key.Address()), 72*time.Hour)
 	if err != nil {
-		return MockSwarmClient{}, nil, err
+		return nil, nil, err
 	}
 	store := db.SwarmMultiAddressStore()
 	err = store.PutMultiAddress(multiAddr)
 	if err != nil {
-		return MockSwarmClient{}, nil, err
+		return nil, nil, err
 	}
 
-	return MockSwarmClient{
+	return &MockSwarmClient{
 		addr:       identity.Address(key.Address()),
 		store:      store,
 		serverHub:  MockServerHub,
