@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -160,6 +161,7 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
+				time.Sleep(time.Second)
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 

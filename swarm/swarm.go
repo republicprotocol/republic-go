@@ -182,7 +182,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		randomMultiAddrs = randomMultiAddrs[length:]
 
 		// Query the α multiAddresses simultaneously
-		dispatch.CoForAll(peersThisRound, func(i int) {
+		dispatch.ForAll(peersThisRound, func(i int) {
 			multiAddr := peersThisRound[i]
 			seenMu.Lock()
 			_, ok := seenAddrs[multiAddr.Address()]
@@ -197,7 +197,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				return
 			}
 
-			dispatch.CoForAll(multiAddrs, func(j int) {
+			dispatch.ForAll(multiAddrs, func(j int) {
 
 				// Verify the multi address
 				multi := multiAddrs[j]
@@ -250,10 +250,11 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 
 	if len(multiAddrs) <= swarmer.α {
 		for _, multi := range multiAddrs {
-			if err := pingNode(multi); err != nil {
-				log.Printf("cannot ping node with address %v: %v", multi, err)
-				continue
-			}
+			go func(multi identity.MultiAddress) {
+				if err := pingNode(multi); err != nil {
+					log.Printf("cannot ping node with address %v: %v", multi, err)
+				}
+			}(multi)
 		}
 		return nil
 	}
@@ -266,10 +267,11 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		multiAddrs[i] = multiAddrs[len(multiAddrs)-1]
 		multiAddrs = multiAddrs[:len(multiAddrs)-1]
 
-		if err := pingNode(multi); err != nil {
-			log.Printf("cannot ping node with address %v: %v", multi, err)
-			continue
-		}
+		go func(multi identity.MultiAddress) {
+			if err := pingNode(multi); err != nil {
+				log.Printf("cannot ping node with address %v: %v", multi, err)
+			}
+		}(multi)
 
 		seenAddrs[multi.Address()] = struct{}{}
 	}
