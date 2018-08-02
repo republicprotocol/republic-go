@@ -249,13 +249,11 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 	}
 
 	if len(multiAddrs) <= swarmer.α {
-		for _, multi := range multiAddrs {
-			go func(multi identity.MultiAddress) {
-				if err := pingNode(multi); err != nil {
-					log.Printf("cannot ping node with address %v: %v", multi, err)
-				}
-			}(multi)
-		}
+		dispatch.CoForAll(multiAddrs, func(i int) {
+			if err := pingNode(multiAddrs[i]); err != nil {
+				log.Printf("cannot ping node with address %v: %v", multiAddrs[i], err)
+			}
+		})
 		return nil
 	}
 

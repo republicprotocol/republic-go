@@ -161,7 +161,7 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				time.Sleep(time.Second)
+				time.Sleep(2 * time.Second)
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
