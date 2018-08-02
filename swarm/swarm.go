@@ -355,6 +355,7 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
 	multiAddr, err := server.multiAddrStore.MultiAddress(query)
 	if err == nil {
+		log.Printf("Found multiaddress for %v", multiAddr.Address())
 		return []identity.MultiAddress{multiAddr}, nil
 	}
 	return randomMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), server.α)
@@ -396,5 +397,6 @@ func randomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) 
 		results = append(results, multiAddr)
 	}
 
+	log.Printf("Returning %v multi-addresses", len(results))
 	return results, nil
 }
