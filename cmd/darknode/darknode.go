@@ -87,20 +87,20 @@ func main() {
 
 	midpointPriceStorer := oracle.NewMidpointPriceStorer()
 	// todo :remove me
-	go func() {
-		for {
-			price, err := midpointPriceStorer.MidpointPrice()
-			if err != nil {
-				log.Println("err getting the mid price, ", err)
-			}
-			log.Println("nonce:", price.Nonce)
-			for i := range price.TokenPairs {
-				log.Println("token:", price.TokenPairs[i], ",price:", price.Prices[i])
-			}
-
-			time.Sleep(20 * time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		price, err := midpointPriceStorer.MidpointPrice()
+	// 		if err != nil {
+	// 			log.Println("err getting the mid price, ", err)
+	// 		}
+	// 		log.Println("nonce:", price.Nonce)
+	// 		for i := range price.TokenPairs {
+	// 			log.Println("token:", price.TokenPairs[i], ",price:", price.Prices[i])
+	// 		}
+	//
+	// 		time.Sleep(20 * time.Second)
+	// 	}
+	// }()
 
 	// Get own nonce from leveldb, if present and store multiaddress.
 	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
