@@ -115,7 +115,7 @@ func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice Midpoint
 	}
 
 	// If the midpoint information has been updated, gossip the new information
-	// to α random nodes in the network.
+	// to α random nodes in the network using the Oracler.
 	if midpointPrice.Nonce > oldPrice.Nonce {
 		err := server.midpointPriceStorer.PutMidpointPrice(midpointPrice)
 		if err != nil {
