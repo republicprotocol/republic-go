@@ -1,74 +1,65 @@
 package oracle_test
 
 import (
-	"log"
+	"context"
 	"math/rand"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/oracle"
+	"github.com/republicprotocol/republic-go/testutils"
+
+	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/swarm"
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-var _ = Describe("Swarm storage", func() {
+var _ = Describe("Oracle", func() {
 
-	Context("when storing and retrieving data", func() {
+	var (
+		numberOfClients          = 50
+		numberOfBootstrapClients = 5
+		α                        = 3
+	)
 
-		It("should be able to get the right data we store", func() {
-			storer := NewMidpointPriceStorer()
-			iter, err := storer.MidpointPrices()
-			Expect(err).ShouldNot(HaveOccurred())
-			prices, err := iter.Collect()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(len(prices)).Should(Equal(0))
+	Context("when sending and receiving new oracle prices", func() {
 
-			price := randMidpointPrice()
-			err = storer.PutMidpointPrice(price)
-			Expect(err).ShouldNot(HaveOccurred())
+		AfterEach(func() {
+			os.RemoveAll("./tmp")
+		})
 
-			storedPrice, err := storer.MidpointPrice(price.Tokens)
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(price.Equals(storedPrice)).Should(BeTrue())
+		It("should be able to verify and accept the right prices", func() {
+			ctx, cancelCtx := context.WithCancel(context.Background())
+			defer cancelCtx()
 		})
 	})
 
-	Context("when getting data using the iterator", func() {
-		var NumberOfMessages = 10
-
-		It("should be able to iterate the collection element by element", func() {
-			storer := NewMidpointPriceStorer()
-			messages := make([]MidpointPrice, NumberOfMessages)
-			for i := 0; i < NumberOfMessages; i++ {
-				messages[i] = randMidpointPrice()
-				err := storer.PutMidpointPrice(messages[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Println(i, messages[i])
-			}
-
-			iter, err := storer.MidpointPrices()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			for i := 0; i < NumberOfMessages; i++ {
-				Expect(iter.Next()).Should(BeTrue())
-				price, err := iter.Cursor()
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Println(price)
-				log.Println(messages[i])
-				Expect(price.Equals(messages[i])).Should(BeTrue())
-			}
-		})
-	})
 })
 
-func randMidpointPrice() MidpointPrice {
-	return MidpointPrice{
-		Signature: []byte{},
-		Tokens:    rand.Uint64(),
-		Price:     rand.Uint64(),
-		Nonce:     rand.Uint64(),
-	}
+type Tester struct {
+	Key crypto.EcdsaKey
+	hub testutils.
+	α   int
+
+	Swarmer       swarm.Swarmer
+	SwarmerServer swarm.Server
+	MultiStorer   swarm.MultiAddressStorer
+
+	Oracler       Oracler
+	OraclerServer Server
+	MidPointPrice MidpointPriceStorer
+}
+
+func newTester(index, α int) {
+
+	key, err := crypto.RandomEcdsaKey()
+	Expect(err).ShouldNot(HaveOccurred())
+
+
+	client, store, err := testutils.NewMockSwarmClient(serverHub, &key, clientType)
 }

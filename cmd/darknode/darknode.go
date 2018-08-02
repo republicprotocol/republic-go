@@ -107,7 +107,8 @@ func main() {
 	}
 	multiAddr.Signature = multiAddrSignature
 
-	if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
+	if err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
+
 		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
 	}
 
@@ -192,13 +193,15 @@ func main() {
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap nonce details from store: %v", err))
+
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap details from store: %v", err))
 				continue
 			}
 			if err == nil {
 				multiAddr.Nonce = multi.Nonce
 			}
-			if _, err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
+
+			if err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 			}
 			fmtStr += "  " + multiAddr.String() + "\n"

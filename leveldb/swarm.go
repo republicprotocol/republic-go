@@ -2,7 +2,6 @@ package leveldb
 
 import (
 	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
@@ -11,10 +10,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
-
-// ErrNonceTooLow is returned if the nonce of the multiAddress is lower than the
-// one present in the local store.
-var ErrNonceTooLow = errors.New("nonce too low")
 
 // SwarmMultiAddressValue is the storage format for multiAddresses being stored in
 // LevelDB. It contains additional timestamp information so that LevelDB can
@@ -89,36 +84,17 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 }
 
 // PutMultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress) (bool, error) {
-	isNew := false
-
+func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress) error {
 	value := SwarmMultiAddressValue{
 		MultiAddress: multiAddress,
 		Timestamp:    time.Now(),
 	}
-	oldMultiAddr, err := table.MultiAddress(multiAddress.Address())
-	if err != nil && err == swarm.ErrMultiAddressNotFound {
-		isNew = true
-	}
-	// Return err if nonce is too low
-	if err == nil {
-		if oldMultiAddr.Nonce > multiAddress.Nonce {
-			return isNew, ErrNonceTooLow
-		}
-		if oldMultiAddr.Nonce == multiAddress.Nonce && oldMultiAddr.String() == multiAddress.String() {
-			return isNew, nil
-		}
-		// If there is a change in the multiaddress stored, then return true
-		if oldMultiAddr.String() != multiAddress.String() {
-			isNew = true
-		}
-	}
-
 	data, err := json.Marshal(value)
 	if err != nil {
-		return isNew, err
+		return err
 	}
-	return isNew, table.db.Put(table.key(multiAddress.Address().Hash()), data, nil)
+
+	return table.db.Put(table.key(multiAddress.Address().Hash()), data, nil)
 }
 
 // MultiAddress implements the swarm.MultiAddressStorer interface.
