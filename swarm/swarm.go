@@ -136,6 +136,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 	if swarmer.MultiAddress().Address() == query {
 		return swarmer.MultiAddress(), nil
 	}
+	log.Printf("querying for %v", query)
 	// Is the multi-address present in the storer?
 	multiAddr, err := swarmer.storer.MultiAddress(query)
 	if err == nil {
@@ -145,11 +146,15 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
+	log.Printf("not in store: %v", query)
+
 	// If multi-address is not present in the store, query for a maximum of α random nodes.
 	randomMultiAddrs, err := randomMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), swarmer.α)
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
+
+	log.Printf("got %v addrs", len(randomMultiAddrs))
 
 	// Create two maps to records the addrs we have seen and queried
 	seenMu := new(sync.Mutex)
@@ -196,6 +201,8 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				log.Printf("cannot query %v: %v", multiAddr.Address(), err)
 				return
 			}
+
+			log.Printf("got back %v from %v", len(multiAddrs), multiAddr.Address())
 
 			dispatch.ForAll(multiAddrs, func(j int) {
 
