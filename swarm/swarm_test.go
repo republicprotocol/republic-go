@@ -51,7 +51,7 @@ var _ = Describe("Swarm", func() {
 			if err != nil {
 				return nil, nil, serverHub, err
 			}
-			clients[i] = &client
+			clients[i] = client
 			ecdsaKeys[i] = key
 			stores[i] = store
 			swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKeys[i])
@@ -92,7 +92,7 @@ var _ = Describe("Swarm", func() {
 				clients, swarmers, serverHub, err := registerClientsAndBootstrap(ctx, true)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				By("Ping self-address to join the network")
+				log.Println("Ping self-address to join the network")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
@@ -100,16 +100,7 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				By("Check number of connected nodes")
-				dispatch.CoForAll(numberOfClients, func(i int) {
-					defer GinkgoRecover()
-
-					peers, err := swarmers[i].Peers()
-					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
-				})
-
-				By("Query other peers address")
+				log.Println("Query other peers address")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
@@ -128,13 +119,12 @@ var _ = Describe("Swarm", func() {
 					}
 				})
 
-				By("Check number of connected nodes")
+				log.Println("Check number of connected nodes")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">=", numberOfClients*9/10))
 				})
 			})
@@ -165,7 +155,6 @@ var _ = Describe("Swarm", func() {
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">", numberOfBootstrapClients))
 				})
 			})

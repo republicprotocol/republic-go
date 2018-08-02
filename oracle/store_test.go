@@ -32,7 +32,6 @@ var _ = Describe("MidpointPrice storage", func() {
 			Expect(price.Equals(storedPrice)).Should(BeTrue())
 		})
 	})
-
 })
 
 // randMidpointPrice returns a random MidpointPrice
