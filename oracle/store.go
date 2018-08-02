@@ -16,10 +16,10 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // A MidpointPrice is a signed message contains the the mid-prices of
 // token pairs.
 type MidpointPrice struct {
-	Signature []byte
-	Tokens    []uint64
-	Prices    []uint64
-	Nonce     uint64
+	Signature  []byte
+	TokenPairs []uint64
+	Prices     []uint64
+	Nonce      uint64
 }
 
 // Equals checks if two MidpointPrice objects have equivalent fields.
@@ -28,15 +28,15 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 		return false
 	}
 
-	// Compare all tokens-price pairs
-	if len(midpointPrice.Tokens) != len(other.Tokens) || len(midpointPrice.Prices) != len(other.Prices) {
+	// Compare the token pairs/prices.
+	if len(midpointPrice.TokenPairs) != len(other.TokenPairs) || len(midpointPrice.Prices) != len(other.Prices) {
 		return false
 	}
 	tokenPricePairs := map[uint64]uint64{}
-	for i, token := range midpointPrice.Tokens {
+	for i, token := range midpointPrice.TokenPairs {
 		tokenPricePairs[token] = midpointPrice.Prices[i]
 	}
-	for i, token := range other.Tokens {
+	for i, token := range other.TokenPairs {
 		price, ok := tokenPricePairs[token]
 		if !ok || price != other.Prices[i] {
 			return false
@@ -49,9 +49,9 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 // Hash returns the Keccak256 hash of the MidpointPrice.
 func (midpointPrice MidpointPrice) Hash() []byte {
 	data := make([]byte, 0)
-	for i := range midpointPrice.Tokens {
+	for i := range midpointPrice.TokenPairs {
 		tokensBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(tokensBytes, midpointPrice.Tokens[i])
+		binary.LittleEndian.PutUint64(tokensBytes, midpointPrice.TokenPairs[i])
 		data = append(data, tokensBytes...)
 		priceBytes := make([]byte, 8)
 		binary.LittleEndian.PutUint64(priceBytes, midpointPrice.Prices[i])
