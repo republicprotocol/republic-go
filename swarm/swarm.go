@@ -311,13 +311,13 @@ func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int, verif
 
 // Ping implements the Server interface.
 func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress) error {
-	// Pong back
-	if err := server.swarmer.Pong(ctx, multiAddr); err != nil {
+	// Verify the signature
+	if err := server.verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
 		return err
 	}
 
-	// Verify the signature
-	if err := server.verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
+	// Pong back
+	if err := server.swarmer.Pong(ctx, multiAddr); err != nil {
 		return err
 	}
 
