@@ -298,12 +298,12 @@ type server struct {
 	binder         contract.Binder
 }
 
-func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int, binder contract.Binder) Server {
+func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Server {
 	return &server{
 		swarmer:        swarmer,
 		multiAddrStore: multiAddrStore,
 		α:              α,
-		binder:         binder,
+		// binder:         binder,
 	}
 }
 
@@ -352,17 +352,9 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 	// Compare the nonce and see if we need to gossip the ping.
 	oldMulti, err := server.multiAddrStore.MultiAddress(from.Address())
 	if err == ErrMultiAddressNotFound || oldMulti.Nonce < from.Nonce {
-		err := server.multiAddrStore.PutMultiAddress(from)
-		if err != nil {
-			return err
-		}
-		return server.swarmer.BroadcastMultiAddress(ctx, from)
+		return server.multiAddrStore.PutMultiAddress(from)
 	}
-	if err != nil && err != ErrMultiAddressNotFound {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
