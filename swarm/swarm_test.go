@@ -15,6 +15,7 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -31,7 +32,7 @@ var _ = Describe("Swarm", func() {
 		stores := make([]MultiAddressStorer, numberOfClients)
 		clients := make([]Client, numberOfClients)
 		swarmers := make([]Swarmer, numberOfClients)
-		ecdsaKeys := make([]crypto.EcdsaKey, numberOfClients)
+		verifiers := make([]registry.Crypter, numberOfClients)
 
 		serverHub := &testutils.MockServerHub{
 			ConnsMu: new(sync.Mutex),
@@ -40,22 +41,24 @@ var _ = Describe("Swarm", func() {
 		}
 
 		for i := 0; i < numberOfClients; i++ {
-			key, err := crypto.RandomEcdsaKey()
+			key, err := crypto.RandomKeystore()
 			if err != nil {
 				return nil, nil, serverHub, err
 			}
+			verifiers[i] = registry.NewCrypter(key, testutils.NewMockSwarmBinder(), numberOfClients, time.Hour)
+
 			clientType := testutils.Honest
 			if !honest && i > numberOfBootstrapClients {
 				clientType = testutils.ClientTypes[rand.Intn(len(testutils.ClientTypes))]
 			}
-			client, store, err := testutils.NewMockSwarmClient(serverHub, &key, clientType)
+
+			client, store, err := testutils.NewMockSwarmClient(serverHub, clientType, &verifiers[i])
 			if err != nil {
 				return nil, nil, serverHub, err
 			}
 			clients[i] = &client
-			ecdsaKeys[i] = key
 			stores[i] = store
-			swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKeys[i])
+			swarmers[i] = NewSwarmer(clients[i], stores[i], α, &verifiers[i])
 		}
 
 		// Bootstrapping created clients
@@ -72,7 +75,7 @@ var _ = Describe("Swarm", func() {
 		dispatch.CoForAll(numberOfClients, func(i int) {
 			defer GinkgoRecover()
 
-			server := NewServer(swarmers[i], stores[i], α)
+			server := NewServer(swarmers[i], stores[i], α, &verifiers[i])
 			serverHub.Register(clients[i].MultiAddress().Address(), server)
 		})
 		return clients, swarmers, serverHub, nil

@@ -7,11 +7,10 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/contract"
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrNonceTooLow is returned if the nonce of the multi-address is lower than the
@@ -65,19 +64,19 @@ type Swarmer interface {
 }
 
 type swarmer struct {
-	client Client
-	key    *crypto.EcdsaKey
-	storer MultiAddressStorer
-	α      int
+	client   Client
+	verifier *registry.Crypter
+	storer   MultiAddressStorer
+	α        int
 }
 
 // NewSwarmer will return an object that implements the Swarmer interface.
-func NewSwarmer(client Client, storer MultiAddressStorer, α int, key *crypto.EcdsaKey) Swarmer {
+func NewSwarmer(client Client, storer MultiAddressStorer, α int, verifier *registry.Crypter) Swarmer {
 	return &swarmer{
-		client: client,
-		key:    key,
-		storer: storer,
-		α:      α,
+		client:   client,
+		verifier: verifier,
+		storer:   storer,
+		α:        α,
 	}
 }
 
@@ -89,7 +88,7 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 		return err
 	}
 	multi.Nonce++
-	signature, err := swarmer.key.Sign(multi.Hash())
+	signature, err := swarmer.verifier.Sign(multi.Hash())
 	if err != nil {
 		return err
 	}
@@ -201,7 +200,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 				// Verify the multi address
 				multi := multiAddrs[j]
-				if err := verify(multi); err != nil {
+				if err := swarmer.verifier.Verify(multi.Hash(), multi.Signature); err != nil {
 					return
 				}
 
@@ -295,39 +294,33 @@ type Server interface {
 
 type server struct {
 	swarmer        Swarmer
+	verifier       *registry.Crypter
 	multiAddrStore MultiAddressStorer
 	α              int
-	binder         contract.Binder
 }
 
 // NewServer returns a new server that adheres to the swarm.Server interface.
-func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int) Server {
+func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int, verifier *registry.Crypter) Server {
 	return &server{
 		swarmer:        swarmer,
+		verifier:       verifier,
 		multiAddrStore: multiAddrStore,
 		α:              α,
-		// binder:         binder,
 	}
 }
 
 // Ping implements the Server interface.
 func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress) error {
 	// Verify the signature
-	if err := verify(multiAddr); err != nil {
+	if err := server.verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
 		return err
 	}
-	// registered, err := server.binder.IsRegistered(multiAddr.Address())
-	// if err != nil {
-	// 	return err
-	// }
-	// if !registered {
-	// 	return nil
-	// }
 
 	// Pong back
 	if err := server.swarmer.Pong(ctx, multiAddr); err != nil {
 		return err
 	}
+
 	// Compare the nonce and see if we need to gossip the ping.
 	oldMulti, err := server.multiAddrStore.MultiAddress(multiAddr.Address())
 	if err != nil && err != ErrMultiAddressNotFound {
@@ -346,7 +339,7 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 // Pong will store unseen multi-addresses in the storer.
 func (server *server) Pong(ctx context.Context, from identity.MultiAddress) error {
 	// Verify the signature
-	if err := verify(from); err != nil {
+	if err := server.verifier.Verify(from.Hash(), from.Signature); err != nil {
 		return err
 	}
 
@@ -403,9 +396,4 @@ func randomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) 
 	}
 
 	return results, nil
-}
-
-func verify(multi identity.MultiAddress) error {
-	verifier := crypto.NewEcdsaVerifier(multi.Address().String())
-	return verifier.Verify(multi.Hash(), multi.Signature)
 }
