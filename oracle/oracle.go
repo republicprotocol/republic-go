@@ -109,14 +109,14 @@ func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice Midpoint
 	if err := verifier.Verify(midpointPrice.Hash(), midpointPrice.Signature); err != nil {
 		return fmt.Errorf("failed to verify midpoint price signature: %v", err)
 	}
-	oldPrice, err := server.midpointPriceStorer.MidpointPrice(midpointPrice.Tokens)
+	oldPrice, err := server.midpointPriceStorer.MidpointPrice()
 	if err != nil {
 		return err
 	}
 
 	// If the midpoint information has been updated, gossip the new information
 	// to α random nodes in the network.
-	if oldPrice.Equals(MidpointPrice{}) || midpointPrice.Nonce > oldPrice.Nonce {
+	if midpointPrice.Nonce > oldPrice.Nonce {
 		err := server.midpointPriceStorer.PutMidpointPrice(midpointPrice)
 		if err != nil {
 			return fmt.Errorf("cannot store midpoint price: %v", err)
