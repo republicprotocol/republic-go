@@ -20,9 +20,9 @@ import (
 var _ = Describe("Swarm", func() {
 
 	var (
-		numberOfClients          = 50
+		numberOfClients          = 100
 		numberOfBootstrapClients = 5
-		α                        = 3
+		α                        = 4
 	)
 
 	registerClientsAndBootstrap := func(ctx context.Context, honest bool) ([]Client, []Swarmer, *testutils.MockServerHub, error) {

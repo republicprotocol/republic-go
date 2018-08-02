@@ -184,7 +184,7 @@ func main() {
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap details from store: %v", err))
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
 				continue
 			}
 			if err == nil {
