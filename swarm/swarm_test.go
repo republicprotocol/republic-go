@@ -24,7 +24,7 @@ var _ = Describe("Swarm", func() {
 	var (
 		numberOfClients          = 100
 		numberOfBootstrapClients = 5
-		α                        = 4
+		α                        = 10
 	)
 
 	registerClientsAndBootstrap := func(ctx context.Context, honest bool) ([]Client, []Swarmer, *testutils.MockServerHub, error) {
@@ -58,7 +58,11 @@ var _ = Describe("Swarm", func() {
 			}
 			clients[i] = &client
 			stores[i] = store
-			swarmers[i] = NewSwarmer(clients[i], stores[i], α, &verifiers[i])
+			alpha := rand.Intn(α-2) + 2
+			swarmers[i] = NewSwarmer(clients[i], stores[i], alpha, &verifiers[i])
+
+			server := NewServer(swarmers[i], stores[i], alpha, &verifiers[i])
+			serverHub.Register(clients[i].MultiAddress().Address(), server)
 		}
 
 		// Bootstrapping created clients
@@ -70,13 +74,6 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}
-		})
-
-		dispatch.CoForAll(numberOfClients, func(i int) {
-			defer GinkgoRecover()
-
-			server := NewServer(swarmers[i], stores[i], α, &verifiers[i])
-			serverHub.Register(clients[i].MultiAddress().Address(), server)
 		})
 		return clients, swarmers, serverHub, nil
 	}
@@ -104,15 +101,6 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				By("Check number of connected nodes")
-				dispatch.CoForAll(numberOfClients, func(i int) {
-					defer GinkgoRecover()
-
-					peers, err := swarmers[i].Peers()
-					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
-				})
-
 				By("Query other peers address")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
@@ -138,7 +126,6 @@ var _ = Describe("Swarm", func() {
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">=", numberOfClients*9/10))
 				})
 			})
@@ -170,7 +157,6 @@ var _ = Describe("Swarm", func() {
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">", numberOfBootstrapClients))
 				})
 			})

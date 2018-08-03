@@ -202,6 +202,11 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				return
 			}
 
+			// Process only the first α multi-addresses returned.
+			if len(multiAddrs) > swarmer.α {
+				multiAddrs = multiAddrs[:swarmer.α]
+			}
+
 			log.Printf("got back %v from %v", len(multiAddrs), multiAddr.Address())
 
 			dispatch.ForAll(multiAddrs, func(j int) {
