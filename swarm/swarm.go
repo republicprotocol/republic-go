@@ -280,11 +280,11 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		multiAddrs[i] = multiAddrs[len(multiAddrs)-1]
 		multiAddrs = multiAddrs[:len(multiAddrs)-1]
 
-		go func(multi identity.MultiAddress) {
+		// go func(multi identity.MultiAddress) {
 			if err := pingNode(multi); err != nil {
 				log.Printf("cannot ping node with address %v: %v", multi, err)
 			}
-		}(multi)
+		// }(multi)
 
 		seenAddrs[multi.Address()] = struct{}{}
 	}
