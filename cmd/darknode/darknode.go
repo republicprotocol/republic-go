@@ -92,11 +92,11 @@ func main() {
 		for {
 			price, err := midpointPriceStorer.MidpointPrice()
 			if err != nil {
-				log.Println("err getting the mid price, ", err)
+				log.Println("error getting the midpoint price:", err)
 			}
-			log.Println("nonce:", price.Nonce)
+			log.Println("\nNonce:", price.Nonce)
 			for i := range price.TokenPairs {
-				log.Println("token:", price.TokenPairs[i], ",price:", price.Prices[i])
+				log.Println("Token:", price.TokenPairs[i], ", Price:", price.Prices[i])
 			}
 
 			time.Sleep(20 * time.Second)
