@@ -74,7 +74,7 @@ var _ = Describe("Oracle", func() {
 			defer cancelCtx()
 
 			for times := 0; times < 5; times++ {
-				price := randMidpointPrice()
+				price := testutils.RandMidpointPrice()
 				price.Signature, err = RenOraclerKey.Sign(price.Hash())
 				Expect(err).ShouldNot(HaveOccurred())
 

@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/oracle"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 func init() {
@@ -23,7 +24,7 @@ var _ = Describe("MidpointPrice storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(emptyPrice.Equals(MidpointPrice{})).Should(BeTrue())
 
-			price := randMidpointPrice()
+			price := testutils.RandMidpointPrice()
 			err = storer.PutMidpointPrice(price)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -33,19 +34,3 @@ var _ = Describe("MidpointPrice storage", func() {
 		})
 	})
 })
-
-// randMidpointPrice returns a random MidpointPrice
-func randMidpointPrice() MidpointPrice {
-	tokenPairs, prices := make([]uint64, 10), make([]uint64, 10)
-	for i := range tokenPairs {
-		tokenPairs[i] = rand.Uint64()
-		prices[i] = rand.Uint64()
-	}
-
-	return MidpointPrice{
-		Signature:  []byte{},
-		TokenPairs: tokenPairs,
-		Prices:     prices,
-		Nonce:      uint64(time.Now().Unix()),
-	}
-}

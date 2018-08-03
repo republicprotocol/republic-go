@@ -25,9 +25,6 @@ type Oracler interface {
 	// UpdateMidpoint sends the given midpoint information to α randomly
 	// selected nodes.
 	UpdateMidpoint(ctx context.Context, midpointPrice MidpointPrice) error
-
-	// MultiAddress is used when finding random nodes to send information to.
-	MultiAddress() identity.MultiAddress
 }
 
 type oracler struct {
@@ -49,7 +46,7 @@ func NewOracler(client Client, key *crypto.EcdsaKey, multiAddrStorer swarm.Multi
 
 // UpdateMidpoint implements the Oracler interface.
 func (oracler *oracler) UpdateMidpoint(ctx context.Context, midpointPrice MidpointPrice) error {
-	randomMultiAddrs, err := swarm.RandomMultiAddrs(oracler.multiAddrStorer, oracler.MultiAddress().Address(), oracler.α)
+	randomMultiAddrs, err := swarm.RandomMultiAddrs(oracler.multiAddrStorer, oracler.client.MultiAddress().Address(), oracler.α)
 	if err != nil {
 		return err
 	}
@@ -70,11 +67,6 @@ func (oracler *oracler) UpdateMidpoint(ctx context.Context, midpointPrice Midpoi
 	}
 
 	return nil
-}
-
-// MultiAddress implements the Oracler interface.
-func (oracler *oracler) MultiAddress() identity.MultiAddress {
-	return oracler.client.MultiAddress()
 }
 
 type Server interface {
