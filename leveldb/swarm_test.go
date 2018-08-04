@@ -32,7 +32,7 @@ var _ = Describe("Swarm storage", func() {
 	})
 
 	Context("when adding new data", func() {
-		It("should not store new multi-addresses that have lower nonce", func() {
+		It("should store new multi-addresses", func() {
 			db := newDB(dbFile)
 			swarmMultiAddressTable := NewSwarmMultiAddressTable(db, 2*time.Second)
 
@@ -41,16 +41,10 @@ var _ = Describe("Swarm storage", func() {
 				err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 
-				// Attempting to store the multi-address with the same nonce
-				// should not return an error.
-				err = swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				// Attempting to retrieve the multi-address should not return an error.
+				multi, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
 				Expect(err).ShouldNot(HaveOccurred())
-
-				// Attempting to store the multi-address with a lower nonce
-				// should return an error.
-				multiAddresses[i].Nonce = 100
-				err = swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(multi.String()).Should(Equal(multiAddresses[i].String()))
 			}
 		})
 	})
@@ -64,11 +58,6 @@ var _ = Describe("Swarm storage", func() {
 			for i := 0; i < len(multiAddresses); i++ {
 				err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
-			}
-			for i := 0; i < len(multiAddresses); i++ {
-				multiAddr, err := swarmMultiAddressTable.MultiAddress(multiAddresses[i].Address())
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(multiAddr.String()).Should(Equal(multiAddresses[i].String()))
 			}
 
 			// Sleep and then prune to expire the data

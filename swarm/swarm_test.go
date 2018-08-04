@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,15 +15,16 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Swarm", func() {
 
 	var (
-		numberOfClients          = 50
+		numberOfClients          = 100
 		numberOfBootstrapClients = 5
-		α                        = 3
+		α                        = 10
 	)
 
 	registerClientsAndBootstrap := func(ctx context.Context, honest bool) ([]Client, []Swarmer, *testutils.MockServerHub, error) {
@@ -30,7 +32,7 @@ var _ = Describe("Swarm", func() {
 		stores := make([]MultiAddressStorer, numberOfClients)
 		clients := make([]Client, numberOfClients)
 		swarmers := make([]Swarmer, numberOfClients)
-		ecdsaKeys := make([]crypto.EcdsaKey, numberOfClients)
+		verifiers := make([]registry.Crypter, numberOfClients)
 
 		serverHub := &testutils.MockServerHub{
 			ConnsMu: new(sync.Mutex),
@@ -39,22 +41,28 @@ var _ = Describe("Swarm", func() {
 		}
 
 		for i := 0; i < numberOfClients; i++ {
-			key, err := crypto.RandomEcdsaKey()
+			key, err := crypto.RandomKeystore()
 			if err != nil {
 				return nil, nil, serverHub, err
 			}
+			verifiers[i] = registry.NewCrypter(key, testutils.NewMockSwarmBinder(), numberOfClients, time.Hour)
+
 			clientType := testutils.Honest
 			if !honest && i > numberOfBootstrapClients {
 				clientType = testutils.ClientTypes[rand.Intn(len(testutils.ClientTypes))]
 			}
-			client, store, err := testutils.NewMockSwarmClient(serverHub, &key, clientType)
+
+			client, store, err := testutils.NewMockSwarmClient(serverHub, clientType, &verifiers[i])
 			if err != nil {
 				return nil, nil, serverHub, err
 			}
 			clients[i] = &client
-			ecdsaKeys[i] = key
 			stores[i] = store
-			swarmers[i] = NewSwarmer(clients[i], stores[i], α, &ecdsaKeys[i])
+			alpha := rand.Intn(α-2) + 2
+			swarmers[i] = NewSwarmer(clients[i], stores[i], alpha, &verifiers[i])
+
+			server := NewServer(swarmers[i], stores[i], alpha, &verifiers[i])
+			serverHub.Register(clients[i].MultiAddress().Address(), server)
 		}
 
 		// Bootstrapping created clients
@@ -66,13 +74,6 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}
-		})
-
-		dispatch.CoForAll(numberOfClients, func(i int) {
-			defer GinkgoRecover()
-
-			server := NewServer(swarmers[i], stores[i], α)
-			serverHub.Register(clients[i].MultiAddress().Address(), server)
 		})
 		return clients, swarmers, serverHub, nil
 	}
@@ -100,15 +101,6 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				By("Check number of connected nodes")
-				dispatch.CoForAll(numberOfClients, func(i int) {
-					defer GinkgoRecover()
-
-					peers, err := swarmers[i].Peers()
-					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
-				})
-
 				By("Query other peers address")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
@@ -134,7 +126,6 @@ var _ = Describe("Swarm", func() {
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">=", numberOfClients*9/10))
 				})
 			})
@@ -160,12 +151,12 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
+				time.Sleep(2 * time.Second)
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
-					log.Printf("Swarmer %d has connected to %d peers", i, len(peers))
 					Expect(len(peers)).To(BeNumerically(">", numberOfBootstrapClients))
 				})
 			})

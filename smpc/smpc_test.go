@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/republicprotocol/republic-go/registry"
 	. "github.com/republicprotocol/republic-go/smpc"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -176,20 +177,21 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 
-		err = stores[i].PutMultiAddress(multiAddr)
-		if err != nil {
+		if err = stores[i].PutMultiAddress(multiAddr); err != nil {
 			return nil, nil, nil, err
 		}
 
 		swarmClient := grpc.NewSwarmClient(stores[i], multiAddr.Address())
 
-		key, err := crypto.RandomEcdsaKey()
+		key, err := crypto.RandomKeystore()
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		swarmer := swarm.NewSwarmer(swarmClient, stores[i], α, &key)
+		verifier := registry.NewCrypter(key, testutils.NewMockSwarmBinder(), 2, time.Hour)
 
-		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α), time.Microsecond)
+		swarmer := swarm.NewSwarmer(swarmClient, stores[i], α, &verifier)
+
+		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α, &verifier), time.Microsecond)
 
 		streamer := grpc.NewConnectorListener(addr, testutils.NewCrypter(), testutils.NewCrypter())
 		streamerService := grpc.NewStreamerService(addr, testutils.NewCrypter(), testutils.NewCrypter(), streamer.Listener)

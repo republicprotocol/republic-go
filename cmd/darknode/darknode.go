@@ -112,8 +112,8 @@ func main() {
 	server := grpc.NewServer()
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
-	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &config.Keystore.EcdsaKey)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
+	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &crypter)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter), time.Millisecond)
 	swarmService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
@@ -184,7 +184,7 @@ func main() {
 		for _, multiAddr := range config.BootstrapMultiAddresses {
 			multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap details from store: %v", err))
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
 				continue
 			}
 			if err == nil {
