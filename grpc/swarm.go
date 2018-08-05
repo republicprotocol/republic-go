@@ -111,7 +111,8 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", multiAddrMsg.MultiAddress, err))
 			continue
 		}
-		multiAddr.Signature = multiAddr.Hash()
+		multiAddr.Nonce = multiAddrMsg.MultiAddressNonce
+		multiAddr.Signature = multiAddr.Signature
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 	return multiAddrs, nil
