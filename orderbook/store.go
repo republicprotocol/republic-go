@@ -11,8 +11,8 @@ import (
 // found.
 var ErrOrderNotFound = errors.New("order not found")
 
-// ErrOrderFragmentNotFound is returned when attempting to read an order that
-// cannot be found.
+// ErrOrderFragmentNotFound is returned when attempting to read an order
+// fragment that cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 // ErrPointerNotFound is returned when attempting to read a pointer that cannot

@@ -27,7 +27,7 @@ func (pod *Pod) Threshold() int {
 	return (2 * (len(pod.Darknodes) + 1)) / 3
 }
 
-type PodHeap ([]Pod)
+type PodHeap []Pod
 
 func (heap PodHeap) PathOfOrder(orderID order.ID) PodPath {
 	if len(heap) <= 1 {
@@ -52,7 +52,7 @@ func (heap PodHeap) PathOfOrder(orderID order.ID) PodPath {
 
 // PodPath is an ordered list of Pods that is used to build hierarchies. The
 // first Pod is the root and the last Pod is the leaf.
-type PodPath ([]Pod)
+type PodPath []Pod
 
 // IndexOfPod returns the position of a Pod in the path. The returned boolean
 // is true if the Pod is in the path, and false otherwise.

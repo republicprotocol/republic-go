@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
