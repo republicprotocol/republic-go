@@ -53,7 +53,7 @@ func (swarmer *Swarmer) Pong(ctx context.Context, to identity.MultiAddress) erro
 	return nil
 }
 
-func (swarmer *Swarmer) PutMultiAddress(multiAddr identity.MultiAddress) {
+func (swarmer *Swarmer) InsertMultiAddress(multiAddr identity.MultiAddress) {
 	swarmer.multiAddrsMu.Lock()
 	defer swarmer.multiAddrsMu.Unlock()
 	swarmer.multiAddrs[multiAddr.Address()] = multiAddr

@@ -59,7 +59,7 @@ var _ = Describe("Oracle", func() {
 			// Connect each other
 			for i := range testers {
 				for j := range testers {
-					Expect(testers[i].MultiStorer.PutMultiAddress(testers[j].Multi)).ShouldNot(HaveOccurred())
+					Expect(testers[i].MultiStorer.InsertMultiAddress(testers[j].Multi)).ShouldNot(HaveOccurred())
 				}
 			}
 

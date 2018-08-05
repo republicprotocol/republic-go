@@ -79,14 +79,14 @@ var _ = Describe("Status", func() {
 
 			// should return 1 after adding a peer
 			multiAddr, err := testutils.RandomMultiAddress()
-			swarmer.PutMultiAddress(multiAddr)
+			swarmer.InsertMultiAddress(multiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 			peers, err = prov.Peers()
 			Expect(peers).Should(Equal(1))
 
 			// should return 2 after adding another peer
 			multiAddr, err = testutils.RandomMultiAddress()
-			swarmer.PutMultiAddress(multiAddr)
+			swarmer.InsertMultiAddress(multiAddr)
 			Expect(err).ShouldNot(HaveOccurred())
 			peers, err = prov.Peers()
 			Expect(peers).Should(Equal(2))

@@ -152,7 +152,7 @@ func newOracleClient(db swarm.MultiAddressStorer) (oracle.Client, crypto.EcdsaKe
 	if err != nil {
 		return nil, crypto.EcdsaKey{}, err
 	}
-	db.PutMultiAddress(multiAddr)
+	db.InsertMultiAddress(multiAddr)
 	client := NewOracleClient(multiAddr.Address(), db)
 	return client, ecdsaKey, nil
 }
