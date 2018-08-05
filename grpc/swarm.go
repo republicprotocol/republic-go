@@ -229,7 +229,9 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 	multiAddrMsgs := make([]*MultiAddress, len(multiAddrs))
 	for i, multiAddr := range multiAddrs {
 		multiAddrMsgs[i] = &MultiAddress{
-			MultiAddress: multiAddr.String(),
+			MultiAddress:      multiAddr.String(),
+			Signature:         multiAddr.Signature,
+			MultiAddressNonce: multiAddr.Nonce,
 		}
 	}
 
