@@ -192,17 +192,14 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				return
 			}
 			log.Printf("Get back %v when querying %v", multiAddrs, multiAddr)
-			log.Println("signature", multiAddrs[0].Signature, "nonce", multiAddrs[0].Nonce)
 
 			// Process only the first α multi-addresses returned.
 			if len(multiAddrs) > swarmer.α {
 				multiAddrs = multiAddrs[:swarmer.α]
 			}
 
-			dispatch.ForAll(multiAddrs, func(j int) {
-
-				// Verify the multi address
-				multi := multiAddrs[j]
+			for _, multi := range multiAddrs {
+				log.Println("signature length :", len(multi.Signature))
 				if err := swarmer.verifier.Verify(multi.Hash(), multi.Signature); err != nil {
 					log.Println("cannot verify the multiAddress", err)
 					return
@@ -230,7 +227,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 						return
 					}
 				}
-			})
+			}
 		})
 	}
 
