@@ -192,6 +192,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				return
 			}
 			log.Printf("Get back %v when querying %v", multiAddrs, multiAddr)
+			log.Println("signature", multiAddrs[0].Signature, "nonce", multiAddrs[0].Nonce)
 
 			// Process only the first α multi-addresses returned.
 			if len(multiAddrs) > swarmer.α {
