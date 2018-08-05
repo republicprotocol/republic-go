@@ -154,6 +154,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 
 	// Query α multiAddresses until the node is reached or there are no
 	// more newer multi-addresses can be queried.
+	log.Println("target address: ", query)
 	for {
 		if len(randomMultiAddrs) == 0 {
 			break
@@ -190,6 +191,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				log.Printf("cannot query %v: %v", multiAddr.Address(), err)
 				return
 			}
+			log.Printf("Get back %v when querying %v", multiAddrs, multiAddr)
 
 			// Process only the first α multi-addresses returned.
 			if len(multiAddrs) > swarmer.α {
@@ -201,6 +203,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				// Verify the multi address
 				multi := multiAddrs[j]
 				if err := swarmer.verifier.Verify(multi.Hash(), multi.Signature); err != nil {
+					log.Println("cannot verify the multiAddress", err)
 					return
 				}
 
