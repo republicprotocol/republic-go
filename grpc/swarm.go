@@ -112,7 +112,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 			continue
 		}
 		multiAddr.Nonce = multiAddrMsg.MultiAddressNonce
-		multiAddr.Signature = multiAddr.Signature
+		multiAddr.Signature = multiAddrMsg.Signature
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 	return multiAddrs, nil
