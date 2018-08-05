@@ -176,7 +176,6 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 		if err != nil {
 			return nil, nil, nil, err
 		}
-
 		if err = stores[i].InsertMultiAddress(multiAddr); err != nil {
 			return nil, nil, nil, err
 		}
