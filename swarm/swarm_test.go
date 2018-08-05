@@ -93,7 +93,7 @@ var _ = Describe("Swarm", func() {
 				clients, swarmers, serverHub, err := registerClientsAndBootstrap(ctx, true)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				By("Ping self-address to join the network")
+				log.Println("Ping self-address to join the network")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
@@ -101,7 +101,7 @@ var _ = Describe("Swarm", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 
-				By("Query other peers address")
+				log.Println("Query other peers address")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 
@@ -120,7 +120,7 @@ var _ = Describe("Swarm", func() {
 					}
 				})
 
-				By("Check number of connected nodes")
+				log.Println("Check number of connected nodes")
 				dispatch.CoForAll(numberOfClients, func(i int) {
 					defer GinkgoRecover()
 

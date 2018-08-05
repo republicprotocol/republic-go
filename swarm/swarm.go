@@ -204,7 +204,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 					return
 				}
 
-				log.Printf("Got: %v", multi.Address())
 				// Mark the new multi as seen and add to the query backlog.
 				seenMu.Lock()
 				if _, ok := seenAddrs[multi.Address()]; ok {
@@ -222,7 +221,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 					return
 				}
 				if err == ErrMultiAddressNotFound || oldMulti.Nonce < multi.Nonce {
-					log.Printf("%v is stored", multi.Address())
 					if err = swarmer.storer.InsertMultiAddress(multi); err != nil {
 						log.Printf("cannot store %v: %v", multi.Address(), err)
 						return
