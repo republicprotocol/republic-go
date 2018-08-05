@@ -189,22 +189,22 @@ func main() {
 
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
-		for _, multiAddr := range config.BootstrapMultiAddresses {
-			if multiAddr.Address() == multiAddr.Address() {
+		for _, bootstrapMulti := range config.BootstrapMultiAddresses {
+			if bootstrapMulti.Address() == multiAddr.Address() {
 				continue
 			}
-			multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+			multi, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
 				continue
 			}
 			if err == nil {
-				multiAddr.Nonce = multi.Nonce
+				bootstrapMulti.Nonce = multi.Nonce
 			}
-			if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 			}
-			fmtStr += "  " + multiAddr.String() + "\n"
+			fmtStr += "  " + bootstrapMulti.String() + "\n"
 		}
 		log.Printf(fmtStr)
 		pingNetwork(swarmer)
