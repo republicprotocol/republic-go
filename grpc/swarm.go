@@ -166,8 +166,6 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		return nil, err
 	}
 
-	// FIXME: Check for nil message components
-
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -243,13 +241,16 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 func (service *SwarmService) isRateLimited(ctx context.Context) error {
 	client, ok := peer.FromContext(ctx)
 	if !ok {
-		return fmt.Errorf("failed to get peer from ctx")
+		return fmt.Errorf("fail to get peer from ctx")
 	}
 	if client.Addr == net.Addr(nil) {
-		return fmt.Errorf("failed to get peer address")
+		return fmt.Errorf("fail to get peer address")
 	}
 
-	clientAddr := client.Addr.(*net.TCPAddr)
+	clientAddr, ok := client.Addr.(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("fail to read peer TCP address")
+	}
 	clientIP := clientAddr.IP.String()
 
 	service.rateLimitsMu.Lock()

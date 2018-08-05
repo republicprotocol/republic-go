@@ -38,7 +38,7 @@ var _ = Describe("Swarm storage", func() {
 
 			// Put the multi-addresses repeatedly into the table.
 			for i := 0; i < len(multiAddresses); i++ {
-				err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				err := swarmMultiAddressTable.InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Attempting to retrieve the multi-address should not return an error.
@@ -56,7 +56,7 @@ var _ = Describe("Swarm storage", func() {
 
 			// Put the multi-addresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
-				err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				err := swarmMultiAddressTable.InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -82,7 +82,7 @@ var _ = Describe("Swarm storage", func() {
 
 			// Put the multi-addresses into the table and attempt to retrieve
 			for i := 0; i < len(multiAddresses); i++ {
-				err := swarmMultiAddressTable.PutMultiAddress(multiAddresses[i])
+				err := swarmMultiAddressTable.InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < len(multiAddresses); i++ {

@@ -131,7 +131,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 	if swarmer.MultiAddress().Address() == query {
 		return swarmer.MultiAddress(), nil
 	}
-	log.Printf("querying for %v", query)
 	// Is the multi-address present in the storer?
 	multiAddr, err := swarmer.storer.MultiAddress(query)
 	if err == nil {
@@ -141,15 +140,11 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 		return identity.MultiAddress{}, err
 	}
 
-	log.Printf("not in store: %v", query)
-
 	// If multi-address is not present in the store, query for a maximum of α random nodes.
 	randomMultiAddrs, err := randomMultiAddrs(swarmer.storer, swarmer.MultiAddress().Address(), swarmer.α)
 	if err != nil {
 		return identity.MultiAddress{}, err
 	}
-
-	log.Printf("got %v addrs", len(randomMultiAddrs))
 
 	// Create two maps to records the addrs we have seen and queried
 	seenMu := new(sync.Mutex)
@@ -164,7 +159,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 			break
 		}
 		if _, ok := seenAddrs[query]; ok {
-			log.Printf("%v found!!!", query)
 			target, err := swarmer.storer.MultiAddress(query)
 			if err != nil {
 				logger.Error("cannot get multiAddress from the storer")
@@ -202,8 +196,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				multiAddrs = multiAddrs[:swarmer.α]
 			}
 
-			log.Printf("got back %v from %v", len(multiAddrs), multiAddr.Address())
-
 			dispatch.ForAll(multiAddrs, func(j int) {
 
 				// Verify the multi address
@@ -223,7 +215,6 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				randomMultiAddrs = append(randomMultiAddrs, multi)
 				seenMu.Unlock()
 
-				log.Printf("%v is new info", multi.Address())
 				// Put the new multi in our storer if it has a higher nonce
 				oldMulti, err := swarmer.storer.MultiAddress(multi.Address())
 				if err != nil && err != ErrMultiAddressNotFound {
@@ -366,7 +357,6 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
 	multiAddr, err := server.multiAddrStore.MultiAddress(query)
 	if err == nil {
-		log.Printf("Found multiaddress for %v", multiAddr.Address())
 		return []identity.MultiAddress{multiAddr}, nil
 	}
 	return randomMultiAddrs(server.multiAddrStore, server.swarmer.MultiAddress().Address(), server.α)
@@ -408,6 +398,5 @@ func randomMultiAddrs(storer MultiAddressStorer, self identity.Address, α int) 
 		results = append(results, multiAddr)
 	}
 
-	log.Printf("Returning %v multi-addresses", len(results))
 	return results, nil
 }
