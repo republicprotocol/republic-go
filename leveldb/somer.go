@@ -156,6 +156,7 @@ type SomerOrderFragmentValue struct {
 	Timestamp     time.Time      `json:"timestamp"`
 	OrderFragment order.Fragment `json:"orderFragment"`
 	Trader        string         `json:"trader"`
+	Priority      uint64         `json:"priority"`
 }
 
 // SomerOrderFragmentIterator implements the ome.OrderFragmentIterator using a
@@ -176,31 +177,33 @@ func (iter *SomerOrderFragmentIterator) Next() bool {
 }
 
 // Cursor implements the ome.OrderFragmentIterator interface.
-func (iter *SomerOrderFragmentIterator) Cursor() (order.Fragment, string, error) {
+func (iter *SomerOrderFragmentIterator) Cursor() (order.Fragment, string, uint64, error) {
 	if !iter.inner.Valid() {
-		return order.Fragment{}, "", ome.ErrCursorOutOfRange
+		return order.Fragment{}, "", 0, ome.ErrCursorOutOfRange
 	}
 	value := SomerOrderFragmentValue{}
 	data := iter.inner.Value()
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Fragment{}, "", err
+		return order.Fragment{}, "", 0, err
 	}
-	return value.OrderFragment, value.Trader, iter.inner.Error()
+	return value.OrderFragment, value.Trader, value.Priority, iter.inner.Error()
 }
 
 // Collect implements the ome.OrderFragmentIterator interface.
-func (iter *SomerOrderFragmentIterator) Collect() ([]order.Fragment, []string, error) {
+func (iter *SomerOrderFragmentIterator) Collect() ([]order.Fragment, []string, []uint64, error) {
 	orderFragments := []order.Fragment{}
 	traders := []string{}
+	priorities := []uint64{}
 	for iter.Next() {
-		orderFragment, trader, err := iter.Cursor()
+		orderFragment, trader, priority, err := iter.Cursor()
 		if err != nil {
-			return orderFragments, traders, err
+			return orderFragments, traders, priorities, err
 		}
 		orderFragments = append(orderFragments, orderFragment)
 		traders = append(traders, trader)
+		priorities = append(priorities, priority)
 	}
-	return orderFragments, traders, iter.inner.Error()
+	return orderFragments, traders, priorities, iter.inner.Error()
 }
 
 // Release implements the ome.OrderFragmentIterator interface.
@@ -225,11 +228,12 @@ func NewSomerOrderFragmentTable(db *leveldb.DB, expiry time.Duration) *SomerOrde
 }
 
 // PutBuyOrderFragment implements the ome.OrderFragmentStorer interface.
-func (table *SomerOrderFragmentTable) PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string) error {
+func (table *SomerOrderFragmentTable) PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error {
 	value := SomerOrderFragmentValue{
 		Timestamp:     time.Now(),
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -244,20 +248,20 @@ func (table *SomerOrderFragmentTable) DeleteBuyOrderFragment(epoch registry.Epoc
 }
 
 // BuyOrderFragment implements the ome.OrderFragmentStorer interface.
-func (table *SomerOrderFragmentTable) BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error) {
+func (table *SomerOrderFragmentTable) BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error) {
 	data, err := table.db.Get(table.buyKey(epoch.Hash[:], id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrOrderFragmentNotFound
 		}
-		return order.Fragment{}, "", err
+		return order.Fragment{}, "", 0, err
 	}
 
 	value := SomerOrderFragmentValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Fragment{}, "", err
+		return order.Fragment{}, "", 0, err
 	}
-	return value.OrderFragment, value.Trader, nil
+	return value.OrderFragment, value.Trader, value.Priority, nil
 }
 
 // BuyOrderFragments implements the ome.OrderFragmentStorer interface.
@@ -267,11 +271,12 @@ func (table *SomerOrderFragmentTable) BuyOrderFragments(epoch registry.Epoch) (o
 }
 
 // PutSellOrderFragment implements the ome.OrderFragmentStorer interface.
-func (table *SomerOrderFragmentTable) PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string) error {
+func (table *SomerOrderFragmentTable) PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error {
 	value := SomerOrderFragmentValue{
 		Timestamp:     time.Now(),
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -286,20 +291,20 @@ func (table *SomerOrderFragmentTable) DeleteSellOrderFragment(epoch registry.Epo
 }
 
 // SellOrderFragment implements the ome.OrderFragmentStorer interface.
-func (table *SomerOrderFragmentTable) SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error) {
+func (table *SomerOrderFragmentTable) SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error) {
 	data, err := table.db.Get(table.sellKey(epoch.Hash[:], id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrOrderFragmentNotFound
 		}
-		return order.Fragment{}, "", err
+		return order.Fragment{}, "", 0, err
 	}
 
 	value := SomerOrderFragmentValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Fragment{}, "", err
+		return order.Fragment{}, "", 0, err
 	}
-	return value.OrderFragment, value.Trader, nil
+	return value.OrderFragment, value.Trader, value.Priority, nil
 }
 
 // SellOrderFragments implements the ome.OrderFragmentStorer interface.
