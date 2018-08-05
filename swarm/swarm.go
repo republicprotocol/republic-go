@@ -2,7 +2,6 @@ package swarm
 
 import (
 	"context"
-	"errors"
 	"log"
 	"math/rand"
 	"sync"
@@ -12,10 +11,6 @@ import (
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/registry"
 )
-
-// ErrNonceTooLow is returned if the nonce of the multi-address is lower than the
-// one present in the local store.
-var ErrNonceTooLow = errors.New("nonce too low")
 
 // A Client exposes methods for invoking RPCs on a remote server.
 type Client interface {
@@ -44,7 +39,7 @@ type Swarmer interface {
 	// of a node in the network available in the storer.
 	Ping(ctx context.Context) error
 
-	// Pong is used to inform a target node after it's multiaddress is received.
+	// Pong is used to inform a target node after its multiAddress is received.
 	Pong(ctx context.Context, to identity.MultiAddress) error
 
 	// BroadcastMultiAddress to a maximum of α randomly selected nodes.
@@ -52,7 +47,7 @@ type Swarmer interface {
 
 	// Query a node for the identity.MultiAddress of an identity.Address.
 	// Returns a list of random identity.MultiAddresses from the node that
-	// was queried.
+	// was queried if not the target is not found.
 	Query(ctx context.Context, query identity.Address) (identity.MultiAddress, error)
 
 	// MultiAddress used when pinging and ponging.
@@ -93,7 +88,7 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 		return err
 	}
 	multi.Signature = signature
-	if err := swarmer.storer.PutMultiAddress(multi); err != nil {
+	if err := swarmer.storer.InsertMultiAddress(multi); err != nil {
 		return err
 	}
 
@@ -237,7 +232,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				}
 				if err == ErrMultiAddressNotFound || oldMulti.Nonce < multi.Nonce {
 					log.Printf("%v is stored", multi.Address())
-					if err = swarmer.storer.PutMultiAddress(multi); err != nil {
+					if err = swarmer.storer.InsertMultiAddress(multi); err != nil {
 						log.Printf("cannot store %v: %v", multi.Address(), err)
 						return
 					}
@@ -249,7 +244,8 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 	return identity.MultiAddress{}, ErrMultiAddressNotFound
 }
 
-// pingNodes will ping α random nodes in the storer using the client to gossip about the multi-address and nonce seen.
+// pingNodes will ping α random nodes in the storer using the client to gossip
+// about the multiAddress and nonce seen.
 func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiAddress) error {
 	multiAddrs, err := swarmer.Peers()
 	if err != nil {
@@ -272,22 +268,21 @@ func (swarmer *swarmer) pingNodes(ctx context.Context, multiAddr identity.MultiA
 		return nil
 	}
 
-	seenAddrs := map[identity.Address]struct{}{}
+	seenAddrs := map[identity.Address]identity.MultiAddress{}
 	for len(multiAddrs) > 0 && len(seenAddrs) < swarmer.α {
 		i := rand.Intn(len(multiAddrs))
 		multi := multiAddrs[i]
+		seenAddrs[multi.Address()] = multi
 
 		multiAddrs[i] = multiAddrs[len(multiAddrs)-1]
 		multiAddrs = multiAddrs[:len(multiAddrs)-1]
-
-		// go func(multi identity.MultiAddress) {
-			if err := pingNode(multi); err != nil {
-				log.Printf("cannot ping node with address %v: %v", multi, err)
-			}
-		// }(multi)
-
-		seenAddrs[multi.Address()] = struct{}{}
 	}
+
+	dispatch.CoForAll(seenAddrs, func(addr identity.Address) {
+		if err := pingNode(seenAddrs[addr]); err != nil {
+			log.Printf("cannot ping node with address %v: %v", addr, err)
+		}
+	})
 
 	return nil
 }
@@ -343,7 +338,7 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 		return err
 	}
 	if err == ErrMultiAddressNotFound || oldMulti.Nonce < multiAddr.Nonce {
-		if err := server.multiAddrStore.PutMultiAddress(multiAddr); err != nil {
+		if err := server.multiAddrStore.InsertMultiAddress(multiAddr); err != nil {
 			return err
 		}
 		return server.swarmer.BroadcastMultiAddress(ctx, multiAddr)
@@ -359,10 +354,10 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 		return err
 	}
 
-	// Compare the nonce and see if we need to gossip the ping.
+	// Compare the nonce and see if we need to store the from multiAddress.
 	oldMulti, err := server.multiAddrStore.MultiAddress(from.Address())
 	if err == ErrMultiAddressNotFound || oldMulti.Nonce < from.Nonce {
-		return server.multiAddrStore.PutMultiAddress(from)
+		return server.multiAddrStore.InsertMultiAddress(from)
 	}
 	return err
 }

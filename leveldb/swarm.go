@@ -83,8 +83,8 @@ func NewSwarmMultiAddressTable(db *leveldb.DB, expiry time.Duration) *SwarmMulti
 	return &SwarmMultiAddressTable{db: db, expiry: expiry}
 }
 
-// PutMultiAddress implements the swarm.MultiAddressStorer interface.
-func (table *SwarmMultiAddressTable) PutMultiAddress(multiAddress identity.MultiAddress) error {
+// InsertMultiAddress implements the swarm.MultiAddressStorer interface.
+func (table *SwarmMultiAddressTable) InsertMultiAddress(multiAddress identity.MultiAddress) error {
 	value := SwarmMultiAddressValue{
 		MultiAddress: multiAddress,
 		Timestamp:    time.Now(),
@@ -119,7 +119,7 @@ func (table *SwarmMultiAddressTable) MultiAddresses() (swarm.MultiAddressIterato
 	return newSwarmMultiAddressIterator(iter), nil
 }
 
-// Prune iterates over all multiaddresses and deletes those that have expired.
+// Prune iterates over all multiAddresses and deletes those that have expired.
 func (table *SwarmMultiAddressTable) Prune() (err error) {
 	iter := table.db.NewIterator(&util.Range{Start: table.key(SwarmMultiAddressIterBegin), Limit: table.key(SwarmMultiAddressIterEnd)}, nil)
 	defer iter.Release()

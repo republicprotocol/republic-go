@@ -61,7 +61,7 @@ var _ = Describe("LevelDB storage", func() {
 					err = db.SomerComputationStore().PutComputation(computations[i])
 					Expect(err).ShouldNot(HaveOccurred())
 				}
-				err = db.SwarmMultiAddressStore().PutMultiAddress(multiAddresses[i])
+				err = db.SwarmMultiAddressStore().InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -151,7 +151,7 @@ var _ = Describe("LevelDB storage", func() {
 					err = db.SomerComputationStore().PutComputation(computations[i])
 					Expect(err).ShouldNot(HaveOccurred())
 				}
-				err = db.SwarmMultiAddressStore().PutMultiAddress(multiAddresses[i])
+				err = db.SwarmMultiAddressStore().InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -196,7 +196,7 @@ var _ = Describe("LevelDB storage", func() {
 					err = db.SomerComputationStore().PutComputation(computations[i])
 					Expect(err).ShouldNot(HaveOccurred())
 				}
-				err = db.SwarmMultiAddressStore().PutMultiAddress(multiAddresses[i])
+				err = db.SwarmMultiAddressStore().InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -300,7 +300,7 @@ var _ = Describe("LevelDB storage", func() {
 					err = db.SomerComputationStore().PutComputation(computations[i])
 					Expect(err).ShouldNot(HaveOccurred())
 				}
-				err = db.SwarmMultiAddressStore().PutMultiAddress(multiAddresses[i])
+				err = db.SwarmMultiAddressStore().InsertMultiAddress(multiAddresses[i])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 

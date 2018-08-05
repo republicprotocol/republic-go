@@ -8,14 +8,14 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
-	"github.com/republicprotocol/republic-go/registry"
-	"github.com/republicprotocol/republic-go/testutils"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/swarm"
+	"github.com/republicprotocol/republic-go/testutils"
 	"golang.org/x/net/context"
 )
 
@@ -168,7 +168,7 @@ func newSwarmClient(db swarm.MultiAddressStorer) (swarm.Client, registry.Crypter
 		return nil, registry.Crypter{}, err
 	}
 	multiAddr.Signature = signature
-	db.PutMultiAddress(multiAddr)
+	db.InsertMultiAddress(multiAddr)
 	client := NewSwarmClient(db, multiAddr.Address())
 	return client, verifier, nil
 }

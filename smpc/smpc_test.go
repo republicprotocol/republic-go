@@ -59,7 +59,7 @@ var _ = Describe("Smpcer", func() {
 			dispatch.CoForAll(nodes, func(i int) {
 				defer GinkgoRecover()
 				for j := 0; j < numBootstrap; j++ {
-					stores[i].PutMultiAddress(bootstraps[j])
+					stores[i].InsertMultiAddress(bootstraps[j])
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
@@ -177,7 +177,7 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 
-		if err = stores[i].PutMultiAddress(multiAddr); err != nil {
+		if err = stores[i].InsertMultiAddress(multiAddr); err != nil {
 			return nil, nil, nil, err
 		}
 

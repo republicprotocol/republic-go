@@ -70,7 +70,7 @@ var _ = Describe("Swarm", func() {
 			defer GinkgoRecover()
 
 			for j := 0; j < numberOfBootstrapClients; j++ {
-				if err := stores[i].PutMultiAddress(clients[j].MultiAddress()); err != nil {
+				if err := stores[i].InsertMultiAddress(clients[j].MultiAddress()); err != nil {
 					Expect(err).ShouldNot(HaveOccurred())
 				}
 			}

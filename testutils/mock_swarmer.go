@@ -146,7 +146,7 @@ func NewMockSwarmClient(MockServerHub *MockServerHub, clientType ClientType, ver
 		return MockSwarmClient{}, nil, err
 	}
 	store := db.SwarmMultiAddressStore()
-	if err = store.PutMultiAddress(multiAddr); err != nil {
+	if err = store.InsertMultiAddress(multiAddr); err != nil {
 		return MockSwarmClient{}, nil, err
 	}
 
