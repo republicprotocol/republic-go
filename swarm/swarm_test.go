@@ -80,7 +80,7 @@ var _ = Describe("Swarm", func() {
 
 	Context("when connecting to the network", func() {
 
-		Context("when traders are honest, they", func() {
+		Context("when nodes are honest, they", func() {
 
 			AfterEach(func() {
 				os.RemoveAll("./tmp")
@@ -127,11 +127,12 @@ var _ = Describe("Swarm", func() {
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(len(peers)).To(BeNumerically(">=", numberOfClients*9/10))
+					log.Printf("Node %v: Connected to %v peers.", i, len(peers)-1)
 				})
 			})
 		})
 
-		Context("when some traders are dishonest, they", func() {
+		Context("when some nodes are dishonest, they", func() {
 
 			AfterEach(func() {
 				os.RemoveAll("./tmp")
@@ -158,6 +159,7 @@ var _ = Describe("Swarm", func() {
 					peers, err := swarmers[i].Peers()
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(len(peers)).To(BeNumerically(">", numberOfBootstrapClients))
+					log.Printf("Node %v: Connected to %v peers.", i, len(peers)-1)
 				})
 			})
 		})
