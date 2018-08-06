@@ -195,6 +195,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 
 	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
+	log.Println("tokens = ", ord.Tokens)
 	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint32(ord.Settlement), uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
 }
 

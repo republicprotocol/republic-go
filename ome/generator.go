@@ -123,7 +123,6 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 		select {
 		case <-gen.done:
 		case gen.broadcastComputations <- computations:
-			log.Println("new computations")
 		}
 
 		select {
@@ -375,7 +374,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 				return computationWeight.weight >= mat.sortedComputations[i].weight
 			})
 			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
-			log.Printf("generated new computations, %v, %v", computationWeight.computation.Buy, computationWeight.computation.Sell)
 		}()
 	}
 	if didGenerateNewComputation {
