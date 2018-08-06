@@ -38,7 +38,7 @@ var _ = Describe("Orderbook", func() {
 
 	Context("when opening new orders", func() {
 
-		It("should not return an error and must add fragment to storer", func() {
+		XIt("should not return an error and must add fragment to storer", func() {
 			// Generate new RSA key
 			rsaKey, err := crypto.RandomRsaKey()
 			Expect(err).ShouldNot(HaveOccurred())

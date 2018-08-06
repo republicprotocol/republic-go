@@ -19,7 +19,7 @@ import (
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var _ = Describe("Syncer", func() {
+var _ = XDescribe("Syncer", func() {
 
 	var (
 		NumberOfOrderPairs = 40

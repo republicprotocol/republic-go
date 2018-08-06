@@ -23,7 +23,6 @@ type Aggregator interface {
 }
 
 type aggregator struct {
-	addr               identity.Address
 	epoch              registry.Epoch
 	orderStore         OrderStorer
 	orderFragmentStore OrderFragmentStorer
@@ -32,7 +31,6 @@ type aggregator struct {
 
 func NewAggregator(addr identity.Address, epoch registry.Epoch, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer) Aggregator {
 	agg := &aggregator{
-		addr:               addr,
 		epoch:              epoch,
 		orderStore:         orderStore,
 		orderFragmentStore: orderFragmentStore,
