@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io/ioutil"
-
-	"github.com/republicprotocol/republic-go/order"
 )
 
 // ErrUnexpectedMessageType is returned when a message has an unexpected
@@ -103,8 +101,7 @@ func (message *Message) IsMessage() {}
 type MessageJoin struct {
 	NetworkID
 
-	Join      Join
-	Blindings order.Blindings // Used to verify the computation
+	Join Join
 }
 
 // MarshalBinary implements the encoding.BinaryMarshaler interface.

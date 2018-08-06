@@ -192,8 +192,8 @@ type EncryptedFragment struct {
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
 
-	Blinding EncryptedBlinding `json:"blinding"`
-	Commits  []Commitment      `json:"commitments"`
+	Blinding    EncryptedBlinding `json:"blinding"`
+	Commitments []Commitment      `json:"commitments"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.

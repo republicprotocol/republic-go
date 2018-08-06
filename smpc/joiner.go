@@ -34,11 +34,10 @@ type JoinID [33]byte
 // Join are all associated with different shared values. All shamir.Shares must
 // have the same index value.
 type Join struct {
-	ID          JoinID
-	Index       JoinIndex
-	Shares      shamir.Shares
-	Blindings   order.Blindings
-	Commitments order.Commitments
+	ID        JoinID
+	Index     JoinIndex
+	Shares    shamir.Shares
+	Blindings order.Blindings
 }
 
 // MarshalBinary implements the encoding.Marshaler interface.
@@ -62,6 +61,7 @@ func (join *Join) MarshalBinary() ([]byte, error) {
 			return nil, err
 		}
 	}
+	// FIXME: Marshal blindings
 	return buf.Bytes(), nil
 }
 
@@ -88,6 +88,7 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 			return err
 		}
 	}
+	// FIXME: Unmarshal blindings
 	return nil
 }
 
