@@ -5,9 +5,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -365,19 +364,15 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 
 		// Insert sort into the list of sorted computations
 		didGenerateNewComputation = true
-		func() {
-			mat.sortedComputationsMu.Lock()
-			defer mat.sortedComputationsMu.Unlock()
+		if len(mat.sortedComputations) == 0 {
+			mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+			return
+		}
+		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
+			return computationWeight.weight >= mat.sortedComputations[i].weight
+		})
+		mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
 
-			if len(mat.sortedComputations) == 0 {
-				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
-				return
-			}
-			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-				return computationWeight.weight >= mat.sortedComputations[i].weight
-			})
-			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
-		}()
 	}
 	if didGenerateNewComputation {
 		select {
