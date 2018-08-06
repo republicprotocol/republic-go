@@ -322,8 +322,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	}
 
 	mat.sortedComputationsMu.Lock()
-	defer mat.sortedComputationsMu.Unlock()
-
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
@@ -361,19 +359,20 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		adjustment := uint64(len(commonPath) - (index + 1))
 		computationWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
-
-		// Insert sort into the list of sorted computations
-		didGenerateNewComputation = true
-		if len(mat.sortedComputations) == 0 {
-			mat.sortedComputations = append(mat.sortedComputations, computationWeight)
-			return
-		}
-		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-			return computationWeight.weight >= mat.sortedComputations[i].weight
-		})
-		mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
-
+		func() {
+			// Insert sort into the list of sorted computations
+			didGenerateNewComputation = true
+			if len(mat.sortedComputations) == 0 {
+				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+				return
+			}
+			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
+				return computationWeight.weight >= mat.sortedComputations[i].weight
+			})
+			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+		}()
 	}
+	mat.sortedComputationsMu.Unlock()
 	if didGenerateNewComputation {
 		select {
 		case <-done:
