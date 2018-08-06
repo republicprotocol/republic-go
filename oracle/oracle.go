@@ -56,7 +56,7 @@ func (oracler *oracler) UpdateMidpoint(ctx context.Context, midpointPrice Midpoi
 	dispatch.CoForAll(randomMultiAddrs, func(i int) {
 		errs[i] = oracler.client.UpdateMidpoint(ctx, randomMultiAddrs[i], midpointPrice)
 		if errs[i] != nil {
-			logger.Error(fmt.Sprintf("cannot send midpoint price to %v: %v", randomMultiAddrs[i].Address(), err))
+			logger.Error(fmt.Sprintf("cannot send midpoint price to %v: %v", randomMultiAddrs[i].Address(), errs[i]))
 		}
 	})
 
