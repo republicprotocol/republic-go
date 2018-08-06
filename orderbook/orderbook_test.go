@@ -52,7 +52,9 @@ var _ = Describe("Orderbook", func() {
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
+			addr, err := testutils.RandomAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook := NewOrderbook(addr, rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			orderbook.Sync(done)
 			orderbook.OnChangeEpoch(registry.Epoch{})
@@ -98,7 +100,9 @@ var _ = Describe("Orderbook", func() {
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
+			addr, err := testutils.RandomAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook := NewOrderbook(addr, rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
 			// Expect(syncer.HasSynced()).Should(BeFalse())
 			doneChan := make(<-chan struct{})

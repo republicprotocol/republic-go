@@ -16,6 +16,6 @@ type ContractBinder interface {
 	// EpochHash() ([32]byte, error)
 	// PreviousEpochHash() ([32]byte, error)
 
-	Darknodes() (identity.Addresses, error)
+	// Darknodes() (identity.Addresses, error)
 	// PreviousDarknodes() (identity.Addresses, error)
 }
