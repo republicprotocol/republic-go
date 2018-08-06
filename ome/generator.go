@@ -322,6 +322,9 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		defer oppositeOrderFragmentIter.Release()
 	}
 
+	mat.sortedComputationsMu.Lock()
+	defer mat.sortedComputationsMu.Unlock()
+
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
