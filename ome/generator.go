@@ -5,9 +5,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/identity"
-
 	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
@@ -123,7 +122,6 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 		select {
 		case <-gen.done:
 		case gen.broadcastComputations <- computations:
-			log.Println("new computations")
 		}
 
 		select {
@@ -323,6 +321,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		defer oppositeOrderFragmentIter.Release()
 	}
 
+	mat.sortedComputationsMu.Lock()
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
@@ -360,13 +359,9 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		adjustment := uint64(len(commonPath) - (index + 1))
 		computationWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
-
-		// Insert sort into the list of sorted computations
-		didGenerateNewComputation = true
 		func() {
-			mat.sortedComputationsMu.Lock()
-			defer mat.sortedComputationsMu.Unlock()
-
+			// Insert sort into the list of sorted computations
+			didGenerateNewComputation = true
 			if len(mat.sortedComputations) == 0 {
 				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
 				return
@@ -375,9 +370,9 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 				return computationWeight.weight >= mat.sortedComputations[i].weight
 			})
 			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
-			log.Printf("generated new computations, %v, %v", computationWeight.computation.Buy, computationWeight.computation.Sell)
 		}()
 	}
+	mat.sortedComputationsMu.Unlock()
 	if didGenerateNewComputation {
 		select {
 		case <-done:

@@ -104,6 +104,10 @@ func (tokens Tokens) String() string {
 		return "ETH-DGX"
 	case TokensETHREN:
 		return "ETH-REN"
+	case TokensETHABC:
+		return "ETH-ABC"
+	case TokensETHXYZ:
+		return "ETH-XYZ"
 	case TokensDGXREN:
 		return "DGX-REN"
 	default:
