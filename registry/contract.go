@@ -14,8 +14,8 @@ type ContractBinder interface {
 	IsRegistered(addr identity.Address) (bool, error)
 
 	EpochHash() ([32]byte, error)
-	PreviousEpochHash() ([32]byte, error)
+	// PreviousEpochHash() ([32]byte, error)
 
 	Darknodes() (identity.Addresses, error)
-	PreviousDarknodes() (identity.Addresses, error)
+	// PreviousDarknodes() (identity.Addresses, error)
 }

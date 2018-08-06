@@ -578,6 +578,20 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	return binder.epoch(epoch)
 }
 
+func (binder *Binder) EpochHash() ([32]byte, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	var res [32]byte
+	copy(res[:], epoch.Epochhash.Bytes())
+
+	return res, nil
+}
+
 // PreviousEpoch returns the previous Epoch which includes the Pod configuration.
 func (binder *Binder) PreviousEpoch() (registry.Epoch, error) {
 	binder.mu.RLock()
