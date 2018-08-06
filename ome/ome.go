@@ -99,7 +99,6 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 			case <-done:
 				return
 			case computation, ok := <-computations:
-				log.Printf("sending new computation to matcher, %v,%v", computation.Buy, computation.Sell)
 				if !ok {
 					return
 				}
