@@ -44,16 +44,16 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 func (midpointPrice MidpointPrice) Hash() []byte {
 	data := make([]byte, 0)
 	for i := range midpointPrice.TokenPairs {
-		tokensBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(tokensBytes, midpointPrice.TokenPairs[i])
-		data = append(data, tokensBytes...)
-		priceBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(priceBytes, midpointPrice.Prices[i])
-		data = append(data, priceBytes...)
+		tokensBytes := [8]byte{}
+		binary.LittleEndian.PutUint64(tokensBytes[:], midpointPrice.TokenPairs[i])
+		data = append(data, tokensBytes[:]...)
+		priceBytes := [8]byte{}
+		binary.LittleEndian.PutUint64(priceBytes[:], midpointPrice.Prices[i])
+		data = append(data, priceBytes[:]...)
 	}
 
-	nonceBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(nonceBytes, midpointPrice.Nonce)
-	data = append(data, nonceBytes...)
+	nonceBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(nonceBytes[:], midpointPrice.Nonce)
+	data = append(data, nonceBytes[:]...)
 	return crypto.Keccak256(data)
 }

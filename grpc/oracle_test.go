@@ -38,7 +38,7 @@ var _ = Describe("Oracle", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		oracler = oracle.NewOracler(client, &ecdsaKey, multiAddrStorer, 10)
-		midpointPriceStorer = oracle.NewMidpointPriceStorer()
+		midpointPriceStorer = leveldb.NewMidpointPriceStorer()
 		service = NewOracleService(oracle.NewServer(oracler, identity.Address(ecdsaKey.Address()), multiAddrStorer, midpointPriceStorer, 10), time.Microsecond)
 		serviceMultiAddr = client.MultiAddress()
 		server = NewServer()

@@ -85,7 +85,7 @@ func main() {
 	}
 	defer store.Release()
 
-	midpointPriceStorer := oracle.NewMidpointPriceStorer()
+	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
 	// Get own nonce from leveldb, if present and store multiaddress.
 	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())

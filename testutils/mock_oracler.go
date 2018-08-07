@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/oracle"
 )
 
@@ -16,7 +17,7 @@ type MockOracleClient struct {
 }
 
 func NewMockOracleClient(addr identity.Address, hub map[identity.Address]oracle.Server) (oracle.Client, oracle.MidpointPriceStorer, error) {
-	storer := oracle.NewMidpointPriceStorer()
+	storer := leveldb.NewMidpointPriceStorer()
 	return &MockOracleClient{
 		addr:  addr,
 		store: storer,
