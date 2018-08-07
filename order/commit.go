@@ -7,15 +7,33 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 )
 
+var G = big.NewInt(0)
+var H = big.NewInt(0)
+var P = big.NewInt(0)
+
 type Commitments map[uint64]Commitment
 
 type Commitment struct {
 	*big.Int
 }
 
-type CoExpCommitment struct {
-	Co  Commitment `json:"co"`
-	Exp Commitment `json:"exp"`
+func NewCommitment(secret *big.Int, blinding *big.Int) Commitment {
+
+	Gx := big.NewInt(0).Exp(G, secret, P)
+	Hs := big.NewInt(0).Exp(H, blinding, P)
+	C := big.NewInt(0).Mul(Gx, Hs)
+	C.Mod(C, P)
+
+	return Commitment{Int: C}
+}
+
+type CommitmentSet struct {
+	PriceCo          Commitment `json:"priceCo"`
+	PriceExp         Commitment `json:"priceExp"`
+	VolumeCo         Commitment `json:"volumeCo"`
+	VolumeExp        Commitment `json:"volumeExp"`
+	MinimumVolumeCo  Commitment `json:"minimumVolumeCo"`
+	MinimumVolumeExp Commitment `json:"minimumVolumeExp"`
 }
 
 type Blindings []Blinding

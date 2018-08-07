@@ -45,8 +45,12 @@ type Fragment struct {
 	MinimumVolume CoExpShare   `json:"minimumVolume"`
 	Nonce         shamir.Share `json:"nonce"`
 
-	Blinding Blinding     `json:"blinding"`
-	Commits  []Commitment `json:"commitments"`
+	// Blinding exponent for the shares in this fragment
+	Blinding Blinding `json:"blinding"`
+
+	// CommitmentSet for different fragment indices, other than the index of
+	// this fragment
+	Commitments map[uint64]CommitmentSet `json:"commitments"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
@@ -172,7 +176,7 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 	if err != nil {
 		return encryptedFragment, err
 	}
-	encryptedFragment.Commits = fragment.Commits
+	encryptedFragment.Commitments = fragment.Commitments
 	return encryptedFragment, nil
 }
 
@@ -192,8 +196,8 @@ type EncryptedFragment struct {
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
 
-	Blinding    EncryptedBlinding `json:"blinding"`
-	Commitments []Commitment      `json:"commitments"`
+	Blinding    EncryptedBlinding        `json:"blinding"`
+	Commitments map[uint64]CommitmentSet `json:"commitments"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
@@ -234,6 +238,6 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 	if err != nil {
 		return decryptedFragment, err
 	}
-	decryptedFragment.Commits = fragment.Commits
+	decryptedFragment.Commitments = fragment.Commitments
 	return decryptedFragment, nil
 }
