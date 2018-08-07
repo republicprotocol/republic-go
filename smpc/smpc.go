@@ -136,7 +136,7 @@ func (smpc *smpcer) InsertCommitments(networkID NetworkID, joinID JoinID, joinCo
 }
 
 // Receive implements the Receiver interface.
-func (smpc *smpcer) Receive(pos uint64, from identity.Address, message Message) {
+func (smpc *smpcer) Receive(from identity.Address, message Message) {
 	switch message.MessageType {
 	case MessageTypeJoin:
 		if err := smpc.handleMessageJoin(from, message.MessageJoin); err != nil {

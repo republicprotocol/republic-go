@@ -18,7 +18,7 @@ type Sender interface {
 }
 
 type Receiver interface {
-	Receive(pos uint64, from identity.Address, message Message)
+	Receive(from identity.Address, message Message)
 }
 
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
