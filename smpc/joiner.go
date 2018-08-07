@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -64,7 +65,18 @@ func (join *Join) MarshalBinary() ([]byte, error) {
 			return nil, err
 		}
 	}
-	// FIXME: Marshal blindings
+	if err := binary.Write(buf, binary.BigEndian, int64(len(join.Blindings))); err != nil {
+		return nil, err
+	}
+	for _, blinding := range join.Blindings {
+		blindingData := blinding.Bytes()
+		if err := binary.Write(buf, binary.BigEndian, int64(len(blindingData))); err != nil {
+			return nil, err
+		}
+		if err := binary.Write(buf, binary.BigEndian, blindingData); err != nil {
+			return nil, err
+		}
+	}
 	return buf.Bytes(), nil
 }
 
@@ -91,7 +103,22 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 			return err
 		}
 	}
-	// FIXME: Unmarshal blindings
+	numBlindings := int64(0)
+	if err := binary.Read(buf, binary.BigEndian, &numBlindings); err != nil {
+		return err
+	}
+	join.Blindings = make(shamir.Blindings, numBlindings)
+	for i := int64(0); i < numBlindings; i++ {
+		numBlindingBytes := int64(0)
+		if err := binary.Read(buf, binary.BigEndian, &numBlindingBytes); err != nil {
+			return err
+		}
+		blindingData := make([]byte, numBlindingBytes)
+		if _, err := buf.Read(blindingData[:]); err != nil {
+			return err
+		}
+		join.Blindings[i] = shamir.Blinding{Int: big.NewInt(0).SetBytes(blindingData)}
+	}
 	return nil
 }
 
