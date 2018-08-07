@@ -70,6 +70,11 @@ func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.C
 	return nil
 }
 
+// InsertCommitments implements smpc.Smpcer.
+func (smpc *Smpc) InsertCommitments(networkID smpc.NetworkID, join smpc.JoinID, joinCommitments smpc.JoinCommitments) {
+	// Do nothing
+}
+
 // Receiver is a mock implementation of the smpc.Receiver interface.
 type Receiver struct {
 }
