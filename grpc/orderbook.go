@@ -8,7 +8,6 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/shamir"
 	"golang.org/x/net/context"
 )
 
@@ -81,8 +80,8 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 		MinimumVolume: marshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		Blinding: []byte(orderFragmentIn.Blinding),
-		Commits:  marshalCommitments(orderFragmentIn.Commits),
+		Blinding:    []byte(orderFragmentIn.Blinding),
+		Commitments: marshalCommitments(orderFragmentIn.Commitments),
 	}
 }
 
@@ -100,8 +99,8 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
 		Nonce:         orderFragmentIn.Nonce,
 
-		Blinding: shamir.EncryptedBlind(orderFragmentIn.Blinding),
-		Commits:  unmarshalCommitments(orderFragmentIn.Commits),
+		Blinding:    orderFragmentIn.Blinding,
+		Commitments: unmarshalCommitments(orderFragmentIn.Commitments),
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
@@ -122,46 +121,32 @@ func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) order.EncryptedCoE
 	}
 }
 
-func marshalCommitments(values []order.Commitment) []*Commitment {
-	commits := make([]*Commitment, len(values))
-	for i := range commits {
-		commits[i] = &Commitment{
-			Index: values[i].Index,
-			Price: &CoExpCommitment{
-				Co:  values[i].Price.Co.Bytes(),
-				Exp: values[i].Price.Exp.Bytes(),
-			},
-			Volume: &CoExpCommitment{
-				Co:  values[i].Price.Co.Bytes(),
-				Exp: values[i].Price.Exp.Bytes(),
-			},
-			MinimumVolume: &CoExpCommitment{
-				Co:  values[i].Price.Co.Bytes(),
-				Exp: values[i].Price.Exp.Bytes(),
-			},
+func marshalCommitments(values order.FragmentCommitments) map[uint64]*OrderFragmentCommitment {
+	commitments := map[uint64]*OrderFragmentCommitment{}
+	for i, value := range values {
+		commitments[i] = &OrderFragmentCommitment{
+			PriceCo:          value.PriceCo.Bytes(),
+			PriceExp:         value.PriceExp.Bytes(),
+			VolumeCo:         value.VolumeCo.Bytes(),
+			VolumeExp:        value.VolumeExp.Bytes(),
+			MinimumVolumeCo:  value.MinimumVolumeCo.Bytes(),
+			MinimumVolumeExp: value.MinimumVolumeExp.Bytes(),
 		}
 	}
-	return commits
+	return commitments
 }
 
-func unmarshalCommitments(values []*Commitment) []order.Commitment {
-	commits := make([]order.Commitment, len(values))
-	for i := range commits {
-		commits[i] = order.Commitment{
-			Index: values[i].Index,
-			Price: order.CoExpCommitment{
-				Co:  big.NewInt(0).SetBytes(values[i].Price.Co),
-				Exp: big.NewInt(0).SetBytes(values[i].Price.Exp),
-			},
-			Volume: order.CoExpCommitment{
-				Co:  big.NewInt(0).SetBytes(values[i].Volume.Co),
-				Exp: big.NewInt(0).SetBytes(values[i].Volume.Exp),
-			},
-			MinimumVolume: order.CoExpCommitment{
-				Co:  big.NewInt(0).SetBytes(values[i].MinimumVolume.Co),
-				Exp: big.NewInt(0).SetBytes(values[i].MinimumVolume.Exp),
-			},
+func unmarshalCommitments(values map[uint64]*OrderFragmentCommitment) order.FragmentCommitments {
+	commitments := order.FragmentCommitments{}
+	for i, value := range values {
+		commitments[i] = order.FragmentCommitment{
+			PriceCo:          big.NewInt(0).SetBytes(value.PriceCo),
+			PriceExp:         big.NewInt(0).SetBytes(value.PriceExp),
+			VolumeCo:         big.NewInt(0).SetBytes(value.VolumeCo),
+			VolumeExp:        big.NewInt(0).SetBytes(value.VolumeExp),
+			MinimumVolumeCo:  big.NewInt(0).SetBytes(value.MinimumVolumeCo),
+			MinimumVolumeExp: big.NewInt(0).SetBytes(value.MinimumVolumeExp),
 		}
 	}
-	return commits
+	return commitments
 }
