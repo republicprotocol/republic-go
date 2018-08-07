@@ -295,6 +295,28 @@ func (b *Blinding) Decrypt(privKey *rsa.PrivateKey, cipherText []byte) error {
 	return nil
 }
 
+func (b Blinding) MarshalJSON() ([]byte, error) {
+	if b.Int == nil {
+		return json.Marshal([]byte{0})
+	}
+	return json.Marshal(b.Int.Bytes())
+}
+
+func (b *Blinding) UnmarshalJSON(data []byte) error {
+
+	bs := []byte{}
+	if err := json.Unmarshal(data, &bs); err != nil {
+		return err
+	}
+
+	if b.Int == nil {
+		b.Int = big.NewInt(0)
+	}
+	b.Int.SetBytes(bs)
+
+	return nil
+}
+
 type Commitment struct {
 	*big.Int
 }

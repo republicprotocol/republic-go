@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -69,7 +68,7 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement
 		MinimumVolume: minimumVolume,
 		Nonce:         nonce,
 
-		Blinding:    shamir.Blinding{Int: big.NewInt(0)},
+		Blinding:    shamir.Blinding{},
 		Commitments: FragmentCommitments{},
 	}
 	fragmentHash, err := fragment.Hash()
