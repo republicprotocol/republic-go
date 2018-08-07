@@ -26,6 +26,7 @@ import (
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
+	"github.com/republicprotocol/republic-go/oracle"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -84,6 +85,8 @@ func main() {
 	}
 	defer store.Release()
 
+	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
+
 	// Get own nonce from leveldb, if present and store multiaddress.
 	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
@@ -103,20 +106,25 @@ func main() {
 		log.Fatalf("cannot sign own multiaddress: %v", err)
 	}
 	multiAddr.Signature = multiAddrSignature
-
-	if err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
+	if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
 		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
 	}
+	log.Printf("current nonce %v, length of signature: %v", multiAddr.Nonce, len(multiAddr.Signature))
 
 	// New gRPC components
 	server := grpc.NewServer()
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
-	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &config.Keystore.EcdsaKey)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha), time.Millisecond)
+	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &crypter)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter), time.Millisecond)
 	swarmService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
+	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
+	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
+	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
+	oracleService.Register(server)
+
+	orderbook := orderbook.NewOrderbook(config.Address, config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -181,19 +189,22 @@ func main() {
 
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
-		for _, multiAddr := range config.BootstrapMultiAddresses {
-			multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+		for _, bootstrapMulti := range config.BootstrapMultiAddresses {
+			if bootstrapMulti.Address() == multiAddr.Address() {
+				continue
+			}
+			multi, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
 			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap details from store: %v", err))
+				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
 				continue
 			}
 			if err == nil {
-				multiAddr.Nonce = multi.Nonce
+				bootstrapMulti.Nonce = multi.Nonce
 			}
-			if err := store.SwarmMultiAddressStore().PutMultiAddress(multiAddr); err != nil {
+			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 			}
-			fmtStr += "  " + multiAddr.String() + "\n"
+			fmtStr += "  " + bootstrapMulti.String() + "\n"
 		}
 		log.Printf(fmtStr)
 		pingNetwork(swarmer)
@@ -206,7 +217,7 @@ func main() {
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
-		gen := ome.NewComputationGenerator(store.SomerOrderFragmentStore())
+		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
 		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 2)
 		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)

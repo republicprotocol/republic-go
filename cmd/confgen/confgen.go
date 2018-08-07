@@ -15,8 +15,13 @@ import (
 
 func main() {
 	network := flag.String("network", "nightly", "Republic Protocol network")
+	oracleAddress := flag.String("oracleAddress", "", "Oracle address")
 
 	flag.Parse()
+
+	if *oracleAddress == "" {
+		log.Fatalf("oracle address not specified")
+	}
 
 	keystore, err := crypto.RandomKeystore()
 	if err != nil {
@@ -50,6 +55,7 @@ func main() {
 		Host:                    "0.0.0.0",
 		Port:                    "18514",
 		Address:                 identity.Address(keystore.Address()),
+		OracleAddress:           identity.Address(*oracleAddress),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{

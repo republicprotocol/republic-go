@@ -3,6 +3,7 @@ package orderbook
 import (
 	"log"
 
+	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
@@ -14,7 +15,7 @@ type Aggregator interface {
 	// InsertOrder status into the Aggregator. Returns a Notification
 	// if the respective order fragment has already been inserted, and the
 	// order was inserted with the open status.
-	InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error)
+	InsertOrder(orderID order.ID, orderStatus order.Status, trader string, priority uint) (Notification, error)
 
 	// InsertOrderFragment into the Aggregator. Returns a Notification
 	// if the respective order is currently inserted with the open status.
@@ -25,18 +26,30 @@ type aggregator struct {
 	epoch              registry.Epoch
 	orderStore         OrderStorer
 	orderFragmentStore OrderFragmentStorer
+	pod                *registry.Pod
 }
 
-func NewAggregator(epoch registry.Epoch, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer) Aggregator {
-	return &aggregator{
+func NewAggregator(addr identity.Address, epoch registry.Epoch, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer) Aggregator {
+	agg := &aggregator{
 		epoch:              epoch,
 		orderStore:         orderStore,
 		orderFragmentStore: orderFragmentStore,
 	}
+	pod, err := epoch.Pod(addr)
+	if err != nil {
+		agg.pod = nil
+	} else {
+		agg.pod = &pod
+	}
+	return agg
 }
 
 // InsertOrder implements the Aggregator interface.
-func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string) (Notification, error) {
+func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string, priority uint) (Notification, error) {
+	if !agg.isInPathOfEpoch(orderID) {
+		return nil, nil
+	}
+
 	if orderStatus != order.Open {
 		// The order is no longer open
 		if err := agg.orderStore.DeleteOrder(orderID); err != nil {
@@ -45,7 +58,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		return nil, nil
 	}
 	// Store the order
-	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader); err != nil {
+	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader, priority); err != nil {
 		return nil, err
 	}
 	// Fetch the order fragment
@@ -63,17 +76,22 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		OrderID:       orderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}, nil
 }
 
 // InsertOrderFragment implements the Aggregator interface.
 func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notification, error) {
+	if !agg.isInPathOfEpoch(orderFragment.OrderID) {
+		return nil, nil
+	}
+
 	// Store the order fragment
 	if err := agg.orderFragmentStore.PutOrderFragment(agg.epoch, orderFragment); err != nil {
 		return nil, err
 	}
 	// Fetch the order
-	orderStatus, trader, err := agg.orderStore.Order(orderFragment.OrderID)
+	orderStatus, trader, priority, err := agg.orderStore.Order(orderFragment.OrderID)
 	if err != nil {
 		if err == ErrOrderNotFound {
 			// No order was found
@@ -97,5 +115,14 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		OrderID:       orderFragment.OrderID,
 		OrderFragment: orderFragment,
 		Trader:        trader,
+		Priority:      priority,
 	}, nil
+}
+
+func (agg *aggregator) isInPathOfEpoch(orderID order.ID) bool {
+	if agg.pod == nil || agg.epoch.Pods == nil || len(agg.epoch.Pods) == 0 {
+		return false
+	}
+	index, ok := agg.epoch.Pods.PathOfOrder(orderID).IndexOfPod(agg.pod)
+	return index >= 0 && ok
 }

@@ -111,7 +111,8 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 			logger.Network(logger.LevelWarn, fmt.Sprintf("cannot parse %v: %v", multiAddrMsg.MultiAddress, err))
 			continue
 		}
-		multiAddr.Signature = multiAddr.Hash()
+		multiAddr.Nonce = multiAddrMsg.MultiAddressNonce
+		multiAddr.Signature = multiAddrMsg.Signature
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
 	return multiAddrs, nil
@@ -165,8 +166,6 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}
-
-	// FIXME: Check for nil message components
 
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
@@ -231,7 +230,9 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 	multiAddrMsgs := make([]*MultiAddress, len(multiAddrs))
 	for i, multiAddr := range multiAddrs {
 		multiAddrMsgs[i] = &MultiAddress{
-			MultiAddress: multiAddr.String(),
+			MultiAddress:      multiAddr.String(),
+			Signature:         multiAddr.Signature,
+			MultiAddressNonce: multiAddr.Nonce,
 		}
 	}
 
@@ -243,13 +244,16 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 func (service *SwarmService) isRateLimited(ctx context.Context) error {
 	client, ok := peer.FromContext(ctx)
 	if !ok {
-		return fmt.Errorf("failed to get peer from ctx")
+		return fmt.Errorf("fail to get peer from ctx")
 	}
 	if client.Addr == net.Addr(nil) {
-		return fmt.Errorf("failed to get peer address")
+		return fmt.Errorf("fail to get peer address")
 	}
 
-	clientAddr := client.Addr.(*net.TCPAddr)
+	clientAddr, ok := client.Addr.(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("fail to read peer TCP address")
+	}
 	clientIP := clientAddr.IP.String()
 
 	service.rateLimitsMu.Lock()

@@ -50,6 +50,8 @@ type Orderbook interface {
 }
 
 type orderbook struct {
+	addr identity.Address
+
 	rsaKey             crypto.RsaKey
 	pointerStore       PointerStorer
 	orderStore         OrderStorer
@@ -68,8 +70,10 @@ type orderbook struct {
 
 // NewOrderbook returns an Orderbok that uses a crypto.RsaKey to decrypt the
 // order.EncryptedFragments that it receives, and stores them in a Storer.
-func NewOrderbook(rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
+func NewOrderbook(addr identity.Address, rsaKey crypto.RsaKey, pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, interval time.Duration, limit int) Orderbook {
 	return &orderbook{
+		addr: addr,
+
 		rsaKey:             rsaKey,
 		pointerStore:       pointerStore,
 		orderStore:         orderStore,
@@ -131,7 +135,7 @@ func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
 	defer orderbook.aggMu.Unlock()
 
 	orderbook.aggPrev = orderbook.aggCurr
-	orderbook.aggCurr = NewAggregator(epoch, orderbook.orderStore, orderbook.orderFragmentStore)
+	orderbook.aggCurr = NewAggregator(orderbook.addr, epoch, orderbook.orderStore, orderbook.orderFragmentStore)
 }
 
 func (orderbook *orderbook) sync(done <-chan struct{}) {
@@ -169,7 +173,7 @@ func (orderbook *orderbook) sync(done <-chan struct{}) {
 func (orderbook *orderbook) routeNotification(done <-chan struct{}, notification Notification) error {
 	switch n := notification.(type) {
 	case NotificationOpenOrder:
-		return orderbook.routeOrder(done, n.OrderID, order.Open, n.Trader)
+		return orderbook.routeOrder(done, n.OrderID, order.Open, n.Trader, n.Priority)
 	default:
 		select {
 		case <-done:
@@ -179,7 +183,7 @@ func (orderbook *orderbook) routeNotification(done <-chan struct{}, notification
 	return nil
 }
 
-func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, orderStatus order.Status, trader string) error {
+func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, orderStatus order.Status, trader string, priority uint) error {
 
 	ns, err := func() (ns [2]Notification, err error) {
 		orderbook.aggMu.RLock()
@@ -188,11 +192,11 @@ func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, o
 		if orderbook.aggCurr == nil {
 			return
 		}
-		ns[0], err = orderbook.aggCurr.InsertOrder(orderID, orderStatus, trader)
+		ns[0], err = orderbook.aggCurr.InsertOrder(orderID, orderStatus, trader, priority)
 		if orderbook.aggPrev == nil {
 			return
 		}
-		ns[1], err = orderbook.aggPrev.InsertOrder(orderID, orderStatus, trader)
+		ns[1], err = orderbook.aggPrev.InsertOrder(orderID, orderStatus, trader, priority)
 		return
 	}()
 

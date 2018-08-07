@@ -53,7 +53,7 @@ var _ = Describe("Ome", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			storer = store.SomerComputationStore()
 
-			computationsGenerator = NewComputationGenerator(store.SomerOrderFragmentStore())
+			computationsGenerator = NewComputationGenerator(addr, store.SomerOrderFragmentStore())
 			rsaKey, err := crypto.RandomRsaKey()
 			Expect(err).ShouldNot(HaveOccurred())
 			book = testutils.NewRandOrderbook(rsaKey)

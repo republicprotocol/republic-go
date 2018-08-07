@@ -75,8 +75,10 @@ message EncryptedOrderFragment {
 }
 
 enum OrderType {
-    Midpoint = 0;
-    Limit    = 1;
+    Midpoint     = 0;
+    Limit        = 1;
+    Midpoint_FOK = 2;
+    Limit_FOK    = 3;
 }
 
 enum OrderParity {
@@ -106,4 +108,18 @@ message StatusResponse {
     string address      = 1;
     bool   bootstrapped = 2;
     int64  peers        = 3;
+}
+
+service OracleService {
+    rpc UpdateMidpoint(UpdateMidpointRequest) returns (UpdateMidpointResponse);
+}
+
+message UpdateMidpointRequest {
+             bytes  signature  = 1;
+    repeated uint64 tokenPairs = 2;
+    repeated uint64 prices     = 3;
+             uint64 nonce      = 4;
+}
+
+message UpdateMidpointResponse {
 }

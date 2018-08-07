@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"log"
@@ -9,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -52,7 +53,7 @@ func (swarmer *Swarmer) Pong(ctx context.Context, to identity.MultiAddress) erro
 	return nil
 }
 
-func (swarmer *Swarmer) PutMultiAddress(multiAddr identity.MultiAddress) {
+func (swarmer *Swarmer) InsertMultiAddress(multiAddr identity.MultiAddress) {
 	swarmer.multiAddrsMu.Lock()
 	defer swarmer.multiAddrsMu.Unlock()
 	swarmer.multiAddrs[multiAddr.Address()] = multiAddr
@@ -127,31 +128,30 @@ type MockSwarmClient struct {
 	clientType ClientType
 }
 
-func NewMockSwarmClient(MockServerHub *MockServerHub, key *crypto.EcdsaKey, clientType ClientType) (MockSwarmClient, swarm.MultiAddressStorer, error) {
-	multiAddr, err := identity.Address(key.Address()).MultiAddress()
+func NewMockSwarmClient(MockServerHub *MockServerHub, clientType ClientType, verifier *registry.Crypter) (MockSwarmClient, swarm.MultiAddressStorer, error) {
+	multiAddr, err := RandomMultiAddress()
 	if err != nil {
 		return MockSwarmClient{}, nil, err
 	}
 	multiAddr.Nonce = 1
-	signature, err := key.Sign(multiAddr.Hash())
+	signature, err := verifier.Sign(multiAddr.Hash())
 	if err != nil {
 		return MockSwarmClient{}, nil, err
 	}
 	multiAddr.Signature = signature
 
 	// Create leveldb store and store own multiAddress.
-	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", key.Address()), 72*time.Hour)
+	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", multiAddr.Address()), 72*time.Hour)
 	if err != nil {
 		return MockSwarmClient{}, nil, err
 	}
 	store := db.SwarmMultiAddressStore()
-	err = store.PutMultiAddress(multiAddr)
-	if err != nil {
+	if err = store.InsertMultiAddress(multiAddr); err != nil {
 		return MockSwarmClient{}, nil, err
 	}
 
 	return MockSwarmClient{
-		addr:       identity.Address(key.Address()),
+		addr:       identity.Address(multiAddr.Address()),
 		store:      store,
 		serverHub:  MockServerHub,
 		clientType: clientType,
@@ -244,4 +244,20 @@ func (client *MockSwarmClient) MultiAddress() identity.MultiAddress {
 func randomSleep() {
 	r := rand.Intn(120)
 	time.Sleep(time.Duration(r) * time.Millisecond)
+}
+
+type MockSwarmBinder struct {
+}
+
+// NewMockSwarmBinder returns a MockSwarmBinder
+func NewMockSwarmBinder() *MockSwarmBinder {
+	return &MockSwarmBinder{}
+}
+
+func (binder *MockSwarmBinder) IsRegistered(darknodeAddr identity.Address) (bool, error) {
+	return true, nil
+}
+
+func (binder *MockSwarmBinder) PublicKey(addr identity.Address) (rsa.PublicKey, error) {
+	return rsa.PublicKey{}, nil
 }
