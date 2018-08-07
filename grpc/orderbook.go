@@ -8,6 +8,7 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/shamir"
 	"golang.org/x/net/context"
 )
 
@@ -140,12 +141,12 @@ func unmarshalCommitments(values map[uint64]*OrderFragmentCommitment) order.Frag
 	commitments := order.FragmentCommitments{}
 	for i, value := range values {
 		commitments[i] = order.FragmentCommitment{
-			PriceCo:          big.NewInt(0).SetBytes(value.PriceCo),
-			PriceExp:         big.NewInt(0).SetBytes(value.PriceExp),
-			VolumeCo:         big.NewInt(0).SetBytes(value.VolumeCo),
-			VolumeExp:        big.NewInt(0).SetBytes(value.VolumeExp),
-			MinimumVolumeCo:  big.NewInt(0).SetBytes(value.MinimumVolumeCo),
-			MinimumVolumeExp: big.NewInt(0).SetBytes(value.MinimumVolumeExp),
+			PriceCo:          shamir.Commitment{Int: big.NewInt(0).SetBytes(value.PriceCo)},
+			PriceExp:         shamir.Commitment{Int: big.NewInt(0).SetBytes(value.PriceExp)},
+			VolumeCo:         shamir.Commitment{Int: big.NewInt(0).SetBytes(value.VolumeCo)},
+			VolumeExp:        shamir.Commitment{Int: big.NewInt(0).SetBytes(value.VolumeExp)},
+			MinimumVolumeCo:  shamir.Commitment{Int: big.NewInt(0).SetBytes(value.MinimumVolumeCo)},
+			MinimumVolumeExp: shamir.Commitment{Int: big.NewInt(0).SetBytes(value.MinimumVolumeExp)},
 		}
 	}
 	return commitments
