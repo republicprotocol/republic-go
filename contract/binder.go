@@ -18,6 +18,7 @@ import (
 	"github.com/republicprotocol/republic-go/contract/bindings"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/stackint"
@@ -217,7 +218,7 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 }
 
 // Settle the order pair which gets confirmed by the Orderbook
-func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
+func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
@@ -225,12 +226,12 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(buy)
 	}); sendTxErr != nil {
-		err = fmt.Errorf("cannot settle buy = %v: %v", buy.ID, sendTxErr)
+		logger.Warn(fmt.Sprintf("cannot settle buy = %v: %v", buy.ID, sendTxErr))
 	}
 	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(sell)
 	}); sendTxErr != nil {
-		err = fmt.Errorf("cannot settle sell = %v: %v", sell.ID, sendTxErr)
+		logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
 	}
 
 	// Submit match
@@ -238,17 +239,15 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) (err error) {
 		return binder.submitMatch(buy.ID, sell.ID)
 	})
 	if sendTxErr != nil {
-		err = fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
-		return err
+		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
 	}
 
 	// Wait for last transaction
 	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil {
-		err = fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
-		return err
+		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 	}
 
-	return err
+	return nil
 }
 
 // Register a new dark node with the dark node registrar
@@ -576,6 +575,20 @@ func (binder *Binder) Epoch() (registry.Epoch, error) {
 	}
 
 	return binder.epoch(epoch)
+}
+
+func (binder *Binder) EpochHash() ([32]byte, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	epoch, err := binder.darknodeRegistry.CurrentEpoch(binder.callOpts)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	var res [32]byte
+	copy(res[:], epoch.Epochhash.Bytes())
+
+	return res, nil
 }
 
 // PreviousEpoch returns the previous Epoch which includes the Pod configuration.
@@ -1078,11 +1091,11 @@ func (binder *Binder) CurrentBlockNumber() (*big.Int, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
-	block, err := binder.conn.Client.BlockByNumber(context.Background(), nil)
+	header, err := binder.conn.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return nil, err
 	}
-	return block.Number(), err
+	return header.Number, err
 }
 
 func toByte(id []byte) ([20]byte, error) {

@@ -3,28 +3,37 @@ syntax = "proto3";
 package grpc;
 
 service SwarmService {
-    rpc Ping (PingRequest) returns (PingResponse);
-    rpc Query (QueryRequest) returns (stream QueryResponse);
+    rpc Ping  (PingRequest)  returns (PingResponse);
+    rpc Pong  (PongRequest)  returns (PongResponse);
+    rpc Query (QueryRequest) returns (QueryResponse);
+}
+
+message MultiAddress {
+    bytes  signature         = 1;
+    string multiAddress      = 2;
+    uint64 multiAddressNonce = 3;
 }
 
 message PingRequest {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+    MultiAddress multiAddress = 1;
 }
 
 message PingResponse {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+}
+
+message PongRequest {
+    MultiAddress multiAddress = 1;
+}
+
+message PongResponse {
 }
 
 message QueryRequest {
-    bytes  signature = 1;
-    string address   = 2;
+    string address = 1;
 }
 
 message QueryResponse {
-    bytes  signature    = 1;
-    string multiAddress = 2;
+    repeated MultiAddress multiAddresses = 1;
 }
 
 service StreamService {
@@ -66,8 +75,10 @@ message EncryptedOrderFragment {
 }
 
 enum OrderType {
-    Midpoint = 0;
-    Limit    = 1;
+    Midpoint     = 0;
+    Limit        = 1;
+    Midpoint_FOK = 2;
+    Limit_FOK    = 3;
 }
 
 enum OrderParity {
@@ -97,4 +108,18 @@ message StatusResponse {
     string address      = 1;
     bool   bootstrapped = 2;
     int64  peers        = 3;
+}
+
+service OracleService {
+    rpc UpdateMidpoint(UpdateMidpointRequest) returns (UpdateMidpointResponse);
+}
+
+message UpdateMidpointRequest {
+             bytes  signature  = 1;
+    repeated uint64 tokenPairs = 2;
+    repeated uint64 prices     = 3;
+             uint64 nonce      = 4;
+}
+
+message UpdateMidpointResponse {
 }

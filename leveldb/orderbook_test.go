@@ -102,7 +102,7 @@ var _ = Describe("Orderbook storage", func() {
 			defer orderFragmentsIter.Release()
 
 			for ordersIter.Next() {
-				_, _, _, err = ordersIter.Cursor()
+				_, _, _, _, err = ordersIter.Cursor()
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 
@@ -112,7 +112,7 @@ var _ = Describe("Orderbook storage", func() {
 			}
 
 			// These are out of range so we should expect errors
-			_, _, _, err = ordersIter.Cursor()
+			_, _, _, _, err = ordersIter.Cursor()
 			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
 			_, err = orderFragmentsIter.Cursor()
 			Expect(err).Should(Equal(orderbook.ErrCursorOutOfRange))
@@ -169,7 +169,7 @@ func newDB(path string) *leveldb.DB {
 
 func putAndExpectOrders(table *OrderbookOrderTable) {
 	for i := 0; i < len(orderFragments); i++ {
-		err := table.PutOrder(orders[i].ID, orderStatus, "")
+		err := table.PutOrder(orders[i].ID, orderStatus, "", uint(i))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(err).ShouldNot(HaveOccurred())
 	}
@@ -178,7 +178,7 @@ func putAndExpectOrders(table *OrderbookOrderTable) {
 
 func expectOrders(table *OrderbookOrderTable) {
 	for i := 0; i < 100; i++ {
-		status, _, err := table.Order(orders[i].ID)
+		status, _, _, err := table.Order(orders[i].ID)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status).Should(Equal(orderStatus))
 	}
@@ -186,7 +186,7 @@ func expectOrders(table *OrderbookOrderTable) {
 
 func expectMissingOrders(table *OrderbookOrderTable) {
 	for i := 0; i < 100; i++ {
-		_, _, err := table.Order(orders[i].ID)
+		_, _, _, err := table.Order(orders[i].ID)
 		Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
 	}
 }

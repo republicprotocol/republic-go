@@ -38,18 +38,18 @@ var _ = Describe("Messages", func() {
 		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			for i := range messages {
 				data, err := messages[i].MarshalBinary()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 
 				var message Message
-				Ω(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
-				Ω(message.MessageType).Should(Equal(MessageTypeJoin))
-				Ω(message.MessageJoinResponse).Should(BeNil())
-				Ω(bytes.Compare(messages[i].MessageJoin.NetworkID[:], message.MessageJoin.NetworkID[:])).Should(Equal(0))
-				Ω(bytes.Compare(messages[i].MessageJoin.Join.ID[:], message.MessageJoin.Join.ID[:])).Should(Equal(0))
-				Ω(messages[i].MessageJoin.Join.Index).Should(Equal(message.MessageJoin.Join.Index))
-				Ω(len(messages[i].MessageJoin.Join.Shares)).Should(Equal(len(message.MessageJoin.Join.Shares)))
+				Expect(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
+				Expect(message.MessageType).Should(Equal(MessageTypeJoin))
+				Expect(message.MessageJoinResponse).Should(BeNil())
+				Expect(bytes.Compare(messages[i].MessageJoin.NetworkID[:], message.MessageJoin.NetworkID[:])).Should(Equal(0))
+				Expect(bytes.Compare(messages[i].MessageJoin.Join.ID[:], message.MessageJoin.Join.ID[:])).Should(Equal(0))
+				Expect(messages[i].MessageJoin.Join.Index).Should(Equal(message.MessageJoin.Join.Index))
+				Expect(len(messages[i].MessageJoin.Join.Shares)).Should(Equal(len(message.MessageJoin.Join.Shares)))
 				for j := range messages[i].MessageJoin.Join.Shares {
-					Ω(messages[i].MessageJoin.Join.Shares[j].Equal(&message.MessageJoin.Join.Shares[j]))
+					Expect(messages[i].MessageJoin.Join.Shares[j].Equal(&message.MessageJoin.Join.Shares[j]))
 				}
 			}
 		})
@@ -59,7 +59,7 @@ var _ = Describe("Messages", func() {
 				messages[i].MessageType = MessageType(3)
 				_, err := messages[i].MarshalBinary()
 				log.Println(err)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).Should(HaveOccurred())
 			}
 		})
 
@@ -89,18 +89,18 @@ var _ = Describe("Messages", func() {
 		It("should equal itself after marshaling and unmarshaling to binary", func() {
 			for i := range messages {
 				data, err := messages[i].MarshalBinary()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 
 				var message Message
-				Ω(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
-				Ω(message.MessageType).Should(Equal(MessageTypeJoinResponse))
-				Ω(message.MessageJoin).Should(BeNil())
-				Ω(bytes.Compare(messages[i].MessageJoinResponse.NetworkID[:], message.MessageJoinResponse.NetworkID[:])).Should(Equal(0))
-				Ω(bytes.Compare(messages[i].MessageJoinResponse.Join.ID[:], message.MessageJoinResponse.Join.ID[:])).Should(Equal(0))
-				Ω(messages[i].MessageJoinResponse.Join.Index).Should(Equal(message.MessageJoinResponse.Join.Index))
-				Ω(len(messages[i].MessageJoinResponse.Join.Shares)).Should(Equal(len(message.MessageJoinResponse.Join.Shares)))
+				Expect(message.UnmarshalBinary(data)).ShouldNot(HaveOccurred())
+				Expect(message.MessageType).Should(Equal(MessageTypeJoinResponse))
+				Expect(message.MessageJoin).Should(BeNil())
+				Expect(bytes.Compare(messages[i].MessageJoinResponse.NetworkID[:], message.MessageJoinResponse.NetworkID[:])).Should(Equal(0))
+				Expect(bytes.Compare(messages[i].MessageJoinResponse.Join.ID[:], message.MessageJoinResponse.Join.ID[:])).Should(Equal(0))
+				Expect(messages[i].MessageJoinResponse.Join.Index).Should(Equal(message.MessageJoinResponse.Join.Index))
+				Expect(len(messages[i].MessageJoinResponse.Join.Shares)).Should(Equal(len(message.MessageJoinResponse.Join.Shares)))
 				for j := range messages[i].MessageJoinResponse.Join.Shares {
-					Ω(messages[i].MessageJoinResponse.Join.Shares[j].Equal(&message.MessageJoinResponse.Join.Shares[j]))
+					Expect(messages[i].MessageJoinResponse.Join.Shares[j].Equal(&message.MessageJoinResponse.Join.Shares[j]))
 				}
 			}
 		})
@@ -110,7 +110,7 @@ var _ = Describe("Messages", func() {
 				messages[i].MessageType = MessageType(3)
 				_, err := messages[i].MarshalBinary()
 				log.Println(err)
-				Ω(err).Should(HaveOccurred())
+				Expect(err).Should(HaveOccurred())
 			}
 		})
 

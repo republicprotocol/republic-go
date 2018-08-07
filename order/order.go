@@ -104,6 +104,10 @@ func (tokens Tokens) String() string {
 		return "ETH-DGX"
 	case TokensETHREN:
 		return "ETH-REN"
+	case TokensETHABC:
+		return "ETH-ABC"
+	case TokensETHXYZ:
+		return "ETH-XYZ"
 	case TokensDGXREN:
 		return "DGX-REN"
 	default:
@@ -117,8 +121,10 @@ type Type int8
 
 // Type values.
 const (
-	TypeMidpoint Type = 0
-	TypeLimit    Type = 1
+	TypeMidpoint    Type = 0
+	TypeLimit       Type = 1
+	TypeMidpointFOK Type = 2
+	TypeLimitFOK    Type = 3
 )
 
 // The Parity of an Order determines whether it is buy or a sell.
