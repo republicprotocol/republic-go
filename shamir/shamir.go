@@ -272,11 +272,17 @@ type Blinding struct {
 
 func (b *Blinding) Encrypt(pubKey rsa.PublicKey) ([]byte, error) {
 	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{PublicKey: pubKey}}
+	if b.Int == nil {
+		return []byte{}, nil
+	}
 	data := b.Int.Bytes()
 	return rsaKey.Encrypt(data)
 }
 
 func (b *Blinding) Decrypt(privKey *rsa.PrivateKey, cipherText []byte) error {
+	if cipherText == nil || len(cipherText) == 0 {
+		return nil
+	}
 	rsaKey := crypto.RsaKey{PrivateKey: privKey}
 	bs, err := rsaKey.Decrypt(cipherText)
 	if err != nil {
