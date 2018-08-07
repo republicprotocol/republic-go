@@ -3,7 +3,10 @@ package smpc
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
+
+	"github.com/republicprotocol/republic-go/shamir"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -19,6 +22,8 @@ var ErrJoinOnDisconnectedNetwork = errors.New("join on disconnected network")
 type Smpcer interface {
 
 	// Connect to a network of nodes and assign this network to a NetworkID.
+	// The ordering of the nodes is used to determine which nodes are expected
+	// to hold which fragments.
 	Connect(networkID NetworkID, nodes identity.Addresses)
 
 	// Disconnect from a network of nodes.
@@ -28,6 +33,11 @@ type Smpcer interface {
 	// communication with the nodes in the network. On a success, the Callback
 	// is called.
 	Join(networkID NetworkID, join Join, callback Callback) error
+
+	// InsertCommitments for the shamir.Shares inside a Join. These commitments
+	// are used to blind shamir.Shares while being able to verify that the
+	// computations performed have been done correctly.
+	InsertCommitments(networkID NetworkID, joinID JoinID, joinCommitments JoinCommitments)
 }
 
 type smpcer struct {
@@ -38,6 +48,9 @@ type smpcer struct {
 
 	selfJoinsMu *sync.RWMutex
 	selfJoins   map[JoinID]Join
+
+	commitmentsMu *sync.RWMutex
+	commitments   map[NetworkID](map[JoinID]JoinCommitments)
 }
 
 // NewSmpcer returns an Smpcer node that is not connected to a network.
@@ -48,6 +61,9 @@ func NewSmpcer(conn ConnectorListener, swarmer swarm.Swarmer) Smpcer {
 
 		selfJoinsMu: new(sync.RWMutex),
 		selfJoins:   map[JoinID]Join{},
+
+		commitmentsMu: new(sync.RWMutex),
+		commitments:   map[NetworkID](map[JoinID]JoinCommitments){},
 	}
 	smpc.network = NewNetwork(conn, smpc, swarmer)
 	return smpc
@@ -61,6 +77,10 @@ func (smpc *smpcer) Connect(networkID NetworkID, addrs identity.Addresses) {
 	smpc.joiners[networkID] = NewJoiner(k)
 	smpc.joinersMu.Unlock()
 
+	smpc.commitmentsMu.Lock()
+	smpc.commitments[networkID] = map[JoinID]JoinCommitments{}
+	smpc.commitmentsMu.Unlock()
+
 	smpc.network.Connect(networkID, addrs)
 }
 
@@ -71,6 +91,10 @@ func (smpc *smpcer) Disconnect(networkID NetworkID) {
 	smpc.joinersMu.Lock()
 	delete(smpc.joiners, networkID)
 	smpc.joinersMu.Unlock()
+
+	smpc.commitmentsMu.Lock()
+	delete(smpc.commitments, networkID)
+	smpc.commitmentsMu.Unlock()
 }
 
 // Join implements the Smpcer interface.
@@ -101,8 +125,18 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 	return nil
 }
 
+func (smpc *smpcer) InsertCommitments(networkID NetworkID, joinID JoinID, joinCommitements JoinCommitments) {
+	smpc.commitmentsMu.Lock()
+	defer smpc.commitmentsMu.Unlock()
+
+	if _, ok := smpc.commitments[networkID]; !ok {
+		return
+	}
+	smpc.commitments[networkID][joinID] = joinCommitements
+}
+
 // Receive implements the Receiver interface.
-func (smpc *smpcer) Receive(from identity.Address, message Message) {
+func (smpc *smpcer) Receive(pos uint64, from identity.Address, message Message) {
 	switch message.MessageType {
 	case MessageTypeJoin:
 		if err := smpc.handleMessageJoin(from, message.MessageJoin); err != nil {
@@ -160,4 +194,56 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 		return err
 	}
 	return nil
+}
+
+func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
+
+	joinCommitments, ok := func() (JoinCommitments, bool) {
+		smpc.commitmentsMu.RLock()
+		defer smpc.commitmentsMu.RUnlock()
+
+		if _, ok := smpc.commitments[networkID]; !ok {
+			return JoinCommitments{}, false
+		}
+		if _, ok := smpc.commitments[networkID][join.ID]; !ok {
+			return JoinCommitments{}, false
+		}
+
+		return smpc.commitments[networkID][join.ID], true
+	}()
+	if !ok {
+		// We do not have the information to verify the join
+		return true
+	}
+
+	if len(join.Shares) != len(join.Blindings) {
+		return false
+	}
+
+	got := big.NewInt(0)
+	expected := big.NewInt(0)
+
+	for i := range join.Shares {
+
+		lhs, ok := joinCommitments.LHS[join.Shares[i].Index]
+		if !ok {
+			continue
+		}
+		rhs, ok := joinCommitments.RHS[join.Shares[i].Index]
+		if !ok {
+			continue
+		}
+
+		got = shamir.NewCommitment(join.Shares[i], join.Blindings[i])
+		expected = expected.Mul(rhs, lhs)
+		expected.Mod(expected, shamir.CommitP)
+
+		if got.Cmp(expected) != 0 {
+			// Reject the join
+			return false
+		}
+	}
+
+	// Accept the join
+	return true
 }

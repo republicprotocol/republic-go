@@ -18,7 +18,7 @@ type Sender interface {
 }
 
 type Receiver interface {
-	Receive(from identity.Address, message Message)
+	Receive(pos uint64, from identity.Address, message Message)
 }
 
 // NetworkID for a network of Smpcer nodes. Using a NetworkID allows nodes to
@@ -65,6 +65,7 @@ type network struct {
 	swarmer  swarm.Swarmer
 
 	networkMu      *sync.RWMutex
+	networkPos     map[NetworkID](map[identity.Address]uint64)
 	networkSenders map[NetworkID](map[identity.Address]Sender)
 	networkCancels map[NetworkID](map[identity.Address]context.CancelFunc)
 }
@@ -76,6 +77,7 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 		swarmer:  swarmer,
 
 		networkMu:      new(sync.RWMutex),
+		networkPos:     map[NetworkID](map[identity.Address]uint64){},
 		networkSenders: map[NetworkID](map[identity.Address]Sender){},
 		networkCancels: map[NetworkID](map[identity.Address]context.CancelFunc){},
 	}
@@ -90,6 +92,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 	func() {
 		network.networkMu.Lock()
 		defer network.networkMu.Unlock()
+		network.networkPos[networkID] = map[identity.Address]uint64{}
 		network.networkSenders[networkID] = map[identity.Address]Sender{}
 		network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
 	}()
@@ -119,6 +122,11 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
 			if _, ok := network.networkSenders[networkID]; ok {
+				// Store the ordering of this address so that we can look it up
+				// when receiving messages
+				network.networkPos[networkID][addr] = uint64(i)
+
+				// Store the sender so we can send messages
 				network.networkSenders[networkID][addr] = sender
 			}
 		}()
@@ -138,6 +146,7 @@ func (network *network) Disconnect(networkID NetworkID) {
 			cancel()
 		}
 	}
+	delete(network.networkPos, networkID)
 	delete(network.networkSenders, networkID)
 	delete(network.networkCancels, networkID)
 }

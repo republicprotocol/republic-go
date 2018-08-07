@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/logger"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -37,7 +36,7 @@ type Join struct {
 	ID        JoinID
 	Index     JoinIndex
 	Shares    shamir.Shares
-	Blindings order.Blindings
+	Blindings shamir.Blindings
 }
 
 // MarshalBinary implements the encoding.Marshaler interface.
@@ -90,6 +89,11 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 	}
 	// FIXME: Unmarshal blindings
 	return nil
+}
+
+type JoinCommitments struct {
+	LHS map[uint64]shamir.Commitment
+	RHS map[uint64]shamir.Commitment
 }
 
 // JoinIndex is the index of all shamir.Shares in a Join.
