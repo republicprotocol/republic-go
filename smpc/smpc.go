@@ -152,6 +152,10 @@ func (smpc *smpcer) Receive(pos uint64, from identity.Address, message Message) 
 }
 
 func (smpc *smpcer) handleMessageJoin(from identity.Address, message *MessageJoin) error {
+	if !smpc.verifyJoin(message.NetworkID, message.Join) {
+		return ErrUnverifiedJoin
+	}
+
 	var err error
 	smpc.joinersMu.RLock()
 	if joiner, ok := smpc.joiners[message.NetworkID]; ok {
@@ -184,6 +188,10 @@ func (smpc *smpcer) handleMessageJoin(from identity.Address, message *MessageJoi
 }
 
 func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) error {
+	if !smpc.verifyJoin(message.NetworkID, message.Join) {
+		return ErrUnverifiedJoin
+	}
+
 	var err error
 	smpc.joinersMu.RLock()
 	if joiner, ok := smpc.joiners[message.NetworkID]; ok {
@@ -197,7 +205,13 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 }
 
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
+	// Always require that each share has a blinding
+	if len(join.Shares) != len(join.Blindings) {
+		return false
+	}
 
+	// Get the JoinCommitments stored for the network and join ID being
+	// verified
 	joinCommitments, ok := func() (JoinCommitments, bool) {
 		smpc.commitmentsMu.RLock()
 		defer smpc.commitmentsMu.RUnlock()
@@ -211,34 +225,36 @@ func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 
 		return smpc.commitments[networkID][join.ID], true
 	}()
+	// We accept the join if we do not have the JoinCommitments to check for
+	// incorrectness
 	if !ok {
-		// We do not have the information to verify the join
 		return true
 	}
 
-	if len(join.Shares) != len(join.Blindings) {
-		return false
-	}
-
-	got := big.NewInt(0)
-	expected := big.NewInt(0)
-
 	for i := range join.Shares {
 
+		// Get the relevant commitments for the LHS and RHS of the computation
+		// in the join
 		lhs, ok := joinCommitments.LHS[join.Shares[i].Index]
 		if !ok {
+			// We accept the join if we do not have the JoinCommitments to
+			// check for incorrectness
 			continue
 		}
 		rhs, ok := joinCommitments.RHS[join.Shares[i].Index]
 		if !ok {
+			// We accept the join if we do not have the JoinCommitments to
+			// check for incorrectness
 			continue
 		}
 
-		got = shamir.NewCommitment(join.Shares[i], join.Blindings[i])
-		expected = expected.Mul(rhs, lhs)
+		// Check the expected commitment against the commitment we actually
+		// received
+		expected := big.NewInt(0).Mul(rhs, lhs)
 		expected.Mod(expected, shamir.CommitP)
+		got := shamir.NewCommitment(join.Shares[i], join.Blindings[i])
 
-		if got.Cmp(expected) != 0 {
+		if expected.Cmp((*big.Int)(got)) != 0 {
 			// Reject the join
 			return false
 		}

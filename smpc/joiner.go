@@ -24,6 +24,10 @@ var ErrJoinLengthUnequal = errors.New("join length unequal")
 // compared to the MaxJoinLength.
 var ErrJoinLengthExceedsMax = errors.New("join length exceeds max")
 
+// ErrUnverifiedJoin is returned when the computations in a Join cannot be
+// verified using JoinCommitments.
+var ErrUnverifiedJoin = errors.New("unverified join")
+
 // A JoinID is used to identify an SMPC join over a network of SMPC nodes. For
 // a value to be joined, all SMPC nodes must use the same JoinID for that
 // value.
