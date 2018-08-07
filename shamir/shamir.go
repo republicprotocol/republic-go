@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"math/rand"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -25,6 +26,13 @@ var ErrUnmarshalNilBytes = errors.New("unmarshal nil bytes")
 
 // Prime is the prime number used to define the finite field.
 const Prime uint64 = 17012364981921935471
+
+// Constants used for Pedersen commitments.
+var (
+	CommitG, _ = big.NewInt(0).SetString("55770337541865622645762792995310051207397982365281550224398537343173859535105139234635957625862144230699334804049712012240627186833575368075584941905877907874721866477877240648297575495799055309964125528850827031430744090495932459174225210240271018890912546873876168921012222806248779191616184071117514042939", 10)
+	CommitH, _ = big.NewInt(0).SetString("115473249134132086626276466548821312109767217648495447434241772177665837404180106795894544927519633232260996631113705689399974939497093162658781255907718160986084723710881782554865045754197429739205723247463738713971412477405153816377087610084931720375701175784456548744957930969662291742829878205406745940998", 10)
+	CommitP, _ = big.NewInt(0).SetString("179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430638301075261977215604623753829209190123552924403809454455467971378126933547351328256473517128194204856274749623411850633650752318731262510900221876378083808528817", 10)
+)
 
 // A Share struct represents some share of a secret after the secret has been
 // encoded.
@@ -254,4 +262,38 @@ func invMod(x uint64, mod uint64) uint64 {
 		panic(err)
 	}
 	return uint64(r)
+}
+
+type Blindings []Blinding
+
+type Blinding struct {
+	*big.Int
+}
+
+func (b *Blinding) Encrypt(pubKey rsa.PublicKey) ([]byte, error) {
+	rsaKey := crypto.RsaKey{PrivateKey: &rsa.PrivateKey{PublicKey: pubKey}}
+	data := b.Int.Bytes()
+	return rsaKey.Encrypt(data)
+}
+
+func (b *Blinding) Decrypt(privKey *rsa.PrivateKey, cipherText []byte) error {
+	rsaKey := crypto.RsaKey{PrivateKey: privKey}
+	bs, err := rsaKey.Decrypt(cipherText)
+	if err != nil {
+		return err
+	}
+	if b.Int == nil {
+		b.Int = big.NewInt(0)
+	}
+	b.Int.SetBytes(bs)
+	return nil
+}
+
+type Commitment *big.Int
+
+func NewCommitment(x Share, s Blinding) Commitment {
+	gˣ := big.NewInt(0).Exp(CommitG, big.NewInt(0).SetUint64(x.Value), CommitP)
+	hˢ := big.NewInt(0).Exp(CommitH, s.Int, CommitP)
+	gˣhˢ := big.NewInt(0).Mul(gˣ, hˢ)
+	return gˣhˢ.Mod(gˣhˢ, CommitP)
 }

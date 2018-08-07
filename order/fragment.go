@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
+	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -46,7 +47,7 @@ type Fragment struct {
 	Nonce         shamir.Share `json:"nonce"`
 
 	// Blinding exponent for the shares in this fragment
-	Blinding Blinding `json:"blinding"`
+	Blinding shamir.Blinding `json:"blinding"`
 
 	// CommitmentSet for different fragment indices, other than the index of
 	// this fragment
@@ -196,7 +197,7 @@ type EncryptedFragment struct {
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
 
-	Blinding    EncryptedBlinding   `json:"blinding"`
+	Blinding    []byte              `json:"blinding"`
 	Commitments FragmentCommitments `json:"commitments"`
 }
 
@@ -234,10 +235,20 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 	if err != nil {
 		return decryptedFragment, err
 	}
-	decryptedFragment.Blinding, err = fragment.Blinding.Decrypt(privKey)
-	if err != nil {
+	if err := decryptedFragment.Blinding.Decrypt(privKey, fragment.Blinding); err != nil {
 		return decryptedFragment, err
 	}
 	decryptedFragment.Commitments = fragment.Commitments
 	return decryptedFragment, nil
 }
+
+type FragmentCommitment struct {
+	PriceCo          *big.Int `json:"priceCo"`
+	PriceExp         *big.Int `json:"priceExp"`
+	VolumeCo         *big.Int `json:"volumeCo"`
+	VolumeExp        *big.Int `json:"volumeExp"`
+	MinimumVolumeCo  *big.Int `json:"minimumVolumeCo"`
+	MinimumVolumeExp *big.Int `json:"minimumVolumeExp"`
+}
+
+type FragmentCommitments map[uint64]FragmentCommitment
