@@ -26,24 +26,30 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type OrderType int32
 
 const (
-	OrderType_Midpoint OrderType = 0
-	OrderType_Limit    OrderType = 1
+	OrderType_Midpoint     OrderType = 0
+	OrderType_Limit        OrderType = 1
+	OrderType_Midpoint_FOK OrderType = 2
+	OrderType_Limit_FOK    OrderType = 3
 )
 
 var OrderType_name = map[int32]string{
 	0: "Midpoint",
 	1: "Limit",
+	2: "Midpoint_FOK",
+	3: "Limit_FOK",
 }
 var OrderType_value = map[string]int32{
-	"Midpoint": 0,
-	"Limit":    1,
+	"Midpoint":     0,
+	"Limit":        1,
+	"Midpoint_FOK": 2,
+	"Limit_FOK":    3,
 }
 
 func (x OrderType) String() string {
 	return proto.EnumName(OrderType_name, int32(x))
 }
 func (OrderType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{0}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{0}
 }
 
 type OrderParity int32
@@ -66,7 +72,7 @@ func (x OrderParity) String() string {
 	return proto.EnumName(OrderParity_name, int32(x))
 }
 func (OrderParity) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{1}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{1}
 }
 
 type OrderSettlement int32
@@ -92,22 +98,75 @@ func (x OrderSettlement) String() string {
 	return proto.EnumName(OrderSettlement_name, int32(x))
 }
 func (OrderSettlement) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{2}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{2}
 }
 
-type PingRequest struct {
+type MultiAddress struct {
 	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
 	MultiAddress         string   `protobuf:"bytes,2,opt,name=multiAddress,proto3" json:"multiAddress,omitempty"`
+	MultiAddressNonce    uint64   `protobuf:"varint,3,opt,name=multiAddressNonce,proto3" json:"multiAddressNonce,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *MultiAddress) Reset()         { *m = MultiAddress{} }
+func (m *MultiAddress) String() string { return proto.CompactTextString(m) }
+func (*MultiAddress) ProtoMessage()    {}
+func (*MultiAddress) Descriptor() ([]byte, []int) {
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{0}
+}
+func (m *MultiAddress) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MultiAddress.Unmarshal(m, b)
+}
+func (m *MultiAddress) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MultiAddress.Marshal(b, m, deterministic)
+}
+func (dst *MultiAddress) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MultiAddress.Merge(dst, src)
+}
+func (m *MultiAddress) XXX_Size() int {
+	return xxx_messageInfo_MultiAddress.Size(m)
+}
+func (m *MultiAddress) XXX_DiscardUnknown() {
+	xxx_messageInfo_MultiAddress.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MultiAddress proto.InternalMessageInfo
+
+func (m *MultiAddress) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *MultiAddress) GetMultiAddress() string {
+	if m != nil {
+		return m.MultiAddress
+	}
+	return ""
+}
+
+func (m *MultiAddress) GetMultiAddressNonce() uint64 {
+	if m != nil {
+		return m.MultiAddressNonce
+	}
+	return 0
+}
+
+type PingRequest struct {
+	MultiAddress         *MultiAddress `protobuf:"bytes,1,opt,name=multiAddress,proto3" json:"multiAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
 func (m *PingRequest) Reset()         { *m = PingRequest{} }
 func (m *PingRequest) String() string { return proto.CompactTextString(m) }
 func (*PingRequest) ProtoMessage()    {}
 func (*PingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{0}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{1}
 }
 func (m *PingRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PingRequest.Unmarshal(m, b)
@@ -127,23 +186,14 @@ func (m *PingRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PingRequest proto.InternalMessageInfo
 
-func (m *PingRequest) GetSignature() []byte {
+func (m *PingRequest) GetMultiAddress() *MultiAddress {
 	if m != nil {
-		return m.Signature
+		return m.MultiAddress
 	}
 	return nil
 }
 
-func (m *PingRequest) GetMultiAddress() string {
-	if m != nil {
-		return m.MultiAddress
-	}
-	return ""
-}
-
 type PingResponse struct {
-	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	MultiAddress         string   `protobuf:"bytes,2,opt,name=multiAddress,proto3" json:"multiAddress,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -153,7 +203,7 @@ func (m *PingResponse) Reset()         { *m = PingResponse{} }
 func (m *PingResponse) String() string { return proto.CompactTextString(m) }
 func (*PingResponse) ProtoMessage()    {}
 func (*PingResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{1}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{2}
 }
 func (m *PingResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PingResponse.Unmarshal(m, b)
@@ -173,23 +223,76 @@ func (m *PingResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PingResponse proto.InternalMessageInfo
 
-func (m *PingResponse) GetSignature() []byte {
+type PongRequest struct {
+	MultiAddress         *MultiAddress `protobuf:"bytes,1,opt,name=multiAddress,proto3" json:"multiAddress,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
+}
+
+func (m *PongRequest) Reset()         { *m = PongRequest{} }
+func (m *PongRequest) String() string { return proto.CompactTextString(m) }
+func (*PongRequest) ProtoMessage()    {}
+func (*PongRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{3}
+}
+func (m *PongRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PongRequest.Unmarshal(m, b)
+}
+func (m *PongRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PongRequest.Marshal(b, m, deterministic)
+}
+func (dst *PongRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PongRequest.Merge(dst, src)
+}
+func (m *PongRequest) XXX_Size() int {
+	return xxx_messageInfo_PongRequest.Size(m)
+}
+func (m *PongRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_PongRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PongRequest proto.InternalMessageInfo
+
+func (m *PongRequest) GetMultiAddress() *MultiAddress {
 	if m != nil {
-		return m.Signature
+		return m.MultiAddress
 	}
 	return nil
 }
 
-func (m *PingResponse) GetMultiAddress() string {
-	if m != nil {
-		return m.MultiAddress
-	}
-	return ""
+type PongResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
+func (m *PongResponse) Reset()         { *m = PongResponse{} }
+func (m *PongResponse) String() string { return proto.CompactTextString(m) }
+func (*PongResponse) ProtoMessage()    {}
+func (*PongResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{4}
+}
+func (m *PongResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PongResponse.Unmarshal(m, b)
+}
+func (m *PongResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PongResponse.Marshal(b, m, deterministic)
+}
+func (dst *PongResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PongResponse.Merge(dst, src)
+}
+func (m *PongResponse) XXX_Size() int {
+	return xxx_messageInfo_PongResponse.Size(m)
+}
+func (m *PongResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_PongResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PongResponse proto.InternalMessageInfo
+
 type QueryRequest struct {
-	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	Address              string   `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	Address              string   `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -199,7 +302,7 @@ func (m *QueryRequest) Reset()         { *m = QueryRequest{} }
 func (m *QueryRequest) String() string { return proto.CompactTextString(m) }
 func (*QueryRequest) ProtoMessage()    {}
 func (*QueryRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{2}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{5}
 }
 func (m *QueryRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryRequest.Unmarshal(m, b)
@@ -219,13 +322,6 @@ func (m *QueryRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_QueryRequest proto.InternalMessageInfo
 
-func (m *QueryRequest) GetSignature() []byte {
-	if m != nil {
-		return m.Signature
-	}
-	return nil
-}
-
 func (m *QueryRequest) GetAddress() string {
 	if m != nil {
 		return m.Address
@@ -234,18 +330,17 @@ func (m *QueryRequest) GetAddress() string {
 }
 
 type QueryResponse struct {
-	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
-	MultiAddress         string   `protobuf:"bytes,2,opt,name=multiAddress,proto3" json:"multiAddress,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	MultiAddresses       []*MultiAddress `protobuf:"bytes,1,rep,name=multiAddresses,proto3" json:"multiAddresses,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
 func (m *QueryResponse) Reset()         { *m = QueryResponse{} }
 func (m *QueryResponse) String() string { return proto.CompactTextString(m) }
 func (*QueryResponse) ProtoMessage()    {}
 func (*QueryResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{3}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{6}
 }
 func (m *QueryResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_QueryResponse.Unmarshal(m, b)
@@ -265,18 +360,11 @@ func (m *QueryResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_QueryResponse proto.InternalMessageInfo
 
-func (m *QueryResponse) GetSignature() []byte {
+func (m *QueryResponse) GetMultiAddresses() []*MultiAddress {
 	if m != nil {
-		return m.Signature
+		return m.MultiAddresses
 	}
 	return nil
-}
-
-func (m *QueryResponse) GetMultiAddress() string {
-	if m != nil {
-		return m.MultiAddress
-	}
-	return ""
 }
 
 type StreamMessage struct {
@@ -293,7 +381,7 @@ func (m *StreamMessage) Reset()         { *m = StreamMessage{} }
 func (m *StreamMessage) String() string { return proto.CompactTextString(m) }
 func (*StreamMessage) ProtoMessage()    {}
 func (*StreamMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{4}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{7}
 }
 func (m *StreamMessage) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StreamMessage.Unmarshal(m, b)
@@ -352,7 +440,7 @@ func (m *OpenOrderRequest) Reset()         { *m = OpenOrderRequest{} }
 func (m *OpenOrderRequest) String() string { return proto.CompactTextString(m) }
 func (*OpenOrderRequest) ProtoMessage()    {}
 func (*OpenOrderRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{5}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{8}
 }
 func (m *OpenOrderRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OpenOrderRequest.Unmarshal(m, b)
@@ -389,7 +477,7 @@ func (m *OpenOrderResponse) Reset()         { *m = OpenOrderResponse{} }
 func (m *OpenOrderResponse) String() string { return proto.CompactTextString(m) }
 func (*OpenOrderResponse) ProtoMessage()    {}
 func (*OpenOrderResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{6}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{9}
 }
 func (m *OpenOrderResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OpenOrderResponse.Unmarshal(m, b)
@@ -433,7 +521,7 @@ func (m *EncryptedOrderFragment) Reset()         { *m = EncryptedOrderFragment{}
 func (m *EncryptedOrderFragment) String() string { return proto.CompactTextString(m) }
 func (*EncryptedOrderFragment) ProtoMessage()    {}
 func (*EncryptedOrderFragment) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{7}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{10}
 }
 func (m *EncryptedOrderFragment) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptedOrderFragment.Unmarshal(m, b)
@@ -563,7 +651,7 @@ func (m *EncryptedCoExpShare) Reset()         { *m = EncryptedCoExpShare{} }
 func (m *EncryptedCoExpShare) String() string { return proto.CompactTextString(m) }
 func (*EncryptedCoExpShare) ProtoMessage()    {}
 func (*EncryptedCoExpShare) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{8}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{11}
 }
 func (m *EncryptedCoExpShare) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_EncryptedCoExpShare.Unmarshal(m, b)
@@ -613,7 +701,7 @@ func (m *OrderFragmentCommitment) Reset()         { *m = OrderFragmentCommitment
 func (m *OrderFragmentCommitment) String() string { return proto.CompactTextString(m) }
 func (*OrderFragmentCommitment) ProtoMessage()    {}
 func (*OrderFragmentCommitment) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{9}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{12}
 }
 func (m *OrderFragmentCommitment) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_OrderFragmentCommitment.Unmarshal(m, b)
@@ -687,7 +775,7 @@ func (m *CoExpCommitment) Reset()         { *m = CoExpCommitment{} }
 func (m *CoExpCommitment) String() string { return proto.CompactTextString(m) }
 func (*CoExpCommitment) ProtoMessage()    {}
 func (*CoExpCommitment) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{10}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{13}
 }
 func (m *CoExpCommitment) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CoExpCommitment.Unmarshal(m, b)
@@ -731,7 +819,7 @@ func (m *StatusRequest) Reset()         { *m = StatusRequest{} }
 func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
 func (*StatusRequest) ProtoMessage()    {}
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{11}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{14}
 }
 func (m *StatusRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StatusRequest.Unmarshal(m, b)
@@ -764,7 +852,7 @@ func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
 func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
 func (*StatusResponse) ProtoMessage()    {}
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_grpc_c3d7c671c629bc3b, []int{12}
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{15}
 }
 func (m *StatusResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StatusResponse.Unmarshal(m, b)
@@ -805,9 +893,104 @@ func (m *StatusResponse) GetPeers() int64 {
 	return 0
 }
 
+type UpdateMidpointRequest struct {
+	Signature            []byte   `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	TokenPairs           []uint64 `protobuf:"varint,2,rep,packed,name=tokenPairs,proto3" json:"tokenPairs,omitempty"`
+	Prices               []uint64 `protobuf:"varint,3,rep,packed,name=prices,proto3" json:"prices,omitempty"`
+	Nonce                uint64   `protobuf:"varint,4,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UpdateMidpointRequest) Reset()         { *m = UpdateMidpointRequest{} }
+func (m *UpdateMidpointRequest) String() string { return proto.CompactTextString(m) }
+func (*UpdateMidpointRequest) ProtoMessage()    {}
+func (*UpdateMidpointRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{16}
+}
+func (m *UpdateMidpointRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateMidpointRequest.Unmarshal(m, b)
+}
+func (m *UpdateMidpointRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateMidpointRequest.Marshal(b, m, deterministic)
+}
+func (dst *UpdateMidpointRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateMidpointRequest.Merge(dst, src)
+}
+func (m *UpdateMidpointRequest) XXX_Size() int {
+	return xxx_messageInfo_UpdateMidpointRequest.Size(m)
+}
+func (m *UpdateMidpointRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateMidpointRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateMidpointRequest proto.InternalMessageInfo
+
+func (m *UpdateMidpointRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *UpdateMidpointRequest) GetTokenPairs() []uint64 {
+	if m != nil {
+		return m.TokenPairs
+	}
+	return nil
+}
+
+func (m *UpdateMidpointRequest) GetPrices() []uint64 {
+	if m != nil {
+		return m.Prices
+	}
+	return nil
+}
+
+func (m *UpdateMidpointRequest) GetNonce() uint64 {
+	if m != nil {
+		return m.Nonce
+	}
+	return 0
+}
+
+type UpdateMidpointResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UpdateMidpointResponse) Reset()         { *m = UpdateMidpointResponse{} }
+func (m *UpdateMidpointResponse) String() string { return proto.CompactTextString(m) }
+func (*UpdateMidpointResponse) ProtoMessage()    {}
+func (*UpdateMidpointResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_grpc_d2ef5ec062df2114, []int{17}
+}
+func (m *UpdateMidpointResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UpdateMidpointResponse.Unmarshal(m, b)
+}
+func (m *UpdateMidpointResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UpdateMidpointResponse.Marshal(b, m, deterministic)
+}
+func (dst *UpdateMidpointResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateMidpointResponse.Merge(dst, src)
+}
+func (m *UpdateMidpointResponse) XXX_Size() int {
+	return xxx_messageInfo_UpdateMidpointResponse.Size(m)
+}
+func (m *UpdateMidpointResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateMidpointResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateMidpointResponse proto.InternalMessageInfo
+
 func init() {
+	proto.RegisterType((*MultiAddress)(nil), "grpc.MultiAddress")
 	proto.RegisterType((*PingRequest)(nil), "grpc.PingRequest")
 	proto.RegisterType((*PingResponse)(nil), "grpc.PingResponse")
+	proto.RegisterType((*PongRequest)(nil), "grpc.PongRequest")
+	proto.RegisterType((*PongResponse)(nil), "grpc.PongResponse")
 	proto.RegisterType((*QueryRequest)(nil), "grpc.QueryRequest")
 	proto.RegisterType((*QueryResponse)(nil), "grpc.QueryResponse")
 	proto.RegisterType((*StreamMessage)(nil), "grpc.StreamMessage")
@@ -820,6 +1003,8 @@ func init() {
 	proto.RegisterType((*CoExpCommitment)(nil), "grpc.CoExpCommitment")
 	proto.RegisterType((*StatusRequest)(nil), "grpc.StatusRequest")
 	proto.RegisterType((*StatusResponse)(nil), "grpc.StatusResponse")
+	proto.RegisterType((*UpdateMidpointRequest)(nil), "grpc.UpdateMidpointRequest")
+	proto.RegisterType((*UpdateMidpointResponse)(nil), "grpc.UpdateMidpointResponse")
 	proto.RegisterEnum("grpc.OrderType", OrderType_name, OrderType_value)
 	proto.RegisterEnum("grpc.OrderParity", OrderParity_name, OrderParity_value)
 	proto.RegisterEnum("grpc.OrderSettlement", OrderSettlement_name, OrderSettlement_value)
@@ -838,7 +1023,8 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SwarmServiceClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
-	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (SwarmService_QueryClient, error)
+	Pong(ctx context.Context, in *PongRequest, opts ...grpc.CallOption) (*PongResponse, error)
+	Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error)
 }
 
 type swarmServiceClient struct {
@@ -858,42 +1044,29 @@ func (c *swarmServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...
 	return out, nil
 }
 
-func (c *swarmServiceClient) Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (SwarmService_QueryClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_SwarmService_serviceDesc.Streams[0], "/grpc.SwarmService/Query", opts...)
+func (c *swarmServiceClient) Pong(ctx context.Context, in *PongRequest, opts ...grpc.CallOption) (*PongResponse, error) {
+	out := new(PongResponse)
+	err := c.cc.Invoke(ctx, "/grpc.SwarmService/Pong", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &swarmServiceQueryClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
 
-type SwarmService_QueryClient interface {
-	Recv() (*QueryResponse, error)
-	grpc.ClientStream
-}
-
-type swarmServiceQueryClient struct {
-	grpc.ClientStream
-}
-
-func (x *swarmServiceQueryClient) Recv() (*QueryResponse, error) {
-	m := new(QueryResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
+func (c *swarmServiceClient) Query(ctx context.Context, in *QueryRequest, opts ...grpc.CallOption) (*QueryResponse, error) {
+	out := new(QueryResponse)
+	err := c.cc.Invoke(ctx, "/grpc.SwarmService/Query", in, out, opts...)
+	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	return out, nil
 }
 
 // SwarmServiceServer is the server API for SwarmService service.
 type SwarmServiceServer interface {
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
-	Query(*QueryRequest, SwarmService_QueryServer) error
+	Pong(context.Context, *PongRequest) (*PongResponse, error)
+	Query(context.Context, *QueryRequest) (*QueryResponse, error)
 }
 
 func RegisterSwarmServiceServer(s *grpc.Server, srv SwarmServiceServer) {
@@ -918,25 +1091,40 @@ func _SwarmService_Ping_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SwarmService_Query_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(QueryRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _SwarmService_Pong_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PongRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(SwarmServiceServer).Query(m, &swarmServiceQueryServer{stream})
+	if interceptor == nil {
+		return srv.(SwarmServiceServer).Pong(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.SwarmService/Pong",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SwarmServiceServer).Pong(ctx, req.(*PongRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-type SwarmService_QueryServer interface {
-	Send(*QueryResponse) error
-	grpc.ServerStream
-}
-
-type swarmServiceQueryServer struct {
-	grpc.ServerStream
-}
-
-func (x *swarmServiceQueryServer) Send(m *QueryResponse) error {
-	return x.ServerStream.SendMsg(m)
+func _SwarmService_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SwarmServiceServer).Query(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.SwarmService/Query",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SwarmServiceServer).Query(ctx, req.(*QueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _SwarmService_serviceDesc = grpc.ServiceDesc{
@@ -947,14 +1135,16 @@ var _SwarmService_serviceDesc = grpc.ServiceDesc{
 			MethodName: "Ping",
 			Handler:    _SwarmService_Ping_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Query",
-			Handler:       _SwarmService_Query_Handler,
-			ServerStreams: true,
+			MethodName: "Pong",
+			Handler:    _SwarmService_Pong_Handler,
+		},
+		{
+			MethodName: "Query",
+			Handler:    _SwarmService_Query_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "grpc.proto",
 }
 
@@ -1182,64 +1372,138 @@ var _StatusService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "grpc.proto",
 }
 
-func init() { proto.RegisterFile("grpc.proto", fileDescriptor_grpc_c3d7c671c629bc3b) }
+// OracleServiceClient is the client API for OracleService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type OracleServiceClient interface {
+	UpdateMidpoint(ctx context.Context, in *UpdateMidpointRequest, opts ...grpc.CallOption) (*UpdateMidpointResponse, error)
+}
 
-var fileDescriptor_grpc_c3d7c671c629bc3b = []byte{
-	// 890 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x5f, 0x6f, 0xdb, 0x36,
-	0x10, 0xaf, 0xfc, 0x2f, 0xf6, 0x49, 0xb6, 0x55, 0xa6, 0x4b, 0x35, 0xa3, 0x1b, 0x0c, 0x61, 0x0f,
-	0x46, 0x80, 0x64, 0x9d, 0x0c, 0xac, 0xc3, 0x30, 0xa0, 0x68, 0x5d, 0x17, 0x1b, 0xb0, 0xce, 0x29,
-	0x3d, 0xf4, 0x6d, 0x0f, 0x8a, 0x44, 0x38, 0x44, 0x2c, 0x52, 0xa5, 0xa8, 0x34, 0xfa, 0x86, 0xfb,
-	0x16, 0xfb, 0x2a, 0x03, 0x49, 0xc9, 0x96, 0xdc, 0x6c, 0x19, 0x86, 0xbc, 0xdd, 0xfd, 0x78, 0xf7,
-	0xd3, 0xf1, 0xee, 0x78, 0x27, 0x80, 0x8d, 0x48, 0xa3, 0xf3, 0x54, 0x70, 0xc9, 0x51, 0x47, 0xc9,
-	0xfe, 0x0a, 0xec, 0x0b, 0xca, 0x36, 0x98, 0x7c, 0xcc, 0x49, 0x26, 0xd1, 0x33, 0x18, 0x64, 0x74,
-	0xc3, 0x42, 0x99, 0x0b, 0xe2, 0x59, 0x53, 0x6b, 0xe6, 0xe0, 0x3d, 0x80, 0x7c, 0x70, 0x92, 0x7c,
-	0x2b, 0xe9, 0xab, 0x38, 0x16, 0x24, 0xcb, 0xbc, 0xd6, 0xd4, 0x9a, 0x0d, 0x70, 0x03, 0xf3, 0x2f,
-	0xc0, 0x31, 0x84, 0x59, 0xca, 0x59, 0x46, 0x1e, 0x80, 0xf1, 0x2d, 0x38, 0xef, 0x73, 0x22, 0x8a,
-	0xff, 0x16, 0xa3, 0x07, 0x47, 0x61, 0x83, 0xac, 0x52, 0xfd, 0xf7, 0x30, 0x2c, 0x79, 0x1e, 0x2c,
-	0xb4, 0x1c, 0x86, 0x6b, 0x29, 0x48, 0x98, 0xbc, 0x23, 0x59, 0x16, 0x6e, 0xc8, 0xff, 0x8d, 0x4d,
-	0x9d, 0x30, 0x22, 0x3f, 0x71, 0x71, 0xed, 0xb5, 0xb5, 0x57, 0xa5, 0x22, 0x04, 0x9d, 0x38, 0x94,
-	0xa1, 0xd7, 0xd1, 0xb0, 0x96, 0xfd, 0x0f, 0xe0, 0xae, 0x52, 0xc2, 0x56, 0x22, 0x26, 0xa2, 0xca,
-	0xca, 0x6b, 0x18, 0x72, 0xa5, 0xbf, 0x15, 0xe1, 0x26, 0x21, 0x4c, 0xea, 0xaf, 0xdb, 0xc1, 0xb3,
-	0x73, 0x5d, 0xf2, 0x25, 0x8b, 0x44, 0x91, 0x4a, 0x12, 0xaf, 0xea, 0x36, 0xb8, 0xe9, 0xe2, 0x1f,
-	0xc3, 0xe3, 0x1a, 0xaf, 0xc9, 0x92, 0xff, 0x67, 0x17, 0x4e, 0xee, 0x76, 0x57, 0x51, 0x6b, 0x82,
-	0x5f, 0xe2, 0xf2, 0xae, 0x95, 0x8a, 0xce, 0x60, 0xa0, 0xc5, 0xdf, 0x8b, 0x94, 0xe8, 0xbb, 0x8e,
-	0x82, 0xb1, 0x89, 0x64, 0x55, 0xc1, 0x78, 0x6f, 0x81, 0xe6, 0x60, 0x6b, 0xe5, 0x22, 0x14, 0x54,
-	0x16, 0x3a, 0x05, 0xa3, 0xe0, 0x71, 0xcd, 0xc1, 0x1c, 0xe0, 0xba, 0x15, 0x7a, 0x09, 0x63, 0xad,
-	0xae, 0x89, 0x94, 0x5b, 0xa2, 0xef, 0xdc, 0xd1, 0x8e, 0x5f, 0xd4, 0x1c, 0xf7, 0x87, 0xf8, 0xd0,
-	0x1a, 0x4d, 0xcb, 0xaf, 0x2e, 0x6f, 0x53, 0x2a, 0x0a, 0xaf, 0x3b, 0xb5, 0x66, 0x6d, 0x5c, 0x87,
-	0xd0, 0x08, 0x5a, 0x34, 0xf6, 0x7a, 0xfa, 0x6e, 0x2d, 0x1a, 0xa3, 0xaf, 0x01, 0x48, 0xca, 0xa3,
-	0xab, 0x37, 0x24, 0x95, 0x57, 0xde, 0xd1, 0xd4, 0x9a, 0x75, 0x71, 0x0d, 0x41, 0x27, 0xd0, 0x93,
-	0xfc, 0x9a, 0xb0, 0xcc, 0xeb, 0x6b, 0x9f, 0x52, 0x43, 0xdf, 0x42, 0x37, 0x15, 0x34, 0x22, 0xde,
-	0x40, 0x17, 0xe5, 0xcb, 0x83, 0xa2, 0x2c, 0xf8, 0xf2, 0x36, 0x5d, 0x5f, 0x85, 0x82, 0x60, 0x63,
-	0x87, 0xbe, 0x83, 0xde, 0x0d, 0xdf, 0xe6, 0x09, 0xf1, 0xe0, 0x3e, 0x8f, 0xd2, 0x10, 0xbd, 0x84,
-	0x61, 0x42, 0x19, 0x4d, 0xf2, 0xe4, 0x83, 0xf1, 0xb4, 0xef, 0xf3, 0x6c, 0xda, 0xa3, 0x27, 0xd0,
-	0x65, 0x9c, 0x45, 0xc4, 0x73, 0x74, 0xec, 0x46, 0x41, 0x13, 0xe8, 0x5f, 0x6e, 0x29, 0x8b, 0x29,
-	0xdb, 0x78, 0x43, 0x7d, 0xb0, 0xd3, 0xd1, 0x0a, 0xec, 0x88, 0x27, 0x09, 0x95, 0x2a, 0x9d, 0x99,
-	0x37, 0x9a, 0xb6, 0x67, 0x76, 0x70, 0xf6, 0x6f, 0x1d, 0x77, 0xbe, 0xd8, 0xdb, 0x2f, 0x99, 0x14,
-	0x05, 0xae, 0x33, 0x4c, 0xfe, 0x00, 0xf7, 0xd0, 0x00, 0xb9, 0xd0, 0xbe, 0x26, 0x85, 0x6e, 0xb0,
-	0x0e, 0x56, 0x22, 0x9a, 0x43, 0xf7, 0x26, 0xdc, 0xe6, 0xa6, 0xb1, 0xec, 0xe0, 0xab, 0x5a, 0xb9,
-	0xab, 0xef, 0xec, 0x59, 0xb0, 0xb1, 0xfd, 0xb1, 0xf5, 0x83, 0xe5, 0xbf, 0x80, 0xe3, 0x3b, 0xf2,
-	0xa0, 0xaa, 0x1c, 0xf1, 0xb2, 0x83, 0x5b, 0x11, 0x57, 0x5f, 0x24, 0xb7, 0xa9, 0x66, 0x77, 0xb0,
-	0x12, 0xfd, 0xbf, 0x2c, 0x78, 0xfa, 0x0f, 0xfc, 0xea, 0x11, 0xe8, 0x9a, 0x2d, 0x2a, 0x8a, 0x4a,
-	0x55, 0xa9, 0xd3, 0xe2, 0x72, 0x47, 0xb6, 0xd3, 0xd5, 0x99, 0xa9, 0xdb, 0x82, 0x97, 0x2f, 0x7e,
-	0xa7, 0xab, 0x21, 0x62, 0x64, 0xe5, 0x68, 0xde, 0xfd, 0x1e, 0x40, 0x33, 0x18, 0x37, 0xea, 0xb6,
-	0xe0, 0xba, 0x73, 0x1d, 0x7c, 0x08, 0xa3, 0x53, 0x70, 0x1b, 0x90, 0xa2, 0x33, 0xbd, 0xfc, 0x19,
-	0xee, 0xcf, 0x61, 0xac, 0x33, 0x52, 0xbb, 0xd8, 0xfd, 0x69, 0x19, 0xab, 0xf1, 0x17, 0xca, 0x3c,
-	0x2b, 0x87, 0x90, 0x1f, 0xc3, 0xa8, 0x02, 0xca, 0x19, 0x5b, 0x1b, 0x79, 0x56, 0x73, 0xe4, 0xf9,
-	0xe0, 0x5c, 0x72, 0x2e, 0x33, 0x29, 0xc2, 0x34, 0x25, 0xb1, 0xe6, 0xed, 0xe3, 0x06, 0xa6, 0x5a,
-	0x32, 0x25, 0x44, 0x64, 0x3a, 0x45, 0x6d, 0x6c, 0x94, 0xd3, 0x6f, 0x60, 0xb0, 0x9b, 0x22, 0xc8,
-	0x81, 0xfe, 0x3b, 0x1a, 0xa7, 0x9c, 0x32, 0xe9, 0x3e, 0x42, 0x03, 0xe8, 0xfe, 0x4a, 0x13, 0x2a,
-	0x5d, 0xeb, 0x74, 0x0a, 0x76, 0x6d, 0x74, 0xa0, 0x23, 0x68, 0xbf, 0xce, 0x0b, 0xf7, 0x11, 0xea,
-	0x43, 0x67, 0x4d, 0xb6, 0x5b, 0xd7, 0x3a, 0xfd, 0x1e, 0xc6, 0x07, 0x33, 0x42, 0x59, 0xfd, 0x46,
-	0xb7, 0x86, 0x08, 0x13, 0xb6, 0xbc, 0x75, 0x2d, 0x34, 0x06, 0x5b, 0x8b, 0xaf, 0x24, 0x4f, 0x68,
-	0xe4, 0xb6, 0x82, 0x8f, 0xe0, 0xac, 0x3f, 0x85, 0x22, 0x59, 0x13, 0x71, 0xa3, 0x1e, 0xeb, 0x19,
-	0x74, 0xd4, 0xca, 0x43, 0xe5, 0xc0, 0xaa, 0xed, 0xd3, 0x09, 0xaa, 0x43, 0x65, 0x4a, 0x02, 0xe8,
-	0xea, 0x3d, 0x84, 0xca, 0xc3, 0xfa, 0x72, 0x9b, 0x1c, 0x37, 0x30, 0xe3, 0xf1, 0xdc, 0x0a, 0x7e,
-	0xae, 0x16, 0x4d, 0xf5, 0xcd, 0x17, 0x70, 0xb4, 0xe0, 0x8c, 0x91, 0x48, 0xa2, 0xd2, 0xa5, 0xb1,
-	0x88, 0x26, 0x77, 0x81, 0x33, 0xeb, 0xb9, 0x15, 0x5c, 0x80, 0xab, 0x2f, 0x7d, 0xc9, 0xf9, 0x75,
-	0x45, 0xf6, 0x13, 0x0c, 0x76, 0x73, 0x1f, 0x9d, 0x94, 0xcf, 0xe9, 0x60, 0xc1, 0x4c, 0x9e, 0x7e,
-	0x86, 0x9b, 0xe8, 0x82, 0x37, 0x55, 0x17, 0x54, 0x74, 0x73, 0xe8, 0x19, 0x60, 0x1f, 0x5a, 0xad,
-	0x49, 0x26, 0x4f, 0x9a, 0xa0, 0x61, 0xb9, 0xec, 0xe9, 0xbf, 0x92, 0xf9, 0xdf, 0x01, 0x00, 0x00,
-	0xff, 0xff, 0x3c, 0x58, 0xf0, 0x5d, 0xa3, 0x08, 0x00, 0x00,
+type oracleServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewOracleServiceClient(cc *grpc.ClientConn) OracleServiceClient {
+	return &oracleServiceClient{cc}
+}
+
+func (c *oracleServiceClient) UpdateMidpoint(ctx context.Context, in *UpdateMidpointRequest, opts ...grpc.CallOption) (*UpdateMidpointResponse, error) {
+	out := new(UpdateMidpointResponse)
+	err := c.cc.Invoke(ctx, "/grpc.OracleService/UpdateMidpoint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// OracleServiceServer is the server API for OracleService service.
+type OracleServiceServer interface {
+	UpdateMidpoint(context.Context, *UpdateMidpointRequest) (*UpdateMidpointResponse, error)
+}
+
+func RegisterOracleServiceServer(s *grpc.Server, srv OracleServiceServer) {
+	s.RegisterService(&_OracleService_serviceDesc, srv)
+}
+
+func _OracleService_UpdateMidpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMidpointRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OracleServiceServer).UpdateMidpoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.OracleService/UpdateMidpoint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OracleServiceServer).UpdateMidpoint(ctx, req.(*UpdateMidpointRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _OracleService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "grpc.OracleService",
+	HandlerType: (*OracleServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "UpdateMidpoint",
+			Handler:    _OracleService_UpdateMidpoint_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "grpc.proto",
+}
+
+func init() { proto.RegisterFile("grpc.proto", fileDescriptor_grpc_d2ef5ec062df2114) }
+
+var fileDescriptor_grpc_d2ef5ec062df2114 = []byte{
+	// 1051 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xcf, 0x6e, 0xdb, 0x46,
+	0x13, 0x0f, 0xf5, 0xc7, 0xb6, 0x46, 0x94, 0x44, 0x8f, 0x13, 0x87, 0x9f, 0x3e, 0x37, 0x10, 0x78,
+	0x12, 0x8c, 0xda, 0x4d, 0x65, 0x20, 0x29, 0x82, 0x02, 0x41, 0xa2, 0x28, 0x68, 0xe1, 0x3a, 0x72,
+	0x57, 0x6d, 0x4e, 0x2d, 0x0a, 0x9a, 0x5c, 0xc8, 0x84, 0x45, 0x2e, 0xbb, 0x5c, 0x3a, 0xd6, 0xa5,
+	0x97, 0xbe, 0x47, 0x9f, 0xa7, 0x6f, 0xd1, 0x57, 0x29, 0x76, 0x97, 0x94, 0x96, 0xb2, 0x1d, 0x5f,
+	0x7a, 0xdb, 0xf9, 0xcd, 0xcc, 0x8f, 0xb3, 0x33, 0xb3, 0x33, 0x04, 0x98, 0xf3, 0x34, 0x38, 0x4e,
+	0x39, 0x13, 0x0c, 0x1b, 0xf2, 0xec, 0xfd, 0x01, 0xf6, 0x59, 0xbe, 0x10, 0xd1, 0x9b, 0x30, 0xe4,
+	0x34, 0xcb, 0xf0, 0x00, 0x5a, 0x59, 0x34, 0x4f, 0x7c, 0x91, 0x73, 0xea, 0x5a, 0x03, 0x6b, 0x68,
+	0x93, 0x35, 0x80, 0x1e, 0xd8, 0xb1, 0x61, 0xed, 0xd6, 0x06, 0xd6, 0xb0, 0x45, 0x2a, 0x18, 0x7e,
+	0x09, 0xbb, 0xa6, 0xfc, 0x81, 0x25, 0x01, 0x75, 0xeb, 0x03, 0x6b, 0xd8, 0x20, 0xb7, 0x15, 0xde,
+	0x04, 0xda, 0xe7, 0x51, 0x32, 0x27, 0xf4, 0xf7, 0x9c, 0x66, 0x02, 0x5f, 0x6c, 0x7c, 0x40, 0x46,
+	0xd0, 0x1e, 0xe1, 0xb1, 0x8a, 0xdb, 0x0c, 0xb4, 0xfa, 0x51, 0xaf, 0x0b, 0xb6, 0xa6, 0xc9, 0x52,
+	0x96, 0x64, 0x9a, 0x96, 0xfd, 0x37, 0xb4, 0xcc, 0xa0, 0x1d, 0x82, 0xfd, 0x63, 0x4e, 0xf9, 0xb2,
+	0xe4, 0x75, 0x61, 0xdb, 0x37, 0x28, 0x5b, 0xa4, 0x14, 0xbd, 0x53, 0xe8, 0x14, 0x96, 0xda, 0x15,
+	0x5f, 0x41, 0xd7, 0xa4, 0xa6, 0xd2, 0xa3, 0x7e, 0x4f, 0x10, 0x1b, 0x96, 0x5e, 0x0e, 0x9d, 0x99,
+	0xe0, 0xd4, 0x8f, 0xcf, 0x68, 0x96, 0xf9, 0x73, 0xfa, 0x40, 0x95, 0x8c, 0xa8, 0x6a, 0x95, 0xa8,
+	0xa4, 0x26, 0xa1, 0xe2, 0x13, 0xe3, 0x57, 0xaa, 0x22, 0x36, 0x29, 0x45, 0x44, 0x68, 0x84, 0xbe,
+	0xf0, 0xdd, 0x86, 0x82, 0xd5, 0xd9, 0xfb, 0x08, 0xce, 0x34, 0xa5, 0xc9, 0x94, 0x87, 0x94, 0x97,
+	0x37, 0x7e, 0x0b, 0x1d, 0x26, 0xe5, 0xf7, 0xdc, 0x9f, 0xc7, 0x34, 0x11, 0x45, 0x2a, 0x0f, 0xf4,
+	0x2d, 0x26, 0x49, 0xc0, 0x97, 0xa9, 0xa0, 0xe1, 0xd4, 0xb4, 0x21, 0x55, 0x17, 0x6f, 0x0f, 0x76,
+	0x0d, 0xde, 0x22, 0xb5, 0x7f, 0x37, 0x61, 0xff, 0x6e, 0x77, 0x19, 0xb5, 0x22, 0xf8, 0x3e, 0x2c,
+	0xee, 0x5a, 0x8a, 0x78, 0x04, 0x2d, 0x75, 0xfc, 0x69, 0x99, 0x52, 0x75, 0xd7, 0xee, 0xa8, 0xa7,
+	0x23, 0x99, 0x96, 0x30, 0x59, 0x5b, 0xe0, 0x09, 0xb4, 0x95, 0x70, 0xee, 0xf3, 0x48, 0x2c, 0x55,
+	0x0a, 0xba, 0xa3, 0x5d, 0xc3, 0x41, 0x2b, 0x88, 0x69, 0x85, 0xaf, 0xa1, 0xa7, 0xc4, 0x19, 0x15,
+	0x62, 0x41, 0xd5, 0x9d, 0x1b, 0xca, 0xf1, 0x89, 0xe1, 0xb8, 0x56, 0x92, 0x4d, 0x6b, 0x1c, 0x14,
+	0x5f, 0x9d, 0xdc, 0xa4, 0x11, 0x5f, 0xba, 0xcd, 0x81, 0x35, 0xac, 0x13, 0x13, 0xc2, 0x2e, 0xd4,
+	0xa2, 0xd0, 0xdd, 0x52, 0x77, 0xab, 0x45, 0x21, 0x3e, 0x03, 0xa0, 0x29, 0x0b, 0x2e, 0xdf, 0xd1,
+	0x54, 0x5c, 0xba, 0xdb, 0x03, 0x6b, 0xd8, 0x24, 0x06, 0x82, 0xfb, 0xb0, 0x25, 0xd8, 0x15, 0x4d,
+	0x32, 0x77, 0x47, 0xf9, 0x14, 0x12, 0x7e, 0x05, 0xcd, 0x94, 0x47, 0x01, 0x75, 0x5b, 0xaa, 0x28,
+	0xff, 0xdb, 0x28, 0xca, 0x98, 0x4d, 0x6e, 0xd2, 0xd9, 0xa5, 0xcf, 0x29, 0xd1, 0x76, 0xf8, 0x35,
+	0x6c, 0x5d, 0xb3, 0x45, 0x1e, 0x53, 0x17, 0x1e, 0xf2, 0x28, 0x0c, 0xf1, 0x35, 0x74, 0xe2, 0x28,
+	0x89, 0xe2, 0x3c, 0xfe, 0xa8, 0x3d, 0xdb, 0x0f, 0x79, 0x56, 0xed, 0xf1, 0x31, 0x34, 0x13, 0x35,
+	0x13, 0x6c, 0x15, 0xbb, 0x16, 0xb0, 0x0f, 0x3b, 0x17, 0x8b, 0x28, 0x09, 0xa3, 0x64, 0xee, 0x76,
+	0x94, 0x62, 0x25, 0xe3, 0x14, 0xda, 0x01, 0x8b, 0xe3, 0x48, 0xc8, 0x74, 0x66, 0x6e, 0x57, 0xbd,
+	0x9b, 0xa3, 0xcf, 0x75, 0xdc, 0xf1, 0x78, 0x6d, 0x3f, 0x49, 0x04, 0x5f, 0x12, 0x93, 0xa1, 0xff,
+	0x2b, 0x38, 0x9b, 0x06, 0xe8, 0x40, 0xfd, 0x8a, 0x2e, 0x55, 0x83, 0x35, 0x88, 0x3c, 0xe2, 0x09,
+	0x34, 0xaf, 0xfd, 0x45, 0xae, 0x1b, 0xab, 0x3d, 0xfa, 0xc2, 0x28, 0x77, 0xf9, 0x9d, 0x35, 0x0b,
+	0xd1, 0xb6, 0xaf, 0x6a, 0xdf, 0x58, 0xde, 0x4b, 0xd8, 0xbb, 0x23, 0x0f, 0xb2, 0xca, 0x01, 0x2b,
+	0x3a, 0xb8, 0x16, 0x30, 0xf9, 0x45, 0x7a, 0x93, 0x2a, 0x76, 0x9b, 0xc8, 0xa3, 0xf7, 0x8f, 0x05,
+	0x4f, 0xef, 0xe1, 0x97, 0x8f, 0x40, 0xd5, 0x6c, 0x5c, 0x52, 0x94, 0xa2, 0x4c, 0x9d, 0x3a, 0x4e,
+	0x56, 0x64, 0x2b, 0x59, 0xea, 0x74, 0xdd, 0xc6, 0xac, 0x78, 0xf1, 0x2b, 0x59, 0x0e, 0x11, 0x7d,
+	0x96, 0x8e, 0xfa, 0xdd, 0xaf, 0x01, 0x1c, 0x42, 0xaf, 0x52, 0xb7, 0x31, 0x53, 0x9d, 0x6b, 0x93,
+	0x4d, 0x18, 0x0f, 0xc1, 0xa9, 0x40, 0x92, 0x4e, 0xf7, 0xf2, 0x2d, 0xdc, 0x3b, 0x81, 0x9e, 0xca,
+	0x88, 0x71, 0xb1, 0x87, 0xd3, 0xd2, 0x93, 0xe3, 0xcf, 0x17, 0x79, 0x56, 0x0c, 0x21, 0x2f, 0x84,
+	0x6e, 0x09, 0x14, 0xd3, 0xf5, 0xde, 0x41, 0x2c, 0x57, 0xd6, 0x05, 0x63, 0x22, 0x13, 0xdc, 0x4f,
+	0x53, 0x1a, 0x2a, 0xde, 0x1d, 0x52, 0xc1, 0x64, 0x4b, 0xa6, 0x94, 0xf2, 0x4c, 0xa5, 0xa8, 0x4e,
+	0xb4, 0xe0, 0xfd, 0x69, 0xc1, 0x93, 0x9f, 0xd3, 0xd0, 0x17, 0xf4, 0x2c, 0x0a, 0x53, 0x16, 0x25,
+	0xa2, 0x1c, 0x82, 0x9f, 0x1f, 0xbf, 0xcf, 0x00, 0xd4, 0x7b, 0x3c, 0xf7, 0x23, 0x2e, 0x27, 0x70,
+	0x7d, 0xd8, 0x20, 0x06, 0x22, 0x5f, 0xaf, 0xaa, 0x8f, 0xfc, 0x9c, 0xd4, 0x15, 0xd2, 0xfa, 0x61,
+	0x34, 0x54, 0x0f, 0x6a, 0xc1, 0x73, 0x61, 0x7f, 0x33, 0x08, 0x7d, 0xe7, 0xc3, 0x09, 0xb4, 0x56,
+	0x53, 0x0e, 0x6d, 0xd8, 0x29, 0x0d, 0x9c, 0x47, 0xd8, 0x82, 0xe6, 0x0f, 0x51, 0x1c, 0x09, 0xc7,
+	0x42, 0x07, 0xec, 0x52, 0xf1, 0xdb, 0xfb, 0xe9, 0xa9, 0x53, 0xc3, 0x0e, 0xb4, 0x94, 0x52, 0x89,
+	0xf5, 0xc3, 0x01, 0xb4, 0x8d, 0xd9, 0x87, 0xdb, 0x50, 0x7f, 0x9b, 0x2f, 0x9d, 0x47, 0xb8, 0x03,
+	0x8d, 0x19, 0x5d, 0x2c, 0x1c, 0xeb, 0xf0, 0x05, 0xf4, 0x36, 0x86, 0x9c, 0xb4, 0xfa, 0x10, 0x2d,
+	0xf4, 0x97, 0x08, 0x4d, 0x26, 0x37, 0x8e, 0x85, 0x3d, 0x68, 0xab, 0xe3, 0x1b, 0xc1, 0xe2, 0x28,
+	0x70, 0x6a, 0xa3, 0xbf, 0x2c, 0xb0, 0x67, 0x9f, 0x7c, 0x1e, 0xcf, 0x28, 0xbf, 0x96, 0xe3, 0xe6,
+	0x08, 0x1a, 0x72, 0x4b, 0x63, 0x31, 0x72, 0x8d, 0xc5, 0xdf, 0x47, 0x13, 0x2a, 0x8a, 0x2a, 0xcd,
+	0x99, 0x61, 0xce, 0x6e, 0x9b, 0x1b, 0xcb, 0x19, 0x9f, 0x43, 0x53, 0xad, 0x5c, 0x2c, 0x94, 0xe6,
+	0xa6, 0xee, 0xef, 0x55, 0x30, 0xed, 0x31, 0xfa, 0xae, 0xdc, 0xab, 0x65, 0x80, 0x2f, 0x61, 0x7b,
+	0xcc, 0x92, 0x84, 0x06, 0x02, 0x0b, 0x87, 0xca, 0xde, 0xed, 0xdf, 0x05, 0x0e, 0xad, 0xe7, 0xd6,
+	0xe8, 0x1c, 0x1c, 0x95, 0xa2, 0x0b, 0xc6, 0xae, 0x4a, 0xb2, 0x6f, 0xa1, 0xb5, 0x5a, 0x73, 0xb8,
+	0x5f, 0x4c, 0x8f, 0x8d, 0x7d, 0xda, 0x7f, 0x7a, 0x0b, 0x2f, 0x62, 0x7b, 0x57, 0x36, 0x7d, 0x49,
+	0x77, 0x02, 0x5b, 0x1a, 0x58, 0x87, 0x66, 0xbc, 0x89, 0xfe, 0xe3, 0x2a, 0x58, 0xb0, 0xfc, 0x02,
+	0x9d, 0x29, 0xf7, 0x83, 0x05, 0x2d, 0x59, 0x4e, 0xa1, 0x5b, 0x6d, 0x27, 0xfc, 0xbf, 0x76, 0xbc,
+	0xb3, 0xd3, 0xfb, 0x07, 0x77, 0x2b, 0x35, 0xfb, 0xc5, 0x96, 0xfa, 0x93, 0x3c, 0xf9, 0x37, 0x00,
+	0x00, 0xff, 0xff, 0x44, 0x5c, 0xe8, 0x5e, 0x57, 0x0a, 0x00, 0x00,
 }

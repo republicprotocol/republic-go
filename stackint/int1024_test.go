@@ -57,7 +57,7 @@ func TC(in ...interface{}) []interface{} {
 var _ = Describe("Int1024", func() {
 
 	It("uninitialized Int1024 should equal zero", func() {
-		Ω(Int1024{}).Should(Equal(zero))
+		Expect(Int1024{}).Should(Equal(zero))
 	})
 
 	Context("when converting from and to Words", func() {
@@ -77,23 +77,23 @@ var _ = Describe("Int1024", func() {
 			for _, n := range cases {
 				fromInt := FromUint(uint(n))
 				toInt, err := fromInt.ToUint()
-				Ω(err).Should(BeNil())
-				Ω(toInt).Should(Equal(n))
+				Expect(err).Should(BeNil())
+				Expect(toInt).Should(Equal(n))
 				tmp := Zero()
 				tmp.SetUint(n)
-				Ω(tmp).Should(Equal(fromInt))
+				Expect(tmp).Should(Equal(fromInt))
 			}
 		})
 
 		It("should panic when converting a number bigger than MAX to Word", func() {
 			_, err := max.ToUint()
-			Ω(err).Should(Not(BeNil()))
+			Expect(err).Should(Not(BeNil()))
 		})
 
 		It("should clear rest of words when setting to uint", func() {
 			tmp := MAXINT1024()
 			tmp.SetUint(0)
-			Ω(tmp).Should(Equal(zero))
+			Expect(tmp).Should(Equal(zero))
 		})
 	})
 
@@ -115,7 +115,7 @@ var _ = Describe("Int1024", func() {
 				TC(maxStr, max),
 			}
 			for _, tc := range cases {
-				Ω(FromString(tc[0].(string))).Should(Equal(tc[1]))
+				Expect(FromString(tc[0].(string))).Should(Equal(tc[1]))
 			}
 
 		})
@@ -132,7 +132,7 @@ var _ = Describe("Int1024", func() {
 			}
 			for _, tc := range cases {
 				_, err := FromString(tc[0].(string))
-				Ω(err).Should(Not(BeNil()))
+				Expect(err).Should(Not(BeNil()))
 			}
 		})
 	})
@@ -141,19 +141,19 @@ var _ = Describe("Int1024", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			actual := max.ToBinary()
 			expected := strings.Repeat("1", SIZE)
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = zero.ToBinary()
 			expected = "0"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = one.ToBinary()
 			expected = "1"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = two.ToBinary()
 			expected = "10"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 		})
 	})
 
@@ -161,24 +161,24 @@ var _ = Describe("Int1024", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			actual := max.String()
 			expected := maxStr
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = zero.String()
 			expected = "0"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = one.String()
 			expected = "1"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			actual = two.String()
 			expected = "2"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 
 			tmp := FromUint(111)
 			actual = tmp.String()
 			expected = "111"
-			Ω(actual).Should(Equal(expected))
+			Expect(actual).Should(Equal(expected))
 		})
 	})
 
@@ -187,51 +187,51 @@ var _ = Describe("Int1024", func() {
 			array := []Int1024{zero, one, two, three, four, five, six, seven, eleven, twelve, oneWord, max}
 			for _, num := range array {
 				actual, err := FromBytes(num.Bytes())
-				Ω(err).Should(BeNil())
-				Ω(actual).Should(Equal(num))
+				Expect(err).Should(BeNil())
+				Expect(actual).Should(Equal(num))
 
 				// actual, err = FromLittleEndianBytes(num.LittleEndianBytes())
-				// Ω(err).Should(BeNil())
-				// Ω(actual).Should(Equal(num))
+				// Expect(err).Should(BeNil())
+				// Expect(actual).Should(Equal(num))
 			}
 
 			str := "156110199609722120002645975834934187153674084697980344259599400078744195864483123168001725978362465713804593874868304438459220080111195600585730100927755271978903140799951022170241026510196255297991522400685742295892348482226518075857613157769551309646160118720740138838217231149054483993553648924213524999209"
 			stackint, err := FromString(str)
-			Ω(err).Should(BeNil())
+			Expect(err).Should(BeNil())
 			bigint, _ := big.NewInt(0).SetString(str, 10)
-			Ω(stackint.ToBigInt().Cmp(bigint)).Should(Equal(0))
+			Expect(stackint.ToBigInt().Cmp(bigint)).Should(Equal(0))
 
 			actual := two64.Bytes()
-			Ω(actual).Should(Equal([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}))
+			Expect(actual).Should(Equal([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}))
 		})
 
 		It("should handle edge cases", func() {
 
 			// Big Endian
 			actual, err := FromBytes([]byte{0})
-			Ω(err).Should(BeNil())
-			Ω(actual).Should(Equal(zero))
+			Expect(err).Should(BeNil())
+			Expect(actual).Should(Equal(zero))
 
 			actual, err = FromBytes([]byte{})
-			Ω(err).Should(BeNil())
-			Ω(actual).Should(Equal(zero))
+			Expect(err).Should(BeNil())
+			Expect(actual).Should(Equal(zero))
 
 			actual, err = FromBytes(make([]byte, 8*INT1024WORDS+1))
-			Ω(err).Should(BeNil())
-			Ω(actual).Should(Equal(zero))
+			Expect(err).Should(BeNil())
+			Expect(actual).Should(Equal(zero))
 
 			// // Little Endian
 			// actual, err = FromLittleEndianBytes([]byte{0})
-			// Ω(err).Should(BeNil())
-			// Ω(actual).Should(Equal(zero))
+			// Expect(err).Should(BeNil())
+			// Expect(actual).Should(Equal(zero))
 
 			// actual, err = FromLittleEndianBytes([]byte{})
-			// Ω(err).Should(BeNil())
-			// Ω(actual).Should(Equal(zero))
+			// Expect(err).Should(BeNil())
+			// Expect(actual).Should(Equal(zero))
 
 			// bytes = make([]byte, 8*INT1024WORDS+1)
 			// actual, err = FromLittleEndianBytes(bytes)
-			// Ω(err).ShouldNot(BeNil())
+			// Expect(err).ShouldNot(BeNil())
 		})
 	})
 
@@ -239,21 +239,21 @@ var _ = Describe("Int1024", func() {
 		It("should return the right result for 1024 bit numbers", func() {
 			x := FromUint(1)
 			words := x.Words()
-			Ω(words[0]).Should(Equal(uint(1)))
+			Expect(words[0]).Should(Equal(uint(1)))
 			for i := 1; i < INT1024WORDS; i++ {
-				Ω(words[i]).Should(Equal(uint(0)))
+				Expect(words[i]).Should(Equal(uint(0)))
 			}
 
 			x = zero
 			words = x.Words()
 			for i := 0; i < INT1024WORDS; i++ {
-				Ω(words[i]).Should(Equal(uint(0)))
+				Expect(words[i]).Should(Equal(uint(0)))
 			}
 
 			x = MAXINT1024()
 			words = x.Words()
 			for i := 0; i < INT1024WORDS; i++ {
-				Ω(words[i]).Should(Equal(uint(WORDMAX)))
+				Expect(words[i]).Should(Equal(uint(WORDMAX)))
 			}
 		})
 
@@ -261,7 +261,7 @@ var _ = Describe("Int1024", func() {
 			x := FromUint(1)
 			words := x.Words()
 			words[0] = 2
-			Ω(x).Should(Equal(one))
+			Expect(x).Should(Equal(one))
 		})
 	})
 
@@ -283,8 +283,8 @@ var _ = Describe("Int1024", func() {
 			for _, stackint := range cases {
 				bigint := stackint.ToBigInt()
 				stackint2, err := FromBigInt(bigint)
-				Ω(err).Should(BeNil())
-				Ω(stackint2).Should(Equal(stackint))
+				Expect(err).Should(BeNil())
+				Expect(stackint2).Should(Equal(stackint))
 			}
 		})
 
@@ -292,7 +292,7 @@ var _ = Describe("Int1024", func() {
 			bigint := max.ToBigInt()
 			bigint = bigint.Add(bigint, big.NewInt(1))
 			_, err := FromBigInt(bigint)
-			Ω(err).ShouldNot(BeNil())
+			Expect(err).ShouldNot(BeNil())
 		})
 	})
 
@@ -301,25 +301,25 @@ var _ = Describe("Int1024", func() {
 
 		It("should encode and then decode to the same value", func() {
 			data, err := int1024.MarshalJSON()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			newInt1024 := new(stackint.Int1024)
 			err = newInt1024.UnmarshalJSON(data)
-			Ω(err).ShouldNot(HaveOccurred())
-			Ω(*newInt1024).Should(Equal(int1024))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(*newInt1024).Should(Equal(int1024))
 		})
 
 		It("should return error for invalid json", func() {
 			data := []byte("{\"valid\": \"false\"}")
 			newInt1024 := new(stackint.Int1024)
 			err := newInt1024.UnmarshalJSON(data)
-			Ω(err).Should(HaveOccurred())
+			Expect(err).Should(HaveOccurred())
 		})
 
 		It("should return error for invalid stackint", func() {
 			data := []byte("\"//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=\"")
 			newInt1024 := new(stackint.Int1024)
 			err := newInt1024.UnmarshalJSON(data)
-			Ω(err).Should(HaveOccurred())
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 })

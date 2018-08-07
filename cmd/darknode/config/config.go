@@ -16,9 +16,11 @@ type Config struct {
 	Logs     logger.Options  `json:"logs"`
 
 	Address                 identity.Address        `json:"address"`
+	OracleAddress           identity.Address        `json:"oracleAddress"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
+	Alpha                   int                     `json:"alpha"`
 }
 
 func NewConfigFromJSONFile(filename string) (Config, error) {

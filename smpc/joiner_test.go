@@ -34,14 +34,14 @@ var _ = Describe("Joiner", func() {
 
 				for i := int64(0); i < n; i++ {
 					if i == 0 {
-						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Expect(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
 					} else {
-						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
 					}
 					if i == n-1 {
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
 					} else {
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
 					}
 				}
 			})
@@ -55,11 +55,11 @@ var _ = Describe("Joiner", func() {
 
 				for i := int64(0); i < n; i++ {
 					if i == n-1 {
-						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+						Expect(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
 					} else {
-						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+						Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
 					}
 				}
 			})
@@ -76,16 +76,16 @@ var _ = Describe("Joiner", func() {
 
 				for i := int64(0); i < n; i++ {
 					if i == 0 {
-						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Expect(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
 					} else if i == 2 {
-						Ω(joiner.InsertJoinAndSetCallback(joins[i], callbackOverride)).ShouldNot(HaveOccurred())
+						Expect(joiner.InsertJoinAndSetCallback(joins[i], callbackOverride)).ShouldNot(HaveOccurred())
 					} else {
-						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
 					}
 					if i == n-1 {
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(2)))
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(2)))
 					} else {
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
 					}
 				}
 			})
@@ -97,23 +97,23 @@ var _ = Describe("Joiner", func() {
 				called := int64(0)
 				callback := func(id JoinID, values []uint64) {
 					atomic.AddInt64(&called, 1)
-					Ω(len(values)).Should(Equal(7))
-					Ω(values[0]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[1]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[2]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[3]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[4]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[5]).Should(BeNumerically("<=", shamir.Prime/2))
-					Ω(values[6]).Should(BeZero())
+					Expect(len(values)).Should(Equal(7))
+					Expect(values[0]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[1]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[2]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[3]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[4]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[5]).Should(BeNumerically("<=", shamir.Prime/2))
+					Expect(values[6]).Should(BeZero())
 				}
 
 				for i := int64(0); i < n; i++ {
 					if i == n-1 {
-						Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+						Expect(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
 					} else {
-						Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
-						Ω(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
+						Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+						Expect(atomic.LoadInt64(&called)).Should(Equal(int64(0)))
 					}
 				}
 			})
@@ -125,17 +125,17 @@ var _ = Describe("Joiner", func() {
 			_, joins := generateJoins(n, k)
 			for i := range joins {
 				data, err := joins[i].MarshalBinary()
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 
 				newJoin := new(Join)
 				err = newJoin.UnmarshalBinary(data)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 
-				Ω(bytes.Compare(joins[i].ID[:], newJoin.ID[:])).Should(Equal(0))
-				Ω(joins[i].Index).Should(Equal(newJoin.Index))
-				Ω(len(joins[i].Shares)).Should(Equal(len(newJoin.Shares)))
+				Expect(bytes.Compare(joins[i].ID[:], newJoin.ID[:])).Should(Equal(0))
+				Expect(joins[i].Index).Should(Equal(newJoin.Index))
+				Expect(len(joins[i].Shares)).Should(Equal(len(newJoin.Shares)))
 				for j := range joins[i].Shares {
-					Ω(joins[i].Shares[j].Equal(&newJoin.Shares[j]))
+					Expect(joins[i].Shares[j].Equal(&newJoin.Shares[j]))
 				}
 			}
 		})
@@ -152,7 +152,7 @@ var _ = Describe("Joiner", func() {
 				joins[i].Shares = shares
 			}
 			for i := range joins {
-				Ω(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthExceedsMax))
+				Expect(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthExceedsMax))
 			}
 		})
 	})
@@ -164,9 +164,9 @@ var _ = Describe("Joiner", func() {
 			for i := int64(0); i < n; i++ {
 				if i > n/2 {
 					joins[i].Shares = joins[i].Shares[:3]
-					Ω(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthUnequal))
+					Expect(joiner.InsertJoin(joins[i])).Should(Equal(ErrJoinLengthUnequal))
 				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+					Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
 				}
 			}
 		})
@@ -178,12 +178,12 @@ var _ = Describe("Joiner", func() {
 
 			for i := int64(0); i < n; i++ {
 				if i == 0 {
-					Ω(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
+					Expect(joiner.InsertJoinAndSetCallback(joins[i], callback)).ShouldNot(HaveOccurred())
 				} else {
-					Ω(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
+					Expect(joiner.InsertJoin(joins[i])).ShouldNot(HaveOccurred())
 				}
 			}
-			Ω(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
+			Expect(atomic.LoadInt64(&called)).Should(Equal(int64(1)))
 		})
 	})
 })
@@ -191,7 +191,7 @@ var _ = Describe("Joiner", func() {
 func generateJoins(n, k int64) (order.Order, []Join) {
 	ord := testutils.RandomOrder()
 	fragments, err := ord.Split(n, k)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 	joins := make([]Join, n)
 	for i := range joins {
 		shares := []shamir.Share{
@@ -216,9 +216,9 @@ func generateJoins(n, k int64) (order.Order, []Join) {
 func generateMatchedJoins(n, k int64) []Join {
 	buy, sell := testutils.RandomOrderMatch()
 	buyFragments, err := buy.Split(n, k)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 	sellFragments, err := sell.Split(n, k)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred())
 
 	joins := make([]Join, n)
 	for i := range joins {
@@ -244,13 +244,13 @@ func generateMatchedJoins(n, k int64) []Join {
 func generateCallback(called *int64, ord order.Order) func(id JoinID, values []uint64) {
 	return func(id JoinID, values []uint64) {
 		atomic.AddInt64(called, 1)
-		Ω(len(values)).Should(Equal(7))
-		Ω(values[0]).Should(Equal(ord.Price.Co))
-		Ω(values[1]).Should(Equal(ord.Price.Exp))
-		Ω(values[2]).Should(Equal(ord.Volume.Co))
-		Ω(values[3]).Should(Equal(ord.Volume.Exp))
-		Ω(values[4]).Should(Equal(ord.MinimumVolume.Co))
-		Ω(values[5]).Should(Equal(ord.MinimumVolume.Exp))
-		Ω(values[6]).Should(Equal(uint64(ord.Tokens)))
+		Expect(len(values)).Should(Equal(7))
+		Expect(values[0]).Should(Equal(ord.Price.Co))
+		Expect(values[1]).Should(Equal(ord.Price.Exp))
+		Expect(values[2]).Should(Equal(ord.Volume.Co))
+		Expect(values[3]).Should(Equal(ord.Volume.Exp))
+		Expect(values[4]).Should(Equal(ord.MinimumVolume.Co))
+		Expect(values[5]).Should(Equal(ord.MinimumVolume.Exp))
+		Expect(values[6]).Should(Equal(uint64(ord.Tokens)))
 	}
 }
