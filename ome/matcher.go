@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -99,7 +100,6 @@ func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
 		callback(com)
 		return
 	}
-
 	matcher.resolve(smpc.NetworkID(com.Epoch), com, callback, ResolveStagePriceExp)
 }
 
@@ -112,11 +112,13 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callb
 		return
 	}
 
-	join, err := buildJoin(com, stage)
+	join, joinCommitments, err := buildJoin(com, stage)
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
 		return
 	}
+	matcher.smpcer.InsertCommitments(networkID, join.ID, joinCommitments)
+
 	err = matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
 		matcher.resolveValues(values, networkID, com, callback, stage)
 	})
@@ -178,39 +180,67 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	callback(com)
 }
 
-func buildJoin(com Computation, stage ResolveStage) (smpc.Join, error) {
+func buildJoin(com Computation, stage ResolveStage) (smpc.Join, smpc.JoinCommitments, error) {
+	joinCommitments := smpc.JoinCommitments{
+		LHS: map[uint64]shamir.Commitment{},
+		RHS: map[uint64]shamir.Commitment{},
+	}
+
 	var share shamir.Share
 	switch stage {
 	case ResolveStagePriceExp:
 		share = com.Buy.Price.Exp.Sub(&com.Sell.Price.Exp)
+		joinCommitments.LHS[share.Index] = com.Buy.Commitments[share.Index].PriceExp
+		joinCommitments.RHS[share.Index] = com.Sell.Commitments[share.Index].PriceExp
 
 	case ResolveStagePriceCo:
 		share = com.Buy.Price.Co.Sub(&com.Sell.Price.Co)
+		joinCommitments.LHS[share.Index] = com.Buy.Commitments[share.Index].PriceCo
+		joinCommitments.RHS[share.Index] = com.Sell.Commitments[share.Index].PriceCo
 
 	case ResolveStageBuyVolumeExp:
 		share = com.Buy.Volume.Exp.Sub(&com.Sell.MinimumVolume.Exp)
+		joinCommitments.LHS[share.Index] = com.Buy.Commitments[share.Index].VolumeExp
+		joinCommitments.RHS[share.Index] = com.Sell.Commitments[share.Index].MinimumVolumeExp
 
 	case ResolveStageBuyVolumeCo:
 		share = com.Buy.Volume.Co.Sub(&com.Sell.MinimumVolume.Co)
+		joinCommitments.LHS[share.Index] = com.Buy.Commitments[share.Index].VolumeCo
+		joinCommitments.RHS[share.Index] = com.Sell.Commitments[share.Index].MinimumVolumeCo
 
 	case ResolveStageSellVolumeExp:
 		share = com.Sell.Volume.Exp.Sub(&com.Buy.MinimumVolume.Exp)
+		joinCommitments.LHS[share.Index] = com.Sell.Commitments[share.Index].VolumeExp
+		joinCommitments.RHS[share.Index] = com.Buy.Commitments[share.Index].MinimumVolumeExp
 
 	case ResolveStageSellVolumeCo:
 		share = com.Sell.Volume.Co.Sub(&com.Buy.MinimumVolume.Co)
+		joinCommitments.LHS[share.Index] = com.Sell.Commitments[share.Index].VolumeCo
+		joinCommitments.RHS[share.Index] = com.Buy.Commitments[share.Index].MinimumVolumeCo
 
 	case ResolveStageTokens:
 		share = com.Buy.Tokens.Sub(&com.Sell.Tokens)
+		// FIXME: Tokens are not verified.
+
 	default:
-		return smpc.Join{}, ErrUnexpectedResolveStage
+		return smpc.Join{}, smpc.JoinCommitments{}, ErrUnexpectedResolveStage
 	}
+
+	// Create the blinding to verify the computation
+	blinding := shamir.Blinding{
+		Int: big.NewInt(0).Add(com.Buy.Blinding.Int, big.NewInt(0).Sub(shamir.CommitP, com.Sell.Blinding.Int)),
+	}
+	blinding.Mod(blinding.Int, shamir.CommitP)
+
+	// Creat the join
 	join := smpc.Join{
-		Index:  smpc.JoinIndex(share.Index),
-		Shares: shamir.Shares{share},
+		Index:     smpc.JoinIndex(share.Index),
+		Shares:    shamir.Shares{share},
+		Blindings: shamir.Blindings{blinding},
 	}
 	copy(join.ID[:], com.ID[:])
 	join.ID[32] = byte(stage)
-	return join, nil
+	return join, joinCommitments, nil
 }
 
 func isGreaterThanOrEqualToZero(value uint64) bool {

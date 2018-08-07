@@ -289,11 +289,13 @@ func (b *Blinding) Decrypt(privKey *rsa.PrivateKey, cipherText []byte) error {
 	return nil
 }
 
-type Commitment *big.Int
+type Commitment struct {
+	*big.Int
+}
 
 func NewCommitment(x Share, s Blinding) Commitment {
 	gˣ := big.NewInt(0).Exp(CommitG, big.NewInt(0).SetUint64(x.Value), CommitP)
 	hˢ := big.NewInt(0).Exp(CommitH, s.Int, CommitP)
 	gˣhˢ := big.NewInt(0).Mul(gˣ, hˢ)
-	return gˣhˢ.Mod(gˣhˢ, CommitP)
+	return Commitment{gˣhˢ.Mod(gˣhˢ, CommitP)}
 }

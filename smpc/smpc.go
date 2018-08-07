@@ -247,14 +247,15 @@ func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 			// check for incorrectness
 			continue
 		}
+		rhs.Int.ModInverse(rhs.Int, shamir.CommitP)
 
 		// Check the expected commitment against the commitment we actually
 		// received
-		expected := big.NewInt(0).Mul(rhs, lhs)
+		expected := big.NewInt(0).Mul(lhs.Int, rhs.Int)
 		expected.Mod(expected, shamir.CommitP)
 		got := shamir.NewCommitment(join.Shares[i], join.Blindings[i])
 
-		if expected.Cmp((*big.Int)(got)) != 0 {
+		if expected.Cmp(got.Int) != 0 {
 			// Reject the join
 			return false
 		}

@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -243,12 +242,12 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 }
 
 type FragmentCommitment struct {
-	PriceCo          *big.Int `json:"priceCo"`
-	PriceExp         *big.Int `json:"priceExp"`
-	VolumeCo         *big.Int `json:"volumeCo"`
-	VolumeExp        *big.Int `json:"volumeExp"`
-	MinimumVolumeCo  *big.Int `json:"minimumVolumeCo"`
-	MinimumVolumeExp *big.Int `json:"minimumVolumeExp"`
+	PriceCo          shamir.Commitment `json:"priceCo"`
+	PriceExp         shamir.Commitment `json:"priceExp"`
+	VolumeCo         shamir.Commitment `json:"volumeCo"`
+	VolumeExp        shamir.Commitment `json:"volumeExp"`
+	MinimumVolumeCo  shamir.Commitment `json:"minimumVolumeCo"`
+	MinimumVolumeExp shamir.Commitment `json:"minimumVolumeExp"`
 }
 
 type FragmentCommitments map[uint64]FragmentCommitment
