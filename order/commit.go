@@ -11,8 +11,6 @@ var G = big.NewInt(0)
 var H = big.NewInt(0)
 var P = big.NewInt(0)
 
-type Commitments map[uint64]Commitment
-
 type Commitment struct {
 	*big.Int
 }
@@ -27,7 +25,7 @@ func NewCommitment(secret *big.Int, blinding *big.Int) Commitment {
 	return Commitment{Int: C}
 }
 
-type CommitmentSet struct {
+type FragmentCommitment struct {
 	PriceCo          Commitment `json:"priceCo"`
 	PriceExp         Commitment `json:"priceExp"`
 	VolumeCo         Commitment `json:"volumeCo"`
@@ -35,6 +33,8 @@ type CommitmentSet struct {
 	MinimumVolumeCo  Commitment `json:"minimumVolumeCo"`
 	MinimumVolumeExp Commitment `json:"minimumVolumeExp"`
 }
+
+type FragmentCommitments map[uint64]FragmentCommitment
 
 type Blindings []Blinding
 

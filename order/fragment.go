@@ -50,7 +50,7 @@ type Fragment struct {
 
 	// CommitmentSet for different fragment indices, other than the index of
 	// this fragment
-	Commitments map[uint64]CommitmentSet `json:"commitments"`
+	Commitments FragmentCommitments `json:"commitments"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
@@ -196,8 +196,8 @@ type EncryptedFragment struct {
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
 
-	Blinding    EncryptedBlinding        `json:"blinding"`
-	Commitments map[uint64]CommitmentSet `json:"commitments"`
+	Blinding    EncryptedBlinding   `json:"blinding"`
+	Commitments FragmentCommitments `json:"commitments"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
