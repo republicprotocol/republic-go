@@ -73,7 +73,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 		settler.settleOrderMatch(com, buy, sell)
 
-	})
+	}, true /* delay message sending to ensure the round-robin */)
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
 	}
