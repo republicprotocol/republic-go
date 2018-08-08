@@ -102,13 +102,13 @@ func (message *Message) Rotation(n uint64) uint64 {
 	switch message.MessageType {
 	case MessageTypeJoin:
 		if message.MessageJoin != nil {
-			joinID := big.NewInt(0).SetBytes(message.MessageJoin.Join.ID[:])
-			return joinID.Mod(joinID, big.NewInt(int64(n))).Uint64()
+			joinID := big.NewInt(0).SetBytes(message.MessageJoin.Join.ID[:8])
+			return joinID.Mod(joinID, big.NewInt(0).SetUint64(n)).Uint64()
 		}
 	case MessageTypeJoinResponse:
 		if message.MessageJoinResponse != nil {
-			joinID := big.NewInt(0).SetBytes(message.MessageJoinResponse.Join.ID[:])
-			return joinID.Mod(joinID, big.NewInt(int64(n))).Uint64()
+			joinID := big.NewInt(0).SetBytes(message.MessageJoinResponse.Join.ID[:8])
+			return joinID.Mod(joinID, big.NewInt(0).SetUint64(n)).Uint64()
 		}
 	}
 
