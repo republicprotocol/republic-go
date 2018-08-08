@@ -32,7 +32,7 @@ type Smpcer interface {
 	// Join a set of shamir.Shares for distinct values. This involves broadcast
 	// communication with the nodes in the network. On a success, the Callback
 	// is called.
-	Join(networkID NetworkID, join Join, callback Callback) error
+	Join(networkID NetworkID, join Join, callback Callback, useDelay bool) error
 
 	// InsertCommitments for the shamir.Shares inside a Join. These commitments
 	// are used to blind shamir.Shares while being able to verify that the
@@ -98,7 +98,7 @@ func (smpc *smpcer) Disconnect(networkID NetworkID) {
 }
 
 // Join implements the Smpcer interface.
-func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) error {
+func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback, useDelay bool) error {
 	smpc.selfJoinsMu.Lock()
 	smpc.selfJoins[join.ID] = join
 	smpc.selfJoinsMu.Unlock()
@@ -120,7 +120,11 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback) erro
 			Join:      join,
 		},
 	}
-	smpc.network.Send(networkID, message)
+	if useDelay {
+		smpc.network.SendWithDelay(networkID, message)
+	} else {
+		smpc.network.Send(networkID, message)
+	}
 
 	return nil
 }

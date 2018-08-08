@@ -55,6 +55,11 @@ type Network interface {
 	// Send a message to all addresses in a connected network.
 	Send(networkID NetworkID, message Message)
 
+	// Send a message to all addresses in a connected network with a delay
+	// between each message. The delay is linearly dependent on the position
+	// of the receiver.
+	SendWithDelay(networkID NetworkID, message Message)
+
 	// Send a message to a specific address on a specific network.
 	SendTo(networkID NetworkID, to identity.Address, message Message)
 }
@@ -163,6 +168,36 @@ func (network *network) Send(networkID NetworkID, message Message) {
 	}
 
 	go dispatch.CoForAll(senders, func(addr identity.Address) {
+		sender := senders[addr]
+		if err := sender.Send(message); err != nil {
+			// These logs are disabled to prevent verbose output
+			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+		}
+	})
+}
+
+func (network *network) SendWithDelay(networkID NetworkID, message Message) {
+	network.networkMu.RLock()
+	defer network.networkMu.RUnlock()
+
+	positions, ok := network.networkPos[networkID]
+	if !ok {
+		log.Printf("[error] cannot send message to displaced network %v", networkID)
+		return
+	}
+
+	senders, ok := network.networkSenders[networkID]
+	if !ok {
+		log.Printf("[error] cannot send message to unknown network %v", networkID)
+		return
+	}
+
+	go dispatch.CoForAll(senders, func(addr identity.Address) {
+
+		// Delay this goroutine based on the position of the address
+		pos := positions[addr]
+		time.Sleep(4 * time.Second * time.Duration(pos))
+
 		sender := senders[addr]
 		if err := sender.Send(message); err != nil {
 			// These logs are disabled to prevent verbose output
