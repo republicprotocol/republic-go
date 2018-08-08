@@ -31,7 +31,7 @@ var _ = Describe("Oracle", func() {
 	BeforeEach(func() {
 		var err error
 
-		db, err := leveldb.NewStore("./tmp/oracle.1.out", 10*time.Hour)
+		db, err := leveldb.NewStore("./tmp/oracle.1.out", 10*time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		multiAddrStorer = db.SwarmMultiAddressStore()
 		client, ecdsaKey, err = newOracleClient(multiAddrStorer)

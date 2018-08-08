@@ -169,7 +169,7 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 		// Create leveldb store and store own multiaddress.
-		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 72*time.Hour)
+		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 24*time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		stores[i] = db.SwarmMultiAddressStore()
 		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))

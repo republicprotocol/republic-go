@@ -141,7 +141,7 @@ func NewMockSwarmClient(MockServerHub *MockServerHub, clientType ClientType, ver
 	multiAddr.Signature = signature
 
 	// Create leveldb store and store own multiAddress.
-	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", multiAddr.Address()), 72*time.Hour)
+	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", multiAddr.Address()), 24*time.Hour, time.Hour)
 	if err != nil {
 		return MockSwarmClient{}, nil, err
 	}
