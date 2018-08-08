@@ -84,6 +84,7 @@ func main() {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
 	defer store.Release()
+	store.Prune()
 
 	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
