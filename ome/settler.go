@@ -53,11 +53,25 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			com.Buy.Volume.Co, com.Buy.Volume.Exp,
 			com.Buy.MinimumVolume.Co, com.Buy.MinimumVolume.Exp,
 			com.Buy.Nonce,
+
 			com.Sell.Tokens,
 			com.Sell.Price.Co, com.Sell.Price.Exp,
 			com.Sell.Volume.Co, com.Sell.Volume.Exp,
 			com.Sell.MinimumVolume.Co, com.Sell.MinimumVolume.Exp,
 			com.Sell.Nonce,
+		},
+		Blindings: shamir.Blindings{
+			com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding,
+
+			com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding,
 		},
 	}
 	copy(join.ID[:], com.ID[:])
