@@ -101,7 +101,7 @@ var _ = Describe("Smpcer", func() {
 				callback := generateCallback(&called, ord)
 
 				dispatch.CoForAll(nodes, func(i int) {
-					err := nodes[i].Smpcer.Join(networkID, joins[i], callback)
+					err := nodes[i].Smpcer.Join(networkID, joins[i], callback, false)
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 				for atomic.LoadInt64(&called) < int64(numDarknodes) {
