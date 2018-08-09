@@ -7,10 +7,9 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/republicprotocol/republic-go/shamir"
-
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/swarm"
 )
 
@@ -51,7 +50,7 @@ type smpcer struct {
 	selfJoins   map[JoinID]Join
 
 	commitmentsMu *sync.RWMutex
-	commitments   map[NetworkID](map[JoinID]JoinCommitments)
+	commitments   map[NetworkID]map[JoinID]JoinCommitments
 }
 
 // NewSmpcer returns an Smpcer node that is not connected to a network.
@@ -64,7 +63,7 @@ func NewSmpcer(conn ConnectorListener, swarmer swarm.Swarmer) Smpcer {
 		selfJoins:   map[JoinID]Join{},
 
 		commitmentsMu: new(sync.RWMutex),
-		commitments:   map[NetworkID](map[JoinID]JoinCommitments){},
+		commitments:   map[NetworkID]map[JoinID]JoinCommitments{},
 	}
 	smpc.network = NewNetwork(conn, smpc, swarmer)
 	return smpc
@@ -206,7 +205,7 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 	// Always require that each share has a blinding
 	if len(join.Shares) != len(join.Blindings) {
-		logger.Debug(fmt.Sprintf("share and blindings have different length, Blindings= %v, shares= %v", len(join.Shares), len(join.Blindings)))
+		logger.Debug(fmt.Sprintf("share and blindings have different length, Blindings= %v, shares= %v", len(join.Blindings), len(join.Shares)))
 		return false
 	}
 
