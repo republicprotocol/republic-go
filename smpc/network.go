@@ -196,7 +196,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 
 		// Delay this goroutine based on the position of the address
 		pos := positions[addr] + message.Rotation(uint64(len(positions)))%uint64(len(positions))
-		time.Sleep(4 * time.Second * time.Duration(pos))
+		time.Sleep(10 * time.Second * time.Duration(pos))
 
 		sender := senders[addr]
 		if err := sender.Send(message); err != nil {
