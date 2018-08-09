@@ -43,7 +43,6 @@ func main() {
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
 	keystoreParam := flag.String("keystore", path.Join(os.Getenv("HOME"), ".darknode/keystore.json"), "JSON keystore configuration file")
-	networkParam := flag.String("network", path.Join(os.Getenv("HOME"), ".darknode/network.json"), "JSON network configuration file")
 	dataParam := flag.String("data", path.Join(os.Getenv("HOME"), ".darknode/data"), "Data directory")
 	flag.Parse()
 
@@ -54,11 +53,6 @@ func main() {
 	}
 	// Load keystore configuration file
 	keystore, err := crypto.NewKeystoreFromJSONFile(*keystoreParam)
-	if err != nil {
-		log.Fatalf("cannot load config: %v", err)
-	}
-	// Load network config file
-	ethConfig, err := contract.NewConfigFromJSONFile(*networkParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -77,7 +71,7 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Connect to Ethereum
-	conn, err := contract.Connect(ethConfig)
+	conn, err := contract.Connect(config.Ethereum)
 	if err != nil {
 		log.Fatalf("cannot connect to ethereum: %v", err)
 	}
@@ -145,7 +139,7 @@ func main() {
 	streamerService.Register(server)
 
 	var ethNetwork string
-	if ethConfig.Network == "mainnet" {
+	if config.Ethereum.Network == "mainnet" {
 		ethNetwork = "mainnet"
 	} else {
 		ethNetwork = "kovan"
