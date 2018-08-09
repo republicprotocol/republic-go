@@ -61,13 +61,26 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			com.Buy.Volume.Co, com.Buy.Volume.Exp,
 			com.Buy.MinimumVolume.Co, com.Buy.MinimumVolume.Exp,
 			com.Buy.Nonce,
+
 			com.Sell.Tokens,
 			com.Sell.Price.Co, com.Sell.Price.Exp,
 			com.Sell.Volume.Co, com.Sell.Volume.Exp,
 			com.Sell.MinimumVolume.Co, com.Sell.MinimumVolume.Exp,
 			com.Sell.Nonce,
 		},
-		Blindings: shamir.Blindings{blinding},
+		Blindings: shamir.Blindings{
+			com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding, com.Buy.Blinding,
+			com.Buy.Blinding,
+
+			com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding, com.Sell.Blinding,
+			com.Sell.Blinding,
+		},
 	}
 	copy(join.ID[:], com.ID[:])
 	join.ID[32] = byte(ResolveStageSettlement)
@@ -81,7 +94,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 		sell := order.NewOrder(com.Sell.OrderType, com.Sell.OrderParity, com.Sell.OrderSettlement, com.Sell.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
 
 		settler.settleOrderMatch(com, buy, sell)
-	})
+	}, true /* delay message sending to ensure the round-robin */)
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
 	}

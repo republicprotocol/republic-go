@@ -79,11 +79,12 @@ func main() {
 	}
 
 	// New database for persistent storage
-	store, err := leveldb.NewStore(*dataParam, 72*time.Hour)
+	store, err := leveldb.NewStore(*dataParam, 25*time.Hour, time.Hour)
 	if err != nil {
 		log.Fatalf("cannot open leveldb: %v", err)
 	}
 	defer store.Release()
+	store.Prune()
 
 	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 

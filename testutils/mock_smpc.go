@@ -53,7 +53,7 @@ func (smpc *Smpc) Disconnect(networkID smpc.NetworkID) {
 }
 
 // Join implements smpc.Smpcer.
-func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.Callback) error {
+func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.Callback, useDelay bool) error {
 	values := make([]uint64, len(join.Shares))
 	for i := range values {
 		if smpc.useRandomValue {
