@@ -232,7 +232,7 @@ func buildJoin(com Computation, stage ResolveStage) (smpc.Join, smpc.JoinCommitm
 	}
 	blinding.Mod(blinding.Int, shamir.CommitP)
 
-	// Creat the join
+	// Create the join
 	join := smpc.Join{
 		Index:     smpc.JoinIndex(share.Index),
 		Shares:    shamir.Shares{share},

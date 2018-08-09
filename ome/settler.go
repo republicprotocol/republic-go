@@ -3,6 +3,7 @@ package ome
 import (
 	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -45,6 +46,13 @@ func (settler *settler) Settle(com Computation) error {
 }
 
 func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation) {
+
+	// Create the blinding to verify the computation
+	blinding := shamir.Blinding{
+		Int: big.NewInt(0).Add(com.Buy.Blinding.Int, big.NewInt(0).Sub(shamir.CommitP, com.Sell.Blinding.Int)),
+	}
+	blinding.Mod(blinding.Int, shamir.CommitP)
+
 	join := smpc.Join{
 		Index: smpc.JoinIndex(com.Buy.Tokens.Index),
 		Shares: shamir.Shares{
@@ -59,6 +67,7 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			com.Sell.MinimumVolume.Co, com.Sell.MinimumVolume.Exp,
 			com.Sell.Nonce,
 		},
+		Blindings: shamir.Blindings{blinding},
 	}
 	copy(join.ID[:], com.ID[:])
 	join.ID[32] = byte(ResolveStageSettlement)
@@ -72,7 +81,6 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 		sell := order.NewOrder(com.Sell.OrderType, com.Sell.OrderParity, com.Sell.OrderSettlement, com.Sell.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
 
 		settler.settleOrderMatch(com, buy, sell)
-
 	})
 	if err != nil {
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
