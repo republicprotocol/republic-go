@@ -94,7 +94,7 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 		return err
 	}
 	join.Shares = make(shamir.Shares, numShares)
-	for i := int64(0); i < numShares; i++ {
+	for i := 0; i < numShares; i++ {
 		shareData := [16]byte{}
 		if _, err := buf.Read(shareData[:]); err != nil {
 			return err
@@ -271,7 +271,7 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 
 	if maybeCallback != nil {
 		maybeCallback(join.ID, maybeValues[:maybeValuesLen])
-		return nil
 	}
+
 	return nil
 }

@@ -158,7 +158,7 @@ func Split(n, k int64, secret uint64) (Shares, error) {
 		base := uint64(x)
 		exp := base % Prime
 
-		// Evaluate the polyomial at x.
+		// Evaluate the polynomial at x.
 		for j := range coefficients[1:] {
 
 			// co := (coefficients * expoMod) % prime
@@ -303,7 +303,6 @@ func (b Blinding) MarshalJSON() ([]byte, error) {
 }
 
 func (b *Blinding) UnmarshalJSON(data []byte) error {
-
 	bs := []byte{}
 	if err := json.Unmarshal(data, &bs); err != nil {
 		return err

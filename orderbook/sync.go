@@ -175,7 +175,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 
 		orderDepth, err := syncer.contractBinder.Depth(orderID)
 		if err != nil {
-			log.Printf("[error] (sync) cannot load order status: %v", err)
+			log.Printf("[error] (sync) cannot load order depth: %v", err)
 			continue
 		}
 		if orderDepth > 10000 {

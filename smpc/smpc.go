@@ -3,6 +3,7 @@ package smpc
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 
@@ -198,15 +199,14 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 		err = joiner.InsertJoin(message.Join)
 	}
 	smpc.joinersMu.RUnlock()
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return err
 }
 
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 	// Always require that each share has a blinding
 	if len(join.Shares) != len(join.Blindings) {
+		logger.Debug("share and blindings have different length")
 		return false
 	}
 
@@ -257,6 +257,7 @@ func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 
 		if expected.Cmp(got.Int) != 0 {
 			// Reject the join
+			log.Printf("reject the join due to %vth share, expected=%v , got=%v", i, expected.Int64(), got.Int64())
 			return false
 		}
 	}
