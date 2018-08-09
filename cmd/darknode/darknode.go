@@ -42,11 +42,23 @@ func main() {
 
 	// Parse command-line arguments
 	configParam := flag.String("config", path.Join(os.Getenv("HOME"), ".darknode/config.json"), "JSON configuration file")
+	keystoreParam := flag.String("keystore", path.Join(os.Getenv("HOME"), ".darknode/keystore.json"), "JSON keystore configuration file")
+	networkParam := flag.String("network", path.Join(os.Getenv("HOME"), ".darknode/network.json"), "JSON network configuration file")
 	dataParam := flag.String("data", path.Join(os.Getenv("HOME"), ".darknode/data"), "Data directory")
 	flag.Parse()
 
 	// Load configuration file
 	config, err := config.NewConfigFromJSONFile(*configParam)
+	if err != nil {
+		log.Fatalf("cannot load config: %v", err)
+	}
+	// Load keystore configuration file
+	keystore, err := crypto.NewKeystoreFromJSONFile(*keystoreParam)
+	if err != nil {
+		log.Fatalf("cannot load config: %v", err)
+	}
+	// Load network config file
+	ethConfig, err := contract.NewConfigFromJSONFile(*networkParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
@@ -65,12 +77,12 @@ func main() {
 	log.Printf("address %v", multiAddr)
 
 	// Connect to Ethereum
-	conn, err := contract.Connect(config.Ethereum)
+	conn, err := contract.Connect(ethConfig)
 	if err != nil {
 		log.Fatalf("cannot connect to ethereum: %v", err)
 	}
 
-	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
+	auth := bind.NewKeyedTransactor(keystore.EcdsaKey.PrivateKey)
 
 	// Get ethereum bindings
 	contractBinder, err := contract.NewBinder(auth, conn)
@@ -100,7 +112,7 @@ func main() {
 	multiAddr.Nonce = multi.Nonce + 1
 
 	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+	crypter := registry.NewCrypter(keystore, &contractBinder, 256, time.Minute)
 	multiAddrSignature, err := crypter.Sign(multiAddr.Hash())
 	if err != nil {
 		log.Fatalf("cannot sign own multiaddress: %v", err)
@@ -120,11 +132,11 @@ func main() {
 	swarmService.Register(server)
 
 	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
-	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
+	oracler := oracle.NewOracler(oracleClient, &keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
 	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
 	oracleService.Register(server)
 
-	orderbook := orderbook.NewOrderbook(config.Address, config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
+	orderbook := orderbook.NewOrderbook(config.Address, keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
 	orderbookService.Register(server)
 
@@ -133,7 +145,7 @@ func main() {
 	streamerService.Register(server)
 
 	var ethNetwork string
-	if config.Ethereum.Network == "mainnet" {
+	if ethConfig.Network == "mainnet" {
 		ethNetwork = "mainnet"
 	} else {
 		ethNetwork = "kovan"
@@ -150,7 +162,7 @@ func main() {
 	statusProvider.WriteInfuraURL(conn.Config.URI)
 	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
-	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
+	pk, err := crypto.BytesFromRsaPublicKey(&keystore.RsaKey.PublicKey)
 	if err != nil {
 		log.Fatalf("could not determine public key: %v", err)
 	}
