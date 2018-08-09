@@ -8,24 +8,23 @@ import (
 
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 )
 
 func main() {
 	network := flag.String("network", "nightly", "Republic Protocol network")
+	address := flag.String("address", "", "address")
 	oracleAddress := flag.String("oracleAddress", "", "Oracle address")
 
 	flag.Parse()
 
-	if *oracleAddress == "" {
+	if *address == "" {
 		log.Fatalf("oracle address not specified")
 	}
 
-	keystore, err := crypto.RandomKeystore()
-	if err != nil {
-		log.Fatalf("cannot create keystore: %v", err)
+	if *oracleAddress == "" {
+		log.Fatalf("oracle address not specified")
 	}
 
 	var ethereumConfig contract.Config
@@ -51,10 +50,9 @@ func main() {
 	}
 
 	conf := config.Config{
-		Keystore:                keystore,
 		Host:                    "0.0.0.0",
 		Port:                    "18514",
-		Address:                 identity.Address(keystore.Address()),
+		Address:                 identity.Address(*address),
 		OracleAddress:           identity.Address(*oracleAddress),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
 		Logs: logger.Options{
