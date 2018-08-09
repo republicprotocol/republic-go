@@ -64,6 +64,8 @@ var _ = Describe("Orderbook", func() {
 
 			go dispatch.CoBegin(
 				func() {
+					defer GinkgoRecover()
+
 					for err := range errs {
 						Expect(err).ShouldNot(HaveOccurred())
 					}
@@ -93,15 +95,15 @@ var _ = Describe("Orderbook", func() {
 			defer cancelCtx()
 
 			// Open all encrypted order fragments
-			dispatch.CoForAll(encryptedOrderFragments, func(i int) {
-				defer GinkgoRecover()
-
+			for i := 0; i < len(encryptedOrderFragments); i++ {
 				err = orderbook.OpenOrder(ctx, encryptedOrderFragments[i])
 				Expect(err).ShouldNot(HaveOccurred())
-			})
+			}
 
 			time.Sleep(time.Second)
+			countMu.Lock()
 			Expect(countNotifications).Should(Equal(numberOfOrders))
+			countMu.Unlock()
 		})
 
 		It("should be able to sync with the ledger by the syncer", func() {
