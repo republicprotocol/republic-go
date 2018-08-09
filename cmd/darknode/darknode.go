@@ -54,7 +54,7 @@ func main() {
 	// Load keystore configuration file
 	keystore, err := crypto.NewKeystoreFromJSONFile(*keystoreParam)
 	if err != nil {
-		log.Fatalf("cannot load config: %v", err)
+		log.Fatalf("cannot load keystore config file: %v", err)
 	}
 
 	// Get IP-address
