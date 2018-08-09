@@ -145,7 +145,7 @@ func (smpc *smpcer) Receive(from identity.Address, message Message) {
 		}
 	case MessageTypeJoinResponse:
 		if err := smpc.handleMessageJoinResponse(message.MessageJoinResponse); err != nil {
-			logger.Network(logger.LevelError, fmt.Sprintf("error handling join message from smpc node %v: %v", from, err))
+			logger.Network(logger.LevelError, fmt.Sprintf("error handling joinResponse message from smpc node %v: %v", from, err))
 		}
 	default:
 		logger.Network(logger.LevelError, fmt.Sprintf("error receiving message from smpc node %v: %v", from, ErrUnexpectedMessageType))
@@ -206,7 +206,7 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 	// Always require that each share has a blinding
 	if len(join.Shares) != len(join.Blindings) {
-		logger.Debug("share and blindings have different length")
+		logger.Debug(fmt.Sprintf("share and blindings have different length, Blindings= %v, shares= %v", len(join.Shares), len(join.Blindings)))
 		return false
 	}
 
