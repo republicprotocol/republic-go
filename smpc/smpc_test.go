@@ -35,7 +35,7 @@ var _ = Describe("Smpcer", func() {
 	var stores []swarm.MultiAddressStorer
 	var addresses []identity.Address
 
-	XContext("when connecting and disconnecting", func() {
+	Context("when connecting and disconnecting", func() {
 		BeforeEach(func() {
 			var err error
 
@@ -53,7 +53,6 @@ var _ = Describe("Smpcer", func() {
 					Expect(nodes[i].Start()).ShouldNot(HaveOccurred())
 				}(i)
 			}
-			time.Sleep(time.Second)
 
 			By("bootstrapping")
 			dispatch.CoForAll(nodes, func(i int) {
@@ -67,7 +66,6 @@ var _ = Describe("Smpcer", func() {
 					log.Println(err)
 				}
 			})
-			time.Sleep(time.Second)
 		})
 
 		AfterEach(func() {
@@ -75,7 +73,6 @@ var _ = Describe("Smpcer", func() {
 			dispatch.CoForAll(nodes, func(i int) {
 				nodes[i].Stop()
 			})
-			time.Sleep(time.Second)
 		})
 
 		It("should be able to connect and disconnect to the smpcer", func() {
