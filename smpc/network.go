@@ -195,13 +195,15 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 	go dispatch.CoForAll(senders, func(addr identity.Address) {
 
 		// Delay this goroutine based on the position of the address
-		pos := positions[addr] + message.Rotation(uint64(len(positions)))%uint64(len(positions))
+		pos := (positions[addr] + message.Rotation(uint64(len(positions))))%uint64(len(positions))
 		time.Sleep(12 * time.Second * time.Duration(pos))
+
+		log.Printf("[info] sending message to position = %v", pos)
 
 		sender := senders[addr]
 		if err := sender.Send(message); err != nil {
 			// These logs are disabled to prevent verbose output
-			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 	})
 }
