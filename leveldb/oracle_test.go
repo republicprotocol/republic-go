@@ -22,7 +22,7 @@ var _ = Describe("MidpointPrice storage", func() {
 
 		It("should be able to get the right data we store", func() {
 			storer := NewMidpointPriceStorer()
-			emptyPrice, err := storer.MidpointPrice()
+			emptyPrice, err := storer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(emptyPrice.Equals(oracle.MidpointPrice{})).Should(BeTrue())
 
@@ -30,7 +30,7 @@ var _ = Describe("MidpointPrice storage", func() {
 			err = storer.PutMidpointPrice(price)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			storedPrice, err := storer.MidpointPrice()
+			storedPrice, err := storer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(price.Equals(storedPrice)).Should(BeTrue())
 		})

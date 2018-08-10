@@ -85,7 +85,7 @@ var _ = Describe("Oracle", func() {
 
 				receivedTester := 0
 				for i := range testers {
-					storedPrice, err := testers[i].MidPointPriceStore.MidpointPrice()
+					storedPrice, err := testers[i].MidPointPriceStore.MidpointPrices()
 					Expect(err).ShouldNot(HaveOccurred())
 					if storedPrice.Equals(price) {
 						receivedTester++
