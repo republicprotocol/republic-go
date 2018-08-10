@@ -274,9 +274,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		if waitErr != nil {
 			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 		}
+		return nil
 	}
 
-	return nil
+	return errors.New("match has been submitted by someone else")
 }
 
 // Register a new dark node with the dark node registrar

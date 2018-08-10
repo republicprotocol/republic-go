@@ -185,46 +185,34 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		log.Printf("[error] cannot send message to displaced network %v", networkID)
 		return
 	}
-
 	senders, ok := network.networkSenders[networkID]
 	if !ok {
 		log.Printf("[error] cannot send message to unknown network %v", networkID)
 		return
 	}
 
-	go func() {
-		i := uint64(0)
-		for _, sender := range senders {
-			for addr, position := range positions {
-				if position == i {
-					go func(sender Sender, addr identity.Address) {
-						if err := sender.Send(message); err != nil {
-							// These logs are disabled to prevent verbose output
-							log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
-						}
-					}(sender, addr)
-					i++
-					break
-				}
-			}
-			time.Sleep(12 * time.Second)
-		}
-	}()
+	// Map the index to the actual address
+	sendPositions := map[uint64]identity.Address{}
+	for addr, position := range positions {
+		sendPositions[(position+message.Rotation(uint64(len(positions))))%uint64(len(positions))] = addr
+	}
 
-	// go dispatch.CoForAll(senders, func(addr identity.Address) {
-	//
-	// 	// Delay this goroutine based on the position of the address
-	// 	pos := (positions[addr] + message.Rotation(uint64(len(positions)))) % uint64(len(positions))
-	// 	time.Sleep(30 * time.Second * time.Duration(pos))
-	//
-	// 	log.Printf("[info] sending message to position = %v", pos)
-	//
-	// 	sender := senders[addr]
-	// 	if err := sender.Send(message); err != nil {
-	// 		// These logs are disabled to prevent verbose output
-	// 		log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
-	// 	}
-	// })
+	for i := uint64(0); i < uint64(len(positions)); i++ {
+		done := make(chan struct{})
+		go func(done chan struct{}, i uint64) {
+			defer close(done)
+			sender := senders[sendPositions[i]]
+			if err := sender.Send(message); err != nil {
+				// These logs are disabled to prevent verbose output
+				log.Printf("[error] cannot send message to %v on network %v: %v", sendPositions[i], networkID, err)
+			}
+		}(done, i)
+		timeout := time.After(6 * time.Second)
+		select {
+		case <-timeout:
+		case <-done:
+		}
+	}
 }
 
 // SendTo implements the Network interface.
