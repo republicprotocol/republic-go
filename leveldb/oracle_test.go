@@ -9,6 +9,7 @@ import (
 	. "github.com/republicprotocol/republic-go/leveldb"
 
 	"github.com/republicprotocol/republic-go/oracle"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -26,13 +27,20 @@ var _ = Describe("MidpointPrice storage", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(emptyPrice.Equals(oracle.MidpointPrice{})).Should(BeTrue())
 
-			price := testutils.RandMidpointPrice()
-			err = storer.PutMidpointPrice(price)
+			prices := testutils.RandMidpointPrice()
+			err = storer.PutMidpointPrice(prices)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			storedPrice, err := storer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(price.Equals(storedPrice)).Should(BeTrue())
+			Expect(prices.Equals(storedPrice)).Should(BeTrue())
+
+			for token, price := range prices.Prices {
+				storedPrice, err := storer.MidpointPrice(order.Tokens(token))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(storedPrice).Should(Equal(price))
+
+			}
 		})
 	})
 })
