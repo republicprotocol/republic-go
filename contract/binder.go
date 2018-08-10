@@ -3,7 +3,6 @@ package contract
 import (
 	"context"
 	"crypto/rsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -244,7 +243,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 	// Check if it's already submitted
 	if _, _, highVol, lowVol, _, _, _ := binder.renExSettlement.GetMatchDetails(binder.callOpts, buy.ID); highVol.Cmp(big.NewInt(0)) != 0 || lowVol.Cmp(big.NewInt(0)) != 0 {
-		log.Printf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID)
+		logger.Info(fmt.Sprintf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID))
 		return nil
 	}
 
@@ -261,11 +260,9 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if waitErr != nil {
 		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 	}
-	data, err := json.Marshal(receipt)
-	if err != nil {
-		return fmt.Errorf("cannot marshal transaction receipt, %v", err)
+	if receipt.Status == 0 {
+		return fmt.Errorf("transaction got reverted")
 	}
-	log.Println(string(data))
 
 	return nil
 }
