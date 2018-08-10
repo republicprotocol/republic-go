@@ -39,8 +39,11 @@ var _ = Describe("MidpointPrice storage", func() {
 				storedPrice, err := storer.MidpointPrice(order.Tokens(token))
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(storedPrice).Should(Equal(price))
-
 			}
+
+			// Error when mid-point price details for invalid token is requested.
+			_, err = storer.MidpointPrice(order.Tokens(len(prices.Prices) + 1))
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 })
