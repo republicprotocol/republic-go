@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
 )
 
 // Conn contains the client and the contracts deployed to it
@@ -139,7 +140,11 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
 	default:
-		return bind.WaitMined(ctx, conn.Client, tx)
+		receipt, err := bind.WaitMined(ctx, conn.Client, tx)
+		if receipt.Status == 0 {
+			return receipt, errors.New("transaction reverted")
+		}
+		return receipt, err
 	}
 }
 

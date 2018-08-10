@@ -243,8 +243,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 	// Check if it's already submitted
 	if _, _, highVol, lowVol, _, _, _ := binder.renExSettlement.GetMatchDetails(binder.callOpts, buy.ID); highVol.Cmp(big.NewInt(0)) != 0 || lowVol.Cmp(big.NewInt(0)) != 0 {
-		logger.Info(fmt.Sprintf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID))
-		return nil
+		return fmt.Errorf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID)
 	}
 
 	// Submit match
@@ -256,12 +255,9 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	}
 
 	// Wait for last transaction
-	receipt, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+	_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
 	if waitErr != nil {
 		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
-	}
-	if receipt.Status == 0 {
-		return fmt.Errorf("transaction got reverted")
 	}
 
 	return nil
