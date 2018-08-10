@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"reflect"
+	"sort"
 
 	"github.com/republicprotocol/republic-go/crypto"
 )
@@ -31,12 +32,20 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 // Hash returns the Keccak256 hash of the MidpointPrice.
 func (midpointPrice MidpointPrice) Hash() []byte {
 	data := make([]byte, 0)
-	for token, price := range midpointPrice.Prices {
+
+	// Sort mid-point prices based on token values.
+	var tokens []int
+	for token := range midpointPrice.Prices {
+		tokens = append(tokens, int(token))
+	}
+	sort.Ints(tokens)
+
+	for _, token := range tokens {
 		tokensBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(tokensBytes[:], token)
+		binary.LittleEndian.PutUint64(tokensBytes[:], uint64(token))
 		data = append(data, tokensBytes[:]...)
 		priceBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(priceBytes[:], price)
+		binary.LittleEndian.PutUint64(priceBytes[:], midpointPrice.Prices[uint64(token)])
 		data = append(data, priceBytes[:]...)
 	}
 
