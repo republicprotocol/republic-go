@@ -243,7 +243,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	}
 
 	// Check if it's already submitted
-	if _, _, highVol, lowVol, _, _, _ := binder.GetMatchDetails(buy.ID); highVol.Cmp(big.NewInt(0)) == 0 || lowVol.Cmp(big.NewInt(0)) == 0 {
+	if _, _, highVol, lowVol, _, _, _ := binder.GetMatchDetails(buy.ID); highVol.Cmp(big.NewInt(0)) != 0 || lowVol.Cmp(big.NewInt(0)) != 0 {
 		return nil
 	}
 
