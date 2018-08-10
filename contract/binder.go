@@ -244,6 +244,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 	// Check if it's already submitted
 	if _, _, highVol, lowVol, _, _, _ := binder.GetMatchDetails(buy.ID); highVol.Cmp(big.NewInt(0)) != 0 || lowVol.Cmp(big.NewInt(0)) != 0 {
+		log.Printf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID)
 		return nil
 	}
 
