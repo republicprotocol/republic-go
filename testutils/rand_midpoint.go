@@ -9,16 +9,14 @@ import (
 
 // RandMidpointPrice returns a random MidpointPrice.
 func RandMidpointPrice() oracle.MidpointPrice {
-	tokenPairs, prices := make([]uint64, 10), make([]uint64, 10)
-	for i := range tokenPairs {
-		tokenPairs[i] = rand.Uint64()
+	prices := make(map[uint64]uint64, 10)
+	for i := range prices {
 		prices[i] = rand.Uint64()
 	}
 
 	return oracle.MidpointPrice{
-		Signature:  []byte{},
-		TokenPairs: tokenPairs,
-		Prices:     prices,
-		Nonce:      uint64(time.Now().Unix()),
+		Signature: []byte{},
+		Prices:    prices,
+		Nonce:     uint64(time.Now().Unix()),
 	}
 }

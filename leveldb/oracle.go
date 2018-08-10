@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/republicprotocol/republic-go/oracle"
+	"github.com/republicprotocol/republic-go/order"
 )
 
 // midpointPriceStorer implements MidpointPriceStorer interface with an
@@ -30,10 +31,21 @@ func (storer *midpointPriceStorer) PutMidpointPrice(midPointPrice oracle.Midpoin
 	return nil
 }
 
-// MidpointPrice implements the MidpointPriceStorer interface.
-func (storer *midpointPriceStorer) MidpointPrice() (oracle.MidpointPrice, error) {
+// MidpointPrices implements the MidpointPriceStorer interface.
+func (storer *midpointPriceStorer) MidpointPrices() (oracle.MidpointPrice, error) {
 	storer.mu.Lock()
 	defer storer.mu.Unlock()
 
 	return storer.prices, nil
+}
+
+// MidpointPrice implements the MidpointPriceStorer interface.
+func (storer *midpointPriceStorer) MidpointPrice(token order.Tokens) (uint64, error) {
+	storer.mu.Lock()
+	defer storer.mu.Unlock()
+
+	if price, ok := storer.prices.Prices[uint64(token)]; ok {
+		return price, nil
+	}
+	return 0, oracle.ErrMidpointPriceNotFound
 }

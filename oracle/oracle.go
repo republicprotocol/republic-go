@@ -101,7 +101,7 @@ func (server *server) UpdateMidpoint(ctx context.Context, midpointPrice Midpoint
 	if err := verifier.Verify(midpointPrice.Hash(), midpointPrice.Signature); err != nil {
 		return fmt.Errorf("failed to verify midpoint price signature: %v", err)
 	}
-	oldPrice, err := server.midpointPriceStorer.MidpointPrice()
+	oldPrice, err := server.midpointPriceStorer.MidpointPrices()
 	if err != nil {
 		return err
 	}
