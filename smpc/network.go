@@ -70,9 +70,9 @@ type network struct {
 	swarmer  swarm.Swarmer
 
 	networkMu      *sync.RWMutex
-	networkPos     map[NetworkID](map[identity.Address]uint64)
-	networkSenders map[NetworkID](map[identity.Address]Sender)
-	networkCancels map[NetworkID](map[identity.Address]context.CancelFunc)
+	networkPos     map[NetworkID]map[identity.Address]uint64
+	networkSenders map[NetworkID]map[identity.Address]Sender
+	networkCancels map[NetworkID]map[identity.Address]context.CancelFunc
 }
 
 func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer) Network {
@@ -82,9 +82,9 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 		swarmer:  swarmer,
 
 		networkMu:      new(sync.RWMutex),
-		networkPos:     map[NetworkID](map[identity.Address]uint64){},
-		networkSenders: map[NetworkID](map[identity.Address]Sender){},
-		networkCancels: map[NetworkID](map[identity.Address]context.CancelFunc){},
+		networkPos:     map[NetworkID]map[identity.Address]uint64{},
+		networkSenders: map[NetworkID]map[identity.Address]Sender{},
+		networkCancels: map[NetworkID]map[identity.Address]context.CancelFunc{},
 	}
 }
 
@@ -192,20 +192,39 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		return
 	}
 
-	go dispatch.CoForAll(senders, func(addr identity.Address) {
-
-		// Delay this goroutine based on the position of the address
-		pos := (positions[addr] + message.Rotation(uint64(len(positions)))) % uint64(len(positions))
-		time.Sleep(30 * time.Second * time.Duration(pos))
-
-		log.Printf("[info] sending message to position = %v", pos)
-
-		sender := senders[addr]
-		if err := sender.Send(message); err != nil {
-			// These logs are disabled to prevent verbose output
-			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+	go func() {
+		i := uint64(0)
+		for _, sender := range senders {
+			for addr, position := range positions {
+				if position == i {
+					go func(sender Sender, addr identity.Address) {
+						if err := sender.Send(message); err != nil {
+							// These logs are disabled to prevent verbose output
+							log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+						}
+					}(sender, addr)
+					i++
+					break
+				}
+			}
+			time.Sleep(12 * time.Second)
 		}
-	})
+	}()
+
+	// go dispatch.CoForAll(senders, func(addr identity.Address) {
+	//
+	// 	// Delay this goroutine based on the position of the address
+	// 	pos := (positions[addr] + message.Rotation(uint64(len(positions)))) % uint64(len(positions))
+	// 	time.Sleep(30 * time.Second * time.Duration(pos))
+	//
+	// 	log.Printf("[info] sending message to position = %v", pos)
+	//
+	// 	sender := senders[addr]
+	// 	if err := sender.Send(message); err != nil {
+	// 		// These logs are disabled to prevent verbose output
+	// 		log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+	// 	}
+	// })
 }
 
 // SendTo implements the Network interface.
