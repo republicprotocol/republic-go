@@ -3,6 +3,7 @@ package oracle
 import (
 	"bytes"
 	"encoding/binary"
+	"reflect"
 
 	"github.com/republicprotocol/republic-go/crypto"
 )
@@ -17,19 +18,11 @@ type MidpointPrice struct {
 
 // Equals checks if two MidpointPrice objects have equivalent fields.
 func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
+	if !reflect.DeepEqual(midpointPrice.Prices, other.Prices) {
+		return false
+	}
 	if bytes.Compare(midpointPrice.Signature, other.Signature) != 0 {
 		return false
-	}
-
-	// Compare the token pairs/prices.
-	if len(midpointPrice.Prices) != len(other.Prices) {
-		return false
-	}
-	for otherToken, otherPrice := range other.Prices {
-		price, ok := midpointPrice.Prices[otherToken]
-		if !ok || price != otherPrice {
-			return false
-		}
 	}
 
 	return midpointPrice.Nonce == other.Nonce
