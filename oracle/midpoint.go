@@ -10,10 +10,9 @@ import (
 // A MidpointPrice is a signed message contains the the mid-prices of
 // token pairs.
 type MidpointPrice struct {
-	Signature  []byte
-	TokenPairs []uint64
-	Prices     []uint64
-	Nonce      uint64
+	Signature []byte
+	Prices    map[uint64]uint64
+	Nonce     uint64
 }
 
 // Equals checks if two MidpointPrice objects have equivalent fields.
@@ -23,16 +22,12 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 	}
 
 	// Compare the token pairs/prices.
-	if len(midpointPrice.TokenPairs) != len(other.TokenPairs) || len(midpointPrice.Prices) != len(other.Prices) {
+	if len(midpointPrice.Prices) != len(other.Prices) {
 		return false
 	}
-	tokenPricePairs := map[uint64]uint64{}
-	for i, token := range midpointPrice.TokenPairs {
-		tokenPricePairs[token] = midpointPrice.Prices[i]
-	}
-	for i, token := range other.TokenPairs {
-		price, ok := tokenPricePairs[token]
-		if !ok || price != other.Prices[i] {
+	for otherToken, otherPrice := range other.Prices {
+		price, ok := midpointPrice.Prices[otherToken]
+		if !ok || price != otherPrice {
 			return false
 		}
 	}
@@ -43,12 +38,12 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 // Hash returns the Keccak256 hash of the MidpointPrice.
 func (midpointPrice MidpointPrice) Hash() []byte {
 	data := make([]byte, 0)
-	for i := range midpointPrice.TokenPairs {
+	for token, price := range midpointPrice.Prices {
 		tokensBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(tokensBytes[:], midpointPrice.TokenPairs[i])
+		binary.LittleEndian.PutUint64(tokensBytes[:], token)
 		data = append(data, tokensBytes[:]...)
 		priceBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(priceBytes[:], midpointPrice.Prices[i])
+		binary.LittleEndian.PutUint64(priceBytes[:], price)
 		data = append(data, priceBytes[:]...)
 	}
 
