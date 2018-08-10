@@ -3,6 +3,7 @@ package contract
 import (
 	"context"
 	"crypto/rsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -54,7 +55,7 @@ type Binder struct {
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
-	renExSettlement  *bindings.Settlement
+	renExSettlement  *bindings.RenExSettlement
 	renExBalance     *bindings.RenExBalances
 	erc20            *bindings.ERC20
 }
@@ -88,7 +89,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
+	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
 		return Binder{}, err
@@ -217,6 +218,13 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
+func (binder *Binder) GetMatchDetails(id order.ID) ([32]byte, [32]byte, *big.Int, *big.Int, uint32, uint32, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetMatchDetails(binder.callOpts, id)
+}
+
 // Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
@@ -234,6 +242,11 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
 	}
 
+	// Check if it's already submitted
+	if _, _, highVol, lowVol, _, _, _ := binder.GetMatchDetails(buy.ID); highVol.Cmp(big.NewInt(0)) == 0 || lowVol.Cmp(big.NewInt(0)) == 0 {
+		return nil
+	}
+
 	// Submit match
 	tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 		return binder.submitMatch(buy.ID, sell.ID)
@@ -243,9 +256,15 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	}
 
 	// Wait for last transaction
-	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil {
+	receipt, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+	if waitErr != nil {
 		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 	}
+	data, err := json.Marshal(receipt)
+	if err != nil {
+		return fmt.Errorf("cannot marshal transaction receipt, %v", err)
+	}
+	log.Println(string(data))
 
 	return nil
 }
