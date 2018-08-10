@@ -229,35 +229,51 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	// Submit orders
-	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitOrder(buy)
-	}); sendTxErr != nil {
-		logger.Warn(fmt.Sprintf("cannot settle buy = %v: %v", buy.ID, sendTxErr))
+	// Submit buy order
+	buyStatus, err := binder.renExSettlement.OrderStatus(binder.callOpts, buy.ID)
+	if err != nil {
+		return err
 	}
-	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitOrder(sell)
-	}); sendTxErr != nil {
-		logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
-	}
-
-	// Check if it's already submitted
-	if _, _, highVol, lowVol, _, _, _ := binder.renExSettlement.GetMatchDetails(binder.callOpts, buy.ID); highVol.Cmp(big.NewInt(0)) != 0 || lowVol.Cmp(big.NewInt(0)) != 0 {
-		return fmt.Errorf("someone already settle the match, buy = %v, sell = %v", buy.ID, sell.ID)
+	if buyStatus == 0 {
+		if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(buy)
+		}); sendTxErr != nil {
+			logger.Warn(fmt.Sprintf("cannot settle buy = %v: %v", buy.ID, sendTxErr))
+		}
 	}
 
-	// Submit match
-	tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitMatch(buy.ID, sell.ID)
-	})
-	if sendTxErr != nil {
-		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+	// Submit sell order
+	sellStatus, err := binder.renExSettlement.OrderStatus(binder.callOpts, sell.ID)
+	if err != nil {
+		return err
+	}
+	if sellStatus == 0 {
+		if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(sell)
+		}); sendTxErr != nil {
+			logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
+		}
 	}
 
-	// Wait for last transaction
-	_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
-	if waitErr != nil {
-		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+	// Check the order status again and submit match if needed
+	buyStatus, err = binder.renExSettlement.OrderStatus(binder.callOpts, buy.ID)
+	if err != nil {
+		return err
+	}
+	if buyStatus == 1 {
+		logger.Info(fmt.Sprintf("sending match at %v", time.Now()))
+		tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitMatch(buy.ID, sell.ID)
+		})
+		if sendTxErr != nil {
+			return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+		}
+
+		// Wait for last transaction
+		_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+		if waitErr != nil {
+			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+		}
 	}
 
 	return nil
