@@ -218,7 +218,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 				log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 			}
 		}(addr)
-		time.Sleep(12 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
 
