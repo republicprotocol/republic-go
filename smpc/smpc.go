@@ -250,6 +250,9 @@ func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 			// check for incorrectness
 			continue
 		}
+		if rhs.Int == nil {
+			continue
+		}
 		rhs.Int.ModInverse(rhs.Int, shamir.CommitP)
 
 		// Check the expected commitment against the commitment we actually
