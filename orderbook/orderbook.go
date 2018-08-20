@@ -93,6 +93,9 @@ func NewOrderbook(addr identity.Address, rsaKey crypto.RsaKey, pointerStore Poin
 
 // OpenOrder implements the Server interface.
 func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragment order.EncryptedFragment) error {
+	if encryptedOrderFragment.IsEmpty() {
+		return ErrOrderFragmentNotFound
+	}
 	orderFragment, err := encryptedOrderFragment.Decrypt(orderbook.rsaKey.PrivateKey)
 	if err != nil {
 		return err
