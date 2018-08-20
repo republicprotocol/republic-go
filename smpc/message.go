@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io/ioutil"
+	"math/big"
 )
 
 // ErrUnexpectedMessageType is returned when a message has an unexpected
@@ -94,12 +95,34 @@ func (message *Message) UnmarshalBinary(data []byte) error {
 	}
 }
 
+// Rotation of the Message will shift network positions when sending the
+// Message. This changes the positioning / priority for which parties receive
+// the Message first.
+func (message *Message) Rotation(n uint64) uint64 {
+	switch message.MessageType {
+	case MessageTypeJoin:
+		if message.MessageJoin != nil {
+			joinID := big.NewInt(0).SetBytes(message.MessageJoin.Join.ID[:8])
+			return joinID.Mod(joinID, big.NewInt(0).SetUint64(n)).Uint64()
+		}
+	case MessageTypeJoinResponse:
+		if message.MessageJoinResponse != nil {
+			joinID := big.NewInt(0).SetBytes(message.MessageJoinResponse.Join.ID[:8])
+			return joinID.Mod(joinID, big.NewInt(0).SetUint64(n)).Uint64()
+		}
+	}
+
+	// By default no rotation is used
+	return 0
+}
+
 // IsMessage implements the stream.Message interface.
 func (message *Message) IsMessage() {}
 
 // A MessageJoin is used to broadcast a Join between nodes in the same network.
 type MessageJoin struct {
 	NetworkID
+
 	Join Join
 }
 

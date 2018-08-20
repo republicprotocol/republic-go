@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -24,6 +25,10 @@ var ErrJoinLengthUnequal = errors.New("join length unequal")
 // compared to the MaxJoinLength.
 var ErrJoinLengthExceedsMax = errors.New("join length exceeds max")
 
+// ErrUnverifiedJoin is returned when the computations in a Join cannot be
+// verified using JoinCommitments.
+var ErrUnverifiedJoin = errors.New("unverified join")
+
 // A JoinID is used to identify an SMPC join over a network of SMPC nodes. For
 // a value to be joined, all SMPC nodes must use the same JoinID for that
 // value.
@@ -33,9 +38,10 @@ type JoinID [33]byte
 // Join are all associated with different shared values. All shamir.Shares must
 // have the same index value.
 type Join struct {
-	ID     JoinID
-	Index  JoinIndex
-	Shares shamir.Shares
+	ID        JoinID
+	Index     JoinIndex
+	Shares    shamir.Shares
+	Blindings shamir.Blindings
 }
 
 // MarshalBinary implements the encoding.Marshaler interface.
@@ -56,6 +62,18 @@ func (join *Join) MarshalBinary() ([]byte, error) {
 			return nil, err
 		}
 		if err := binary.Write(buf, binary.BigEndian, shareData); err != nil {
+			return nil, err
+		}
+	}
+	if err := binary.Write(buf, binary.BigEndian, int64(len(join.Blindings))); err != nil {
+		return nil, err
+	}
+	for _, blinding := range join.Blindings {
+		blindingData := blinding.Bytes()
+		if err := binary.Write(buf, binary.BigEndian, int64(len(blindingData))); err != nil {
+			return nil, err
+		}
+		if err := binary.Write(buf, binary.BigEndian, blindingData); err != nil {
 			return nil, err
 		}
 	}
@@ -85,7 +103,28 @@ func (join *Join) UnmarshalBinary(data []byte) error {
 			return err
 		}
 	}
+	numBlindings := int64(0)
+	if err := binary.Read(buf, binary.BigEndian, &numBlindings); err != nil {
+		return err
+	}
+	join.Blindings = make(shamir.Blindings, numBlindings)
+	for i := int64(0); i < numBlindings; i++ {
+		numBlindingBytes := int64(0)
+		if err := binary.Read(buf, binary.BigEndian, &numBlindingBytes); err != nil {
+			return err
+		}
+		blindingData := make([]byte, numBlindingBytes)
+		if _, err := buf.Read(blindingData[:]); err != nil {
+			return err
+		}
+		join.Blindings[i] = shamir.Blinding{Int: big.NewInt(0).SetBytes(blindingData)}
+	}
 	return nil
+}
+
+type JoinCommitments struct {
+	LHS map[uint64]shamir.Commitment
+	RHS map[uint64]shamir.Commitment
 }
 
 // JoinIndex is the index of all shamir.Shares in a Join.
@@ -232,7 +271,7 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 
 	if maybeCallback != nil {
 		maybeCallback(join.ID, maybeValues[:maybeValuesLen])
-		return nil
 	}
+
 	return nil
 }

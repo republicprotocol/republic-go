@@ -75,17 +75,7 @@ var _ = Describe("Smpcer", func() {
 			})
 		})
 
-		It("should be able to connect and disconnect to the smpcer", func() {
-			networkID := NetworkID{0}
-			for i := range nodes {
-				nodes[i].Smpcer.Connect(networkID, addresses)
-			}
-			for i := range nodes {
-				nodes[i].Smpcer.Disconnect(networkID)
-			}
-		})
-
-		Context("when connecting before joining", func() {
+		XContext("when connecting before joining", func() {
 			It("should be able to join values", func() {
 				networkID := NetworkID{0}
 				for i := range nodes {
@@ -98,7 +88,7 @@ var _ = Describe("Smpcer", func() {
 				callback := generateCallback(&called, ord)
 
 				dispatch.CoForAll(nodes, func(i int) {
-					err := nodes[i].Smpcer.Join(networkID, joins[i], callback)
+					err := nodes[i].Smpcer.Join(networkID, joins[i], callback, false)
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 				for atomic.LoadInt64(&called) < int64(numDarknodes) {
@@ -166,7 +156,7 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 			return nil, nil, nil, err
 		}
 		// Create leveldb store and store own multiaddress.
-		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 72*time.Hour)
+		db, err := leveldb.NewStore(fmt.Sprintf("./tmp/node.%v.out", i+1), 24*time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		stores[i] = db.SwarmMultiAddressStore()
 		listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", 3000+i))

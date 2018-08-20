@@ -46,7 +46,7 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			// syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
@@ -113,7 +113,7 @@ var _ = Describe("Orderbook", func() {
 
 			// Create mock syncer and storer
 			// syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")

@@ -54,7 +54,7 @@ type Binder struct {
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
-	renExSettlement  *bindings.Settlement
+	renExSettlement  *bindings.RenExSettlement
 	renExBalance     *bindings.RenExBalances
 	erc20            *bindings.ERC20
 }
@@ -88,7 +88,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
+	renExSettlement, err := bindings.NewRenExSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
 		return Binder{}, err
@@ -217,37 +217,67 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 	return binder.renExSettlement.SubmitMatch(binder.transactOpts, buy, sell)
 }
 
+func (binder *Binder) GetMatchDetails(id order.ID) ([32]byte, [32]byte, *big.Int, *big.Int, uint32, uint32, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.renExSettlement.GetMatchDetails(binder.callOpts, id)
+}
+
 // Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	// Submit orders
-	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitOrder(buy)
-	}); sendTxErr != nil {
-		logger.Warn(fmt.Sprintf("cannot settle buy = %v: %v", buy.ID, sendTxErr))
+	// Submit buy order
+	buyStatus, err := binder.renExSettlement.OrderStatus(binder.callOpts, buy.ID)
+	if err != nil {
+		return err
 	}
-	if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitOrder(sell)
-	}); sendTxErr != nil {
-		logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
-	}
-
-	// Submit match
-	tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-		return binder.submitMatch(buy.ID, sell.ID)
-	})
-	if sendTxErr != nil {
-		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+	if buyStatus == 0 {
+		if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(buy)
+		}); sendTxErr != nil {
+			logger.Warn(fmt.Sprintf("cannot settle buy = %v: %v", buy.ID, sendTxErr))
+		}
 	}
 
-	// Wait for last transaction
-	if _, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx); waitErr != nil {
-		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+	// Submit sell order
+	sellStatus, err := binder.renExSettlement.OrderStatus(binder.callOpts, sell.ID)
+	if err != nil {
+		return err
+	}
+	if sellStatus == 0 {
+		if _, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(sell)
+		}); sendTxErr != nil {
+			logger.Warn(fmt.Sprintf("cannot settle sell = %v: %v", sell.ID, sendTxErr))
+		}
 	}
 
-	return nil
+	// Check the order status again and submit match if needed
+	buyStatus, err = binder.renExSettlement.OrderStatus(binder.callOpts, buy.ID)
+	if err != nil {
+		return err
+	}
+	if buyStatus == 1 {
+		logger.Info(fmt.Sprintf("sending match at %v", time.Now()))
+		tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitMatch(buy.ID, sell.ID)
+		})
+		if sendTxErr != nil {
+			return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
+		}
+
+		// Wait for last transaction
+		_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+		if waitErr != nil {
+			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
+		}
+		return nil
+	}
+
+	return errors.New("match has been submitted by someone else")
 }
 
 // Register a new dark node with the dark node registrar

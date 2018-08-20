@@ -53,7 +53,7 @@ func (smpc *Smpc) Disconnect(networkID smpc.NetworkID) {
 }
 
 // Join implements smpc.Smpcer.
-func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.Callback) error {
+func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.Callback, useDelay bool) error {
 	values := make([]uint64, len(join.Shares))
 	for i := range values {
 		if smpc.useRandomValue {
@@ -68,6 +68,11 @@ func (smpc *Smpc) Join(networkID smpc.NetworkID, join smpc.Join, callback smpc.C
 	}
 	callback(join.ID, values)
 	return nil
+}
+
+// InsertCommitments implements smpc.Smpcer.
+func (smpc *Smpc) InsertCommitments(networkID smpc.NetworkID, join smpc.JoinID, joinCommitments smpc.JoinCommitments) {
+	// Do nothing
 }
 
 // Receiver is a mock implementation of the smpc.Receiver interface.

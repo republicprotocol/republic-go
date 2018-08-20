@@ -25,7 +25,7 @@ var _ = Describe("Settler", func() {
 
 	BeforeEach(func() {
 		for i := 0; i < NumberOfNodes; i++ {
-			storer, err := leveldb.NewStore(fmt.Sprintf("./data-%v.out", i), 72*time.Hour)
+			storer, err := leveldb.NewStore(fmt.Sprintf("./data-%v.out", i), 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			storers[i] = storer.SomerComputationStore()
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()

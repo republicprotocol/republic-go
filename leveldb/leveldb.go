@@ -103,7 +103,7 @@ type Store struct {
 // the given directory as the root for all LevelDB instances. A call to
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
-func NewStore(dir string, expiry time.Duration) (*Store, error) {
+func NewStore(dir string, expiry time.Duration, multiAddressStorerExpiry time.Duration) (*Store, error) {
 	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 		somerComputationTable:   NewSomerComputationTable(db),
 		somerOrderFragmentTable: NewSomerOrderFragmentTable(db, expiry),
 
-		swarmMultiAddressTable: NewSwarmMultiAddressTable(db, expiry),
+		swarmMultiAddressTable: NewSwarmMultiAddressTable(db, multiAddressStorerExpiry),
 	}, nil
 }
 

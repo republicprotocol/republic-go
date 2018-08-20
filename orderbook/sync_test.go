@@ -32,7 +32,7 @@ var _ = Describe("Syncer", func() {
 	BeforeEach(func() {
 		var err error
 		contract = testutils.NewMockContractBinder()
-		storer, err = leveldb.NewStore("./tmp/data.out", 72*time.Hour)
+		storer, err = leveldb.NewStore("./tmp/data.out", 24*time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		key, err = crypto.RandomRsaKey()

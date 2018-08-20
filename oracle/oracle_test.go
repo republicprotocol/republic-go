@@ -126,7 +126,7 @@ func newTester(α int, hub map[identity.Address]Server, oracleAddress identity.A
 	Expect(err).ShouldNot(HaveOccurred())
 
 	// Create leveldb store and store own multiAddress.
-	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", key.Address()), 72*time.Hour)
+	db, err := leveldb.NewStore(fmt.Sprintf("./tmp/swarmer-%v.out", key.Address()), 24*time.Hour, time.Hour)
 	Expect(err).ShouldNot(HaveOccurred())
 
 	if err != nil {
