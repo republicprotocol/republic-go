@@ -3,13 +3,13 @@ package orderbook_test
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"os"
 	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/identity"
 	. "github.com/republicprotocol/republic-go/orderbook"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -19,7 +19,7 @@ import (
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
-var _ = XDescribe("Syncer", func() {
+var _ = Describe("Syncer", func() {
 
 	var (
 		NumberOfOrderPairs = 40
@@ -27,16 +27,12 @@ var _ = XDescribe("Syncer", func() {
 		contract           *testutils.MockContractBinder
 		storer             *leveldb.Store
 		key                crypto.RsaKey
-		addr               identity.Address
 	)
 
 	BeforeEach(func() {
 		var err error
 		contract = testutils.NewMockContractBinder()
 		storer, err = leveldb.NewStore("./tmp/data.out", 24*time.Hour, time.Hour)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		addr, err = testutils.RandomAddress()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		key, err = crypto.RandomRsaKey()
@@ -52,6 +48,10 @@ var _ = XDescribe("Syncer", func() {
 		It("should be able generate the correct number of notifications", func() {
 			done := make(chan struct{})
 			defer close(done)
+
+			// Change to first epoch
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Expect(err).ShouldNot(HaveOccurred())
 
 			// Open matching order pairs
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
@@ -87,9 +87,6 @@ var _ = XDescribe("Syncer", func() {
 					}
 				})
 
-			// Change to first epoch
-			_, epoch, err := testutils.RandomEpoch(0)
-			Expect(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
 
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
@@ -139,6 +136,10 @@ var _ = XDescribe("Syncer", func() {
 			done := make(chan struct{})
 			defer close(done)
 
+			// Change to first epoch
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// Open matching order pairs
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
 
@@ -173,9 +174,6 @@ var _ = XDescribe("Syncer", func() {
 					}
 				})
 
-			// Change to first epoch
-			_, epoch, err := testutils.RandomEpoch(0)
-			Expect(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
 
 			// Send encrypted order fragments at depth 1 to the orderbook
@@ -215,9 +213,8 @@ var _ = XDescribe("Syncer", func() {
 			countCancels = 0
 			countMu.Unlock()
 
-			// Change to next epoch
-			_, epoch, err = testutils.RandomEpoch(1)
-			Expect(err).ShouldNot(HaveOccurred())
+			// Change epoch
+			epoch.BlockNumber = big.NewInt(1)
 			orderbook.OnChangeEpoch(epoch)
 
 			// Send encrypted order fragments at depth 0 to the orderbook

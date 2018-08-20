@@ -8,13 +8,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
-	"golang.org/x/net/context"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/oracle"
 	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("Oracle", func() {
@@ -61,16 +61,14 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
+			midpointPrice := &oracle.MidpointPrice{Prices: map[uint64]uint64{0: 0, 1: 1}, Nonce: 1}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			prices, err := midpointPriceStorer.MidpointPrice()
+			prices, err := midpointPriceStorer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.TokenPairs).Should(HaveLen(2))
-			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(2))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))
@@ -86,22 +84,20 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 1}
+			midpointPrice := &oracle.MidpointPrice{Prices: map[uint64]uint64{0: 0, 1: 1}, Nonce: 1}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			midpointPrice = &oracle.MidpointPrice{TokenPairs: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 2}
+			midpointPrice = &oracle.MidpointPrice{Prices: map[uint64]uint64{1: 2, 2: 1, 3: 5}, Nonce: 2}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			prices, err := midpointPriceStorer.MidpointPrice()
+			prices, err := midpointPriceStorer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.TokenPairs).Should(HaveLen(3))
-			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(3))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))
@@ -117,7 +113,7 @@ var _ = Describe("Oracle", func() {
 			time.Sleep(time.Millisecond)
 
 			var err error
-			midpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{0, 1}, Prices: []uint64{0, 1}, Nonce: 2}
+			midpointPrice := &oracle.MidpointPrice{Prices: map[uint64]uint64{0: 0, 1: 1}, Nonce: 2}
 			midpointPrice.Signature, err = ecdsaKey.Sign(midpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
@@ -125,16 +121,14 @@ var _ = Describe("Oracle", func() {
 
 			// This midpoint price should not be stored as it has a lower
 			// nonce.
-			oldMidpointPrice := &oracle.MidpointPrice{TokenPairs: []uint64{1, 2, 3}, Prices: []uint64{2, 1, 5}, Nonce: 1}
+			oldMidpointPrice := &oracle.MidpointPrice{Prices: map[uint64]uint64{1: 2, 2: 1, 3: 5}, Nonce: 1}
 			oldMidpointPrice.Signature, err = ecdsaKey.Sign(oldMidpointPrice.Hash())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = client.UpdateMidpoint(context.Background(), serviceMultiAddr, *oldMidpointPrice)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			prices, err := midpointPriceStorer.MidpointPrice()
+			prices, err := midpointPriceStorer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(prices.TokenPairs).Should(HaveLen(2))
-			Expect(prices.TokenPairs).Should(Equal(midpointPrice.TokenPairs))
 			Expect(prices.Prices).Should(HaveLen(2))
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))

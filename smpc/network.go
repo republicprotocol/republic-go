@@ -114,7 +114,9 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		func() {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
-			network.networkCancels[networkID][addr] = cancel
+			if _, ok := network.networkCancels[networkID]; ok {
+				network.networkCancels[networkID][addr] = cancel
+			}
 		}()
 
 		// Connect, or listen for a connection, and store the sending handle
