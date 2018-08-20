@@ -75,16 +75,6 @@ var _ = Describe("Smpcer", func() {
 			})
 		})
 
-		XIt("should be able to connect and disconnect to the smpcer", func() {
-			networkID := NetworkID{0}
-			for i := range nodes {
-				nodes[i].Smpcer.Connect(networkID, addresses)
-			}
-			for i := range nodes {
-				nodes[i].Smpcer.Disconnect(networkID)
-			}
-		})
-
 		Context("when connecting before joining", func() {
 			It("should be able to join values", func() {
 				networkID := NetworkID{0}
