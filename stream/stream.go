@@ -17,6 +17,10 @@ var ErrSendOnClosedStream = errors.New("send on closed stream")
 // closed Stream.
 var ErrRecvOnClosedStream = errors.New("receive on closed stream")
 
+// ErrOpenOnNilMultiAddress is returned when a call to Stream.Recv happens on a
+// nil multi-address.
+var ErrOpenOnNilMultiAddress = errors.New("open on nil multi-address")
+
 // Message is an interface for data that can be sent over a bidirectional
 // stream between nodes.
 type Message interface {
@@ -92,6 +96,9 @@ func NewStreamer(addr identity.Address, client Client, server Server) Streamer {
 
 // Open implements the Streamer interface.
 func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if multiAddr.IsEmpty() {
+		return nil, ErrOpenOnNilMultiAddress
+	}
 	addr := multiAddr.Address()
 	if streamer.addr < addr {
 		return streamer.client.Connect(ctx, multiAddr)
@@ -128,6 +135,10 @@ func NewStreamRecycler(streamer Streamer) Streamer {
 
 // Open implements the Streamer interface.
 func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if multiAddr.IsEmpty() {
+		return nil, ErrOpenOnNilMultiAddress
+	}
+
 	addr := multiAddr.Address()
 
 	mu := func() *sync.Mutex {
