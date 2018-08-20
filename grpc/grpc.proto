@@ -72,6 +72,9 @@ message EncryptedOrderFragment {
     EncryptedCoExpShare volume        = 10;
     EncryptedCoExpShare minimumVolume = 11;
     bytes               nonce         = 12;
+
+    bytes                                blinding    = 13; // Encrypted blinding exponent
+    map<uint64, OrderFragmentCommitment> commitments = 14; // Random sample of public commitments
 }
 
 enum OrderType {
@@ -97,6 +100,20 @@ message EncryptedCoExpShare {
     bytes exp = 2;
 }
 
+message OrderFragmentCommitment {
+    bytes priceCo          = 1;
+    bytes priceExp         = 2;
+    bytes volumeCo         = 3;
+    bytes volumeExp        = 4;
+    bytes minimumVolumeCo  = 5;
+    bytes minimumVolumeExp = 6;
+}
+
+message CoExpCommitment {
+    bytes co  = 1;
+    bytes exp = 2;
+}
+
 service StatusService {
     rpc Status (StatusRequest) returns (StatusResponse);
 }
@@ -115,10 +132,9 @@ service OracleService {
 }
 
 message UpdateMidpointRequest {
-             bytes  signature  = 1;
-    repeated uint64 tokenPairs = 2;
-    repeated uint64 prices     = 3;
-             uint64 nonce      = 4;
+    bytes               signature = 1;
+    map<uint64, uint64> prices    = 2;
+    uint64              nonce     = 3;
 }
 
 message UpdateMidpointResponse {

@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/binary"
+	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -44,6 +45,13 @@ type Fragment struct {
 	Volume        CoExpShare   `json:"volume"`
 	MinimumVolume CoExpShare   `json:"minimumVolume"`
 	Nonce         shamir.Share `json:"nonce"`
+
+	// Blinding exponent for the shares in this fragment
+	Blinding shamir.Blinding `json:"blinding"`
+
+	// CommitmentSet for different fragment indices, other than the index of
+	// this fragment
+	Commitments FragmentCommitments `json:"commitments"`
 }
 
 // NewFragment returns a new Fragment and computes the FragmentID.
@@ -60,6 +68,9 @@ func NewFragment(orderID ID, orderType Type, orderParity Parity, orderSettlement
 		Volume:        volume,
 		MinimumVolume: minimumVolume,
 		Nonce:         nonce,
+
+		Blinding:    shamir.Blinding{Int: big.NewInt(0)},
+		Commitments: FragmentCommitments{},
 	}
 	fragmentHash, err := fragment.Hash()
 	if err != nil {
@@ -165,6 +176,11 @@ func (fragment *Fragment) Encrypt(pubKey rsa.PublicKey) (EncryptedFragment, erro
 	if err != nil {
 		return encryptedFragment, err
 	}
+	encryptedFragment.Blinding, err = fragment.Blinding.Encrypt(pubKey)
+	if err != nil {
+		return encryptedFragment, err
+	}
+	encryptedFragment.Commitments = fragment.Commitments
 	return encryptedFragment, nil
 }
 
@@ -183,6 +199,9 @@ type EncryptedFragment struct {
 	Volume          EncryptedCoExpShare `json:"volume"`
 	MinimumVolume   EncryptedCoExpShare `json:"minimumVolume"`
 	Nonce           []byte              `json:"nonce"`
+
+	Blinding    []byte              `json:"blinding"`
+	Commitments FragmentCommitments `json:"commitments"`
 }
 
 // Decrypt an EncryptedFragment using an rsa.PrivateKey.
@@ -215,5 +234,24 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 	if err := decryptedFragment.Nonce.Decrypt(privKey, fragment.Nonce); err != nil {
 		return decryptedFragment, err
 	}
+	decryptedFragment.MinimumVolume, err = fragment.MinimumVolume.Decrypt(privKey)
+	if err != nil {
+		return decryptedFragment, err
+	}
+	if err := decryptedFragment.Blinding.Decrypt(privKey, fragment.Blinding); err != nil {
+		return decryptedFragment, err
+	}
+	decryptedFragment.Commitments = fragment.Commitments
 	return decryptedFragment, nil
 }
+
+type FragmentCommitment struct {
+	PriceCo          shamir.Commitment `json:"priceCo"`
+	PriceExp         shamir.Commitment `json:"priceExp"`
+	VolumeCo         shamir.Commitment `json:"volumeCo"`
+	VolumeExp        shamir.Commitment `json:"volumeExp"`
+	MinimumVolumeCo  shamir.Commitment `json:"minimumVolumeCo"`
+	MinimumVolumeExp shamir.Commitment `json:"minimumVolumeExp"`
+}
+
+type FragmentCommitments map[uint64]FragmentCommitment

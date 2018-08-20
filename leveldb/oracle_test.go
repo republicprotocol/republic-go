@@ -9,6 +9,7 @@ import (
 	. "github.com/republicprotocol/republic-go/leveldb"
 
 	"github.com/republicprotocol/republic-go/oracle"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -22,17 +23,27 @@ var _ = Describe("MidpointPrice storage", func() {
 
 		It("should be able to get the right data we store", func() {
 			storer := NewMidpointPriceStorer()
-			emptyPrice, err := storer.MidpointPrice()
+			emptyPrice, err := storer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(emptyPrice.Equals(oracle.MidpointPrice{})).Should(BeTrue())
 
-			price := testutils.RandMidpointPrice()
-			err = storer.PutMidpointPrice(price)
+			prices := testutils.RandMidpointPrice()
+			err = storer.PutMidpointPrice(prices)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			storedPrice, err := storer.MidpointPrice()
+			storedPrice, err := storer.MidpointPrices()
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(price.Equals(storedPrice)).Should(BeTrue())
+			Expect(prices.Equals(storedPrice)).Should(BeTrue())
+
+			for token, price := range prices.Prices {
+				storedPrice, err := storer.MidpointPrice(order.Tokens(token))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(storedPrice).Should(Equal(price))
+			}
+
+			// Error when mid-point price details for invalid token is requested.
+			_, err = storer.MidpointPrice(order.Tokens(len(prices.Prices) + 1))
+			Expect(err).Should(HaveOccurred())
 		})
 	})
 })

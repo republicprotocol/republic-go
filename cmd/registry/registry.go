@@ -9,13 +9,12 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/republicprotocol/republic-go/contract"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jbenet/go-base58"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
+	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/stackint"

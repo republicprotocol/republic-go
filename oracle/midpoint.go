@@ -3,6 +3,8 @@ package oracle
 import (
 	"bytes"
 	"encoding/binary"
+	"reflect"
+	"sort"
 
 	"github.com/republicprotocol/republic-go/crypto"
 )
@@ -10,31 +12,18 @@ import (
 // A MidpointPrice is a signed message contains the the mid-prices of
 // token pairs.
 type MidpointPrice struct {
-	Signature  []byte
-	TokenPairs []uint64
-	Prices     []uint64
-	Nonce      uint64
+	Signature []byte
+	Prices    map[uint64]uint64
+	Nonce     uint64
 }
 
 // Equals checks if two MidpointPrice objects have equivalent fields.
 func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
+	if !reflect.DeepEqual(midpointPrice.Prices, other.Prices) {
+		return false
+	}
 	if bytes.Compare(midpointPrice.Signature, other.Signature) != 0 {
 		return false
-	}
-
-	// Compare the token pairs/prices.
-	if len(midpointPrice.TokenPairs) != len(other.TokenPairs) || len(midpointPrice.Prices) != len(other.Prices) {
-		return false
-	}
-	tokenPricePairs := map[uint64]uint64{}
-	for i, token := range midpointPrice.TokenPairs {
-		tokenPricePairs[token] = midpointPrice.Prices[i]
-	}
-	for i, token := range other.TokenPairs {
-		price, ok := tokenPricePairs[token]
-		if !ok || price != other.Prices[i] {
-			return false
-		}
 	}
 
 	return midpointPrice.Nonce == other.Nonce
@@ -43,12 +32,20 @@ func (midpointPrice MidpointPrice) Equals(other MidpointPrice) bool {
 // Hash returns the Keccak256 hash of the MidpointPrice.
 func (midpointPrice MidpointPrice) Hash() []byte {
 	data := make([]byte, 0)
-	for i := range midpointPrice.TokenPairs {
+
+	// Sort mid-point prices based on token values.
+	var tokens []int
+	for token := range midpointPrice.Prices {
+		tokens = append(tokens, int(token))
+	}
+	sort.Ints(tokens)
+
+	for _, token := range tokens {
 		tokensBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(tokensBytes[:], midpointPrice.TokenPairs[i])
+		binary.LittleEndian.PutUint64(tokensBytes[:], uint64(token))
 		data = append(data, tokensBytes[:]...)
 		priceBytes := [8]byte{}
-		binary.LittleEndian.PutUint64(priceBytes[:], midpointPrice.Prices[i])
+		binary.LittleEndian.PutUint64(priceBytes[:], midpointPrice.Prices[uint64(token)])
 		data = append(data, priceBytes[:]...)
 	}
 

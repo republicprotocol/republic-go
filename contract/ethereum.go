@@ -2,6 +2,7 @@ package contract
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -139,7 +140,11 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
 	default:
-		return bind.WaitMined(ctx, conn.Client, tx)
+		receipt, err := bind.WaitMined(ctx, conn.Client, tx)
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			return receipt, errors.New("transaction reverted")
+		}
+		return receipt, err
 	}
 }
 

@@ -49,7 +49,7 @@ var _ = Describe("Ome", func() {
 			addr, epoch, err = testutils.RandomEpoch(0)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			store, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			store, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			storer = store.SomerComputationStore()
 
