@@ -213,7 +213,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 				log.Printf("[error] cannot send message to %v on network %v: %v", sendPositions[i], networkID, err)
 			}
 		}(done, i)
-		timeout := time.After(14 * time.Second)
+		timeout := time.After(30 * time.Second)
 		select {
 		case <-timeout:
 		case <-done:
