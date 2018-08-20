@@ -201,7 +201,11 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		done := make(chan struct{})
 		go func(done chan struct{}, i uint64) {
 			defer close(done)
-			sender := senders[sendPositions[i]]
+			sender, ok := senders[sendPositions[i]]
+			if !ok {
+				log.Printf("[error] cannot send message to node at position %v", sendPositions[i])
+				return
+			}
 			if err := sender.Send(message); err != nil {
 				// These logs are disabled to prevent verbose output
 				log.Printf("[error] cannot send message to %v on network %v: %v", sendPositions[i], networkID, err)
