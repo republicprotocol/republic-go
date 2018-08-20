@@ -109,6 +109,7 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callb
 		if err := matcher.computationStore.PutComputation(com); err != nil {
 			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
 		}
+		logger.Debug("expired computation")
 		return
 	}
 
@@ -117,9 +118,12 @@ func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callb
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot build %v join: %v", stage, err))
 		return
 	}
+	logger.Debug("completed build join")
 	matcher.smpcer.InsertCommitments(networkID, join.ID, joinCommitments)
 
+	logger.Debug("completed inserting commitments")
 	err = matcher.smpcer.Join(networkID, join, func(joinID smpc.JoinID, values []uint64) {
+		logger.Debug("starting to resolve values")
 		matcher.resolveValues(values, networkID, com, callback, stage)
 	}, stage == ResolveStageTokens /* delay messaging for the last check so that the dedicated confirmer has a head start */)
 	if err != nil {
