@@ -10,6 +10,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
 )
@@ -219,6 +220,8 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 			}
 		}(addr)
 		time.Sleep(30 * time.Second)
+		logger.Debug("waiting for 30 seconds")
+
 	}
 }
 

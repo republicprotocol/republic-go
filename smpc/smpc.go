@@ -121,8 +121,11 @@ func (smpc *smpcer) Join(networkID NetworkID, join Join, callback Callback, useD
 		},
 	}
 	if useDelay {
+
+		logger.Debug("sending with delay")
 		smpc.network.SendWithDelay(networkID, message)
 	} else {
+		logger.Debug("sending without delay")
 		smpc.network.Send(networkID, message)
 	}
 
