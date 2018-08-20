@@ -207,6 +207,10 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 }
 
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
+	// FIXME: Pedersen commitment verification has been disabled. This needs
+	// to be re-enabled.
+	return true
+
 	// Always require that each share has a blinding
 	if len(join.Shares) != len(join.Blindings) {
 		logger.Debug(fmt.Sprintf("share and blindings have different length, Blindings= %v, shares= %v", len(join.Blindings), len(join.Shares)))
