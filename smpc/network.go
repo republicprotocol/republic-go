@@ -197,7 +197,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		sendPositions[(position+message.Rotation(uint64(len(positions))))%uint64(len(positions))] = addr
 	}
 
-	for i := uint64(0); i < uint64(len(positions)); i++ {
+	for i := uint64(0); i < uint64(len(sendPositions)); i++ {
 		done := make(chan struct{})
 		go func(done chan struct{}, i uint64) {
 			defer close(done)
