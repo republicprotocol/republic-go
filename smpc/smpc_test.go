@@ -75,7 +75,7 @@ var _ = Describe("Smpcer", func() {
 			})
 		})
 
-		Context("when connecting before joining", func() {
+		XContext("when connecting before joining", func() {
 			It("should be able to join values", func() {
 				networkID := NetworkID{0}
 				for i := range nodes {
