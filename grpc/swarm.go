@@ -83,9 +83,21 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 
 	var stream SwarmService_QueryClient
 	if err := Backoff(ctx, func() error {
+		if stream != nil {
+			if err := stream.CloseSend(); err != nil {
+				log.Printf("[error] (query) cannot close stream client = %v", err)
+			}
+		}
+
 		stream, err = NewSwarmServiceClient(conn).Query(ctx, request)
 		return err
 	}); err != nil {
+		if stream != nil {
+			if err := stream.CloseSend(); err != nil {
+				log.Printf("[error] (query) cannot close stream client = %v", err)
+			}
+		}
+
 		return identity.MultiAddresses{}, err
 	}
 	if stream != nil {
