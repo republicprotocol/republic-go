@@ -135,7 +135,7 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 			}
 		})
 
-		// Only query the network for up to 5 minutes
+		// Only query the network for up to 10 minutes
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		defer cancel()
 

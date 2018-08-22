@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
@@ -29,7 +30,11 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress) (
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddress{}, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("[error] (ping) cannot close connection = %v", err)
+		}
+	}()
 
 	request := &PingRequest{
 		Signature:    client.multiAddr.Signature,
@@ -65,7 +70,11 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
 		return identity.MultiAddresses{}, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("[error] (query) cannot close connection = %v", err)
+		}
+	}()
 
 	request := &QueryRequest{
 		Signature: querySignature[:],
