@@ -224,7 +224,11 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		return nil, nil, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
 	go func() {
-		defer conn.Close()
+		defer func() {
+			if err := conn.Close(); err != nil {
+				log.Printf("[error] (connect) cannot close connection = %v", err)
+			}
+		}()
 		<-ctx.Done()
 	}()
 
