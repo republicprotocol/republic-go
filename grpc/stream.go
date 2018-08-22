@@ -118,8 +118,10 @@ func NewConnector(addr identity.Address, signer crypto.Signer, encrypter crypto.
 }
 
 func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
-	secret, stream, err := connector.connect(ctx, networkID, to)
+	connCtx, connCancel := context.WithCancel(ctx)
+	secret, stream, err := connector.connect(connCtx, networkID, to)
 	if err != nil {
+		connCancel()
 		return nil, err
 	}
 	sender := NewSender(secret, stream)
@@ -163,8 +165,11 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 					}
 
 					if err := recv(); err != nil {
+						connCancel()
+						connCtx, connCancel = context.WithCancel(ctx)
+
 						// Reconnect when an error occurs
-						secret, stream, err = connector.connect(ctx, networkID, to)
+						secret, stream, err = connector.connect(connCtx, networkID, to)
 						if err != nil {
 							return err
 						}
@@ -181,6 +186,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				// Check the context for termination conditions
 				select {
 				case <-ctx.Done():
+					connCancel()
 					return
 				default:
 				}
@@ -189,6 +195,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				// no hope of reconnecting
 				if backoffErr != nil {
 					log.Printf("[error] cannot reconnect to %v on network %v: %v", to.Address(), networkID, backoffErr)
+					connCancel()
 					return
 				}
 			}
