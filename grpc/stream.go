@@ -84,6 +84,13 @@ func (sender *Sender) inject(secret []byte, stream grpc.Stream) {
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
 
+	if sender.stream != nil {
+		if stream, ok := sender.stream.(grpc.ClientStream); ok {
+			if err := stream.CloseSend(); err != nil {
+				log.Printf("[error] cannot release stream: %v", err)
+			}
+		}
+	}
 	sender.cipher = crypto.NewAESCipher(secret)
 	sender.stream = stream
 }
