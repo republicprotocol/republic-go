@@ -234,6 +234,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		// On an error backoff and retry until the context.Context is done
 		stream, err = NewStreamServiceClient(conn).Connect(ctx)
 		if err != nil {
+			stream.CloseSend()
 			return err
 		}
 		return nil
