@@ -104,7 +104,7 @@ func (sender *Sender) release() {
 	}
 	if stream, ok := sender.stream.(grpc.ClientStream); ok {
 		if err := stream.CloseSend(); err != nil {
-			log.Printf("[error] cannot release stream: %v", err)
+			log.Printf("[error] (release) cannot close stream client = %v", err)
 		}
 	}
 	sender.stream = nil
@@ -234,7 +234,6 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		// On an error backoff and retry until the context.Context is done
 		stream, err = NewStreamServiceClient(conn).Connect(ctx)
 		if err != nil {
-			stream.CloseSend()
 			return err
 		}
 		return nil
