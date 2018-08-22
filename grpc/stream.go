@@ -403,8 +403,6 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		// TODO: Return a more appropriate error
 		return fmt.Errorf("not ready to accept connection")
 	}
-	sender.inject(secret[:], stream)
-	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	done := func() chan struct{} {
 		service.donesMu.Lock()
@@ -418,6 +416,10 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		service.dones[networkID][addr] = make(chan struct{})
 		return service.dones[networkID][addr]
 	}()
+
+	time.Sleep(time.Second)
+	sender.inject(secret[:], stream)
+	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	go func() {
 		for {
