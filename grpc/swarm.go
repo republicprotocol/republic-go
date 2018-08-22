@@ -84,10 +84,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 	for {
 		message, err := stream.Recv()
 		if err != nil {
-			if err == io.EOF {
-				return multiAddrs, nil
-			}
-			return multiAddrs, err
+			return multiAddrs, nil
 		}
 		multiAddr, err := identity.NewMultiAddressFromString(message.GetMultiAddress())
 		if err != nil {

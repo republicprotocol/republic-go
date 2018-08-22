@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
@@ -120,6 +119,11 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 			if multiAddrs[i].Address() == swarmer.client.MultiAddress().Address() {
 				return
 			}
+
+			// Only wait for 30s for a bootstrap node to respond
+			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
 			multiAddr, err := swarmer.client.Ping(ctx, multiAddrs[i])
 			if err != nil {
 				errs <- fmt.Errorf("cannot ping bootstrap node %v: %v", multiAddrs[i], err)
@@ -130,6 +134,11 @@ func (swarmer *swarmer) Bootstrap(ctx context.Context, multiAddrs identity.Multi
 				return
 			}
 		})
+
+		// Only query the network for up to 5 minutes
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+
 		if _, err := swarmer.query(ctx, swarmer.client.MultiAddress().Address(), -1, true); err != nil {
 			errs <- fmt.Errorf("error while bootstrapping: %v", err)
 			return
@@ -195,7 +204,8 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 		}
 		blacklist[peer.Address()] = struct{}{}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		// Any individual ping/query will only last for 30 seconds
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if isBootstrapping {
@@ -207,7 +217,7 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address, depth
 		// Query for identity.MultiAddresses that are closer to the query
 		// target than the peer itself, and add them to the whitelist
 		multiAddrs, err := swarmer.client.Query(ctx, peer, query, [65]byte{})
-		if err != nil && err != io.EOF {
+		if err != nil {
 			return identity.MultiAddress{}, fmt.Errorf("cannot send query to %v: %v", peer, err)
 		}
 
