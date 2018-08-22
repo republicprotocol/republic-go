@@ -54,7 +54,7 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, string, er
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
 		return orderID, order.Nil, "", err
 	}
-	return orderID, value.Status, value.Trader, iter.inner.Error()
+	return orderID, value.Status, value.Trader, nil
 }
 
 // Collect implements the orderbook.OrderIterator interface.
@@ -197,7 +197,7 @@ func (iter *OrderbookOrderFragmentIterator) Cursor() (order.Fragment, error) {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return order.Fragment{}, err
 	}
-	return value.OrderFragment, iter.inner.Error()
+	return value.OrderFragment, nil
 }
 
 // Collect implements the orderbook.OrderFragmentIterator interface.

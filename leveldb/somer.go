@@ -48,7 +48,7 @@ func (iter *SomerComputationIterator) Cursor() (ome.Computation, error) {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return ome.Computation{}, err
 	}
-	return value.Computation, iter.inner.Error()
+	return value.Computation, nil
 }
 
 // Collect implements the ome.ComputationIterator interface.
@@ -185,7 +185,7 @@ func (iter *SomerOrderFragmentIterator) Cursor() (order.Fragment, string, error)
 	if err := json.Unmarshal(data, &value); err != nil {
 		return order.Fragment{}, "", err
 	}
-	return value.OrderFragment, value.Trader, iter.inner.Error()
+	return value.OrderFragment, value.Trader, nil
 }
 
 // Collect implements the ome.OrderFragmentIterator interface.
