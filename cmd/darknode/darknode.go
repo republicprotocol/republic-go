@@ -93,7 +93,7 @@ func main() {
 	defer store.Release()
 
 	// New DHT
-	dht := dht.NewDHT(config.Address, 64)
+	dht := dht.NewDHT(config.Address, 128)
 
 	// New gRPC components
 	server := grpc.NewServer()
