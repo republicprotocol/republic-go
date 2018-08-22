@@ -13,7 +13,7 @@ type Server struct {
 
 // NewServer re-exports the grpc.NewServer function.
 func NewServer() *Server {
-	return &Server{grpc.NewServer(grpc.MaxConcurrentStreams(1))}
+	return &Server{grpc.NewServer()}
 }
 
 // Start the Server listening on a TCP connection at the given binding address.
