@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/shamir"
@@ -23,6 +24,9 @@ func NewOrderbookClient() orderbook.Client {
 
 // OpenOrder implements the orderbook.Client interface.
 func (client *orderbookClient) OpenOrder(ctx context.Context, multiAddr identity.MultiAddress, orderFragment order.EncryptedFragment) error {
+	if orderFragment.IsEmpty() {
+		return fmt.Errorf("cannot open order for empty order fragment")
+	}
 	conn, err := Dial(ctx, multiAddr)
 	if err != nil {
 		return fmt.Errorf("cannot dial %v: %v", multiAddr, err)
@@ -56,12 +60,19 @@ func NewOrderbookService(server orderbook.Server) OrderbookService {
 
 // Register implements the Service interface.
 func (service *OrderbookService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		return
+	}
 	RegisterOrderbookServiceServer(server.Server, service)
 }
 
 // OpenOrder implements the gRPC service for receiving EncryptedOrderFragments
 // defined in protobuf.
 func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrderRequest) (*OpenOrderResponse, error) {
+	if request == nil || request.OrderFragment == nil {
+		return nil, fmt.Errorf("invalid open order request")
+	}
 	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
 }
 

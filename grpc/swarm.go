@@ -18,6 +18,10 @@ import (
 // request to the server within a specified rate limit.
 var ErrRateLimitExceeded = errors.New("cannot process request, rate limit exceeded")
 
+// ErrInvalidRequest is returned when the a gRPC request is nil or has nil
+// fields.
+var ErrInvalidRequest = errors.New("invalid request")
+
 type swarmClient struct {
 	addr  identity.Address
 	store swarm.MultiAddressStorer
@@ -34,6 +38,9 @@ func NewSwarmClient(store swarm.MultiAddressStorer, addr identity.Address) swarm
 
 // Ping implements the swarm.Client interface.
 func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
+	if multiAddr.IsEmpty() {
+		return fmt.Errorf("cannot propagate empty multi-address")
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -85,6 +92,9 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 
 // Query implements the swarm.Client interface.
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
+	if len(query) == 0 {
+		return identity.MultiAddresses{}, fmt.Errorf("cannot query empty query address")
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -153,6 +163,10 @@ func NewSwarmService(server swarm.Server, rate time.Duration) SwarmService {
 
 // Register implements the Service interface.
 func (service *SwarmService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		return
+	}
 	RegisterSwarmServiceServer(server.Server, service)
 }
 
@@ -163,6 +177,11 @@ func (service *SwarmService) Register(server *Server) {
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
+	// Check for empty or invalid request fields.
+	if request == nil || request.MultiAddress == nil {
+		return nil, ErrInvalidRequest
+	}
+
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}
@@ -190,6 +209,9 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PongResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
+	if request == nil || request.MultiAddress == nil {
+		return nil, ErrInvalidRequest
+	}
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}
@@ -217,6 +239,10 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
+	if request == nil || len(request.Address) == 0 {
+		return nil, ErrInvalidRequest
+	}
+
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}

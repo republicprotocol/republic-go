@@ -29,6 +29,9 @@ func NewOracleClient(addr identity.Address, store swarm.MultiAddressStorer) orac
 
 // UpdateMidpoint implements the oracle.Client interface.
 func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.MultiAddress, midpointPrice oracle.MidpointPrice) error {
+	if midpointPrice.IsEmpty() {
+		return fmt.Errorf("cannot send empty MidpointPrice data")
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -87,6 +90,10 @@ func NewOracleService(server oracle.Server, rate time.Duration) OracleService {
 
 // Register implements the Service interface.
 func (service *OracleService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		return
+	}
 	RegisterOracleServiceServer(server.Server, service)
 }
 
@@ -96,19 +103,19 @@ func (service *OracleService) Register(server *Server) {
 // handling this signed object to its oracle.Server. If its oracle.Server
 // accepts data from the client it will return an empty UpdateMidpointResponse.
 func (service *OracleService) UpdateMidpoint(ctx context.Context, request *UpdateMidpointRequest) (*UpdateMidpointResponse, error) {
-	if err := service.isRateLimited(ctx); err != nil {
-		return nil, err
-	}
-
 	// Check for empty or invalid request fields.
 	if request.Signature == nil || len(request.Signature) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
 		return nil, fmt.Errorf("invalid midpoint data request")
 	}
 
+	if err := service.isRateLimited(ctx); err != nil {
+		return nil, err
+	}
+
 	midpointPrice := oracle.MidpointPrice{
-		Signature:  request.Signature,
-		Prices:     request.Prices,
-		Nonce:      request.Nonce,
+		Signature: request.Signature,
+		Prices:    request.Prices,
+		Nonce:     request.Nonce,
 	}
 
 	return &UpdateMidpointResponse{}, service.server.UpdateMidpoint(ctx, midpointPrice)

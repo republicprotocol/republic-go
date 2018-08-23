@@ -12,6 +12,7 @@ import (
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/smpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -59,6 +60,10 @@ func NewSender(secret []byte, stream grpc.Stream) *Sender {
 }
 
 func (sender *Sender) Send(message smpc.Message) error {
+	if message.IsEmpty() {
+		return fmt.Errorf("invalid send message")
+	}
+
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
 
@@ -118,6 +123,10 @@ func NewConnector(addr identity.Address, signer crypto.Signer, encrypter crypto.
 }
 
 func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
+	if networkID == [32]byte{} || to.IsEmpty() || receiver == nil {
+		return nil, fmt.Errorf("invalid connect: one or more empty fields detected: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
+	}
+
 	secret, stream, err := connector.connect(ctx, networkID, to)
 	if err != nil {
 		return nil, err
@@ -277,6 +286,10 @@ func NewListener() *Listener {
 }
 
 func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to identity.Address, receiver smpc.Receiver) (smpc.Sender, error) {
+	if networkID == [32]byte{} || len(to) == 0 || receiver == nil {
+		return nil, fmt.Errorf("invalid listen: one or more empty fields detected: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
+	}
+
 	lis.mu.Lock()
 	defer lis.mu.Unlock()
 
@@ -338,10 +351,17 @@ func NewStreamerService(addr identity.Address, verifier crypto.Verifier, decrypt
 
 // Register the StreamerService to a Server.
 func (service *StreamerService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		return
+	}
 	RegisterStreamServiceServer(server.Server, service)
 }
 
 func (service *StreamerService) Connect(stream StreamService_ConnectServer) error {
+	if stream == nil {
+		return fmt.Errorf("cannot connect to nil stream")
+	}
 	// Verify the address of this connection
 	message, err := stream.Recv()
 	if err != nil {
