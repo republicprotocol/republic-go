@@ -110,7 +110,6 @@ func main() {
 	if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
 		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
 	}
-	defer store.Release()
 
 	// New gRPC components
 	server := grpc.NewServer()
