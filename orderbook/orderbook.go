@@ -14,7 +14,7 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
-// Client for invoking the Server.OpenOrder ROC on a remote Server.
+// Client for invoking the Server.OpenOrder RPC on a remote Server.
 type Client interface {
 
 	// OpenOrder by sending an order.EncryptedFragment to an
