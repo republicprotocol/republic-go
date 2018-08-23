@@ -215,7 +215,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 			}
 			if err := sender.Send(message); err != nil {
 				// These logs are disabled to prevent verbose output
-				// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+				log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 			}
 		}(addr)
 		time.Sleep(30 * time.Second)
