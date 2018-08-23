@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"sort"
 	"sync"
 	"time"
 
@@ -194,31 +193,31 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		return
 	}
 
-	l := uint64(len(positions))
-	addrs := []identity.Address{}
-	offsetPositions := map[identity.Address]uint64{}
+	// Map the index to the actual address
+	sendPositions := map[uint64]identity.Address{}
 	for addr, position := range positions {
-		addrs = append(addrs, addr)
-		offsetPositions[addr] = (position + message.Rotation(l)) % l
+		sendPositions[(position+message.Rotation(uint64(len(positions))))%uint64(len(positions))] = addr
 	}
 
-	sort.Slice(addrs, func(i, j int) bool {
-		return offsetPositions[addrs[i]] < offsetPositions[addrs[j]]
-	})
-
-	for _, addr := range addrs {
-		go func(addr identity.Address) {
-			sender, ok := senders[addr]
+	for i := uint64(0); i < uint64(len(sendPositions)); i++ {
+		done := make(chan struct{})
+		go func(done chan struct{}, i uint64) {
+			defer close(done)
+			sender, ok := senders[sendPositions[i]]
 			if !ok {
-				log.Printf("[error] cannot send message to node at position %v", addr)
+				log.Printf("[error] cannot send message to node at position %v", i)
 				return
 			}
 			if err := sender.Send(message); err != nil {
 				// These logs are disabled to prevent verbose output
-				log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+				log.Printf("[error] cannot send message to %v on network %v: %v", sendPositions[i], networkID, err)
 			}
-		}(addr)
-		time.Sleep(15 * time.Second)
+		}(done, i)
+		timeout := time.After(15 * time.Second)
+		select {
+		case <-timeout:
+		case <-done:
+		}
 	}
 }
 
