@@ -96,6 +96,7 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 	if encryptedOrderFragment.IsEmpty() {
 		return ErrOrderFragmentNotFound
 	}
+
 	orderFragment, err := encryptedOrderFragment.Decrypt(orderbook.rsaKey.PrivateKey)
 	if err != nil {
 		return err
@@ -134,6 +135,10 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
+	if epoch.IsEmpty() {
+		return
+	}
+
 	orderbook.aggMu.Lock()
 	defer orderbook.aggMu.Unlock()
 
