@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -226,17 +225,18 @@ func buildJoin(com Computation, stage ResolveStage) (smpc.Join, smpc.JoinCommitm
 		return smpc.Join{}, smpc.JoinCommitments{}, ErrUnexpectedResolveStage
 	}
 
+	// FIXME: Re-enable blindings
 	// Create the blinding to verify the computation
-	blinding := shamir.Blinding{
-		Int: big.NewInt(0).Add(com.Buy.Blinding.Int, big.NewInt(0).Sub(shamir.CommitP, com.Sell.Blinding.Int)),
-	}
-	blinding.Mod(blinding.Int, shamir.CommitP)
+	// blinding := shamir.Blinding{
+	// 	Int: big.NewInt(0).Add(com.Buy.Blinding.Int, big.NewInt(0).Sub(shamir.CommitP, com.Sell.Blinding.Int)),
+	// }
+	// blinding.Mod(blinding.Int, shamir.CommitP)
 
 	// Create the join
 	join := smpc.Join{
 		Index:     smpc.JoinIndex(share.Index),
 		Shares:    shamir.Shares{share},
-		Blindings: shamir.Blindings{blinding},
+		Blindings: shamir.Blindings{},
 	}
 	copy(join.ID[:], com.ID[:])
 	join.ID[32] = byte(stage)
