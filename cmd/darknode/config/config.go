@@ -35,7 +35,7 @@ func NewConfigFromJSONFile(filename string) (Config, error) {
 		return Config{}, err
 	}
 	if conf.Alpha == 0 {
-		conf.Alpha = 5
+		conf.Alpha = 8
 	}
 
 	return conf, nil
