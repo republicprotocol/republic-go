@@ -38,3 +38,8 @@ func (ξ *Epoch) Pod(addr identity.Address) (Pod, error) {
 	}
 	return Pod{}, ErrPodNotFound
 }
+
+// IsEmpty returns true if the Epoch is nil.
+func (ξ *Epoch) IsEmpty() bool {
+	return ξ == nil
+}
