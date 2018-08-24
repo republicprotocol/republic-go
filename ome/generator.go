@@ -358,18 +358,18 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			continue
 		}
 		adjustment := uint64(len(commonPath) - (index + 1))
-		computationWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
+		comWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
 		func() {
 			// Insert sort into the list of sorted computations
 			didGenerateNewComputation = true
 			if len(mat.sortedComputations) == 0 {
-				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+				mat.sortedComputations = append(mat.sortedComputations, comWeight)
 				return
 			}
 			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-				return computationWeight.weight >= mat.sortedComputations[i].weight
+				return comWeight.weight >= mat.sortedComputations[i].weight
 			})
-			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+			mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
 		}()
 	}
 	mat.sortedComputationsMu.Unlock()
