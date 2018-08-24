@@ -2,6 +2,7 @@ package contract
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -106,11 +107,11 @@ func Connect(config Config) (Conn, error) {
 	if config.RenExSettlementAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.RenExSettlementAddress = "0xc4f1420de7efbd76e973fe8c99294fe482819f9a"
+			config.RenExSettlementAddress = "0xfa0938e3c9a5e33b5084dfbffaca9241aef39be8"
 		case NetworkFalcon:
 			config.RenExSettlementAddress = "0x8617dcd709bb8660602ef70ade78626b7408a210"
 		case NetworkNightly:
-			config.RenExSettlementAddress = "0xaa14f741b8dc7fc9166807144d881b016f0ee92f"
+			config.RenExSettlementAddress = "0x65712325c41fb39b9205e08483b43142d919cc42"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -139,7 +140,11 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 		time.Sleep(100 * time.Millisecond)
 		return nil, nil
 	default:
-		return bind.WaitMined(ctx, conn.Client, tx)
+		receipt, err := bind.WaitMined(ctx, conn.Client, tx)
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			return receipt, errors.New("transaction reverted")
+		}
+		return receipt, err
 	}
 }
 

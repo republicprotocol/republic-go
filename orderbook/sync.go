@@ -91,7 +91,7 @@ func (syncer *syncer) sync(notifications *Notifications) error {
 		switch orderStatuses[i] {
 		case order.Open:
 			numOpenOrders++
-			notification := NotificationOpenOrder{OrderID: orderID, Trader: traders[i]}
+			notification := NotificationOpenOrder{OrderID: orderID, Trader: traders[i], Priority: uint(pointer) + uint(i)}
 			*notifications = append(*notifications, notification)
 		case order.Confirmed:
 			numConfirmedOrders++
@@ -115,7 +115,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 	defer orderIter.Release()
 
-	orders, orderStatuses, _, err := orderIter.Collect()
+	orders, orderStatuses, _, _, err := orderIter.Collect()
 	if err != nil {
 		log.Printf("[error] (resync) cannot collect orders: %v", err)
 	}
@@ -156,7 +156,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if limit > len(orders) {
 		limit = len(orders)
 	}
-	for i := 0; i < 2*syncer.limit; i++ {
+	for i := 0; i < limit; i++ {
 		syncer.resyncPointer = (offset + i) % len(orders)
 
 		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]

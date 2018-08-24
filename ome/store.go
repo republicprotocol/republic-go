@@ -47,14 +47,14 @@ type ComputationIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string) error
+	PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error
 	DeleteBuyOrderFragment(epoch registry.Epoch, id order.ID) error
-	BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error)
+	BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error)
 	BuyOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
 
-	PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string) error
+	PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error
 	DeleteSellOrderFragment(epoch registry.Epoch, id order.ID) error
-	SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, error)
+	SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error)
 	SellOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
 }
 
@@ -67,10 +67,10 @@ type OrderFragmentIterator interface {
 
 	// Cursor returns the order.Fragment at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (order.Fragment, string, error)
+	Cursor() (order.Fragment, string, uint64, error)
 
 	// Collect all order.Fragments in the iterator into a slice.
-	Collect() ([]order.Fragment, []string, error)
+	Collect() ([]order.Fragment, []string, []uint64, error)
 
 	// Release the resources allocated by the iterator.
 	Release()

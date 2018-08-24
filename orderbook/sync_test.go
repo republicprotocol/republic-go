@@ -3,6 +3,7 @@ package orderbook_test
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"os"
 	"sync"
 	"time"
@@ -31,15 +32,15 @@ var _ = Describe("Syncer", func() {
 	BeforeEach(func() {
 		var err error
 		contract = testutils.NewMockContractBinder()
-		storer, err = leveldb.NewStore("./tmp/data.out", 72*time.Hour)
-		Ω(err).ShouldNot(HaveOccurred())
+		storer, err = leveldb.NewStore("./tmp/data.out", 24*time.Hour, time.Hour)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		key, err = crypto.RandomRsaKey()
-		Ω(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		os.RemoveAll("./tmp/data.out")
+		os.RemoveAll("./tmp")
 	})
 
 	Context("when syncing", func() {
@@ -48,11 +49,15 @@ var _ = Describe("Syncer", func() {
 			done := make(chan struct{})
 			defer close(done)
 
+			// Change to first epoch
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// Open matching order pairs
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
 
 			// Create and start orderbook
-			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
+			orderbook = NewOrderbook(addr, key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
 			notifications, errs := orderbook.Sync(done)
 
 			// Start reading notifications and errs
@@ -82,13 +87,10 @@ var _ = Describe("Syncer", func() {
 					}
 				})
 
-			// Change to first epoch
-			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
 
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			time.Sleep(15 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
@@ -111,6 +113,7 @@ var _ = Describe("Syncer", func() {
 			Expect(countOpens).Should(BeZero())
 			Expect(countCancels).Should(BeZero())
 			countConfirms = 0
+			countCancels = 0
 			countMu.Unlock()
 
 			// Cancel random orders in the contract
@@ -133,11 +136,15 @@ var _ = Describe("Syncer", func() {
 			done := make(chan struct{})
 			defer close(done)
 
+			// Change to first epoch
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			// Open matching order pairs
 			orders := contract.OpenMatchingOrders(NumberOfOrderPairs, order.Open)
 
 			// Create and start orderbook
-			orderbook = NewOrderbook(key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
+			orderbook = NewOrderbook(addr, key, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), contract, time.Millisecond, 80)
 			notifications, errs := orderbook.Sync(done)
 
 			// Start reading notifications and errs
@@ -167,14 +174,11 @@ var _ = Describe("Syncer", func() {
 					}
 				})
 
-			// Change to first epoch
-			_, epoch, err := testutils.RandomEpoch(0)
-			Ω(err).ShouldNot(HaveOccurred())
 			orderbook.OnChangeEpoch(epoch)
 
 			// Send encrypted order fragments at depth 1 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 1)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			time.Sleep(15 * time.Millisecond)
 
 			// No open order notifications should be created for depth 1
@@ -209,14 +213,13 @@ var _ = Describe("Syncer", func() {
 			countCancels = 0
 			countMu.Unlock()
 
-			// Change to next epoch
-			_, epoch, err = testutils.RandomEpoch(1)
-			Ω(err).ShouldNot(HaveOccurred())
+			// Change epoch
+			epoch.BlockNumber = big.NewInt(1)
 			orderbook.OnChangeEpoch(epoch)
 
 			// Send encrypted order fragments at depth 0 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 0)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			time.Sleep(100 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications
@@ -230,7 +233,7 @@ var _ = Describe("Syncer", func() {
 
 			// Send encrypted order fragments at depth 1 to the orderbook
 			err = sendOrdersToOrderbook(orders, key, orderbook, 1)
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 			time.Sleep(100 * time.Millisecond)
 
 			// Notifications channel must have emitted open order notifications

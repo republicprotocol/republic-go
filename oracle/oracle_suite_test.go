@@ -1,4 +1,4 @@
-package dht_test
+package oracle_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestDht(t *testing.T) {
+func TestOracle(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dht Suite")
+	RunSpecs(t, "Oracle Suite")
 }

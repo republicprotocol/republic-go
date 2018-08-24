@@ -13,7 +13,7 @@ var _ = Describe("Int1024 Double (2048 bits)", func() {
 	Context("MulModuloBig", func() {
 		It("should work", func() {
 			mod, err := FromString("6277101735386680763835789423207666416102355444464034512896")
-			Ω(err).Should(BeNil())
+			Expect(err).Should(BeNil())
 			mod1 := mod.Add(&one)
 			RunAllCases(mulModBigFn, []TestCase{
 				TestCase{inputsStr: []string{"3", "2", "3"}, expectedStr: "0"},
@@ -25,8 +25,8 @@ var _ = Describe("Int1024 Double (2048 bits)", func() {
 		})
 
 		It("should handle edge cases", func() {
-			Ω(func() { max.MulModuloBig(&max, &three) }).Should(Panic())
-			Ω(func() { max.MulModuloBig(&max, &zero) }).Should(Panic())
+			Expect(func() { max.MulModuloBig(&max, &three) }).Should(Panic())
+			Expect(func() { max.MulModuloBig(&max, &zero) }).Should(Panic())
 		})
 	})
 })

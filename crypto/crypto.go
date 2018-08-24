@@ -12,7 +12,7 @@ import (
 // ErrNilData is returned when a Verifier encounters a nil, or empty, data.
 // Signing nil data is not in itself erroneous but it is rarely a reasonable
 // action to take.
-var ErrNilData = errors.New("nil signature")
+var ErrNilData = errors.New("nil data")
 
 // ErrNilSignature is returned when a Verifier encounters a nil, or empty,
 // signature.

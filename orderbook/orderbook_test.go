@@ -11,13 +11,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/leveldb"
 	. "github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/registry"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
+	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -25,86 +26,109 @@ var _ = Describe("Orderbook", func() {
 
 	var (
 		numberOfOrders = 20
-		done           chan struct{}
 	)
 
 	BeforeEach(func() {
-		done = make(chan struct{})
 	})
 
 	AfterEach(func() {
-		close(done)
 	})
 
 	Context("when opening new orders", func() {
 
 		It("should not return an error and must add fragment to storer", func() {
+			done := make(chan struct{})
+			defer close(done)
+
 			// Generate new RSA key
 			rsaKey, err := crypto.RandomRsaKey()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			// Create mock syncer and storer
 			// syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
+			addr, epoch, err := testutils.RandomEpoch(0)
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook := NewOrderbook(addr, rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
-			orderbook.Sync(done)
-			orderbook.OnChangeEpoch(registry.Epoch{})
+			notifications, errs := orderbook.Sync(done)
+
+			countMu := new(sync.Mutex)
+			countNotifications := 0
+
+			go dispatch.CoBegin(
+				func() {
+					defer GinkgoRecover()
+
+					for err := range errs {
+						Expect(err).ShouldNot(HaveOccurred())
+					}
+				},
+				func() {
+					for _ = range notifications {
+						countMu.Lock()
+						countNotifications++
+						countMu.Unlock()
+					}
+				})
+
+			orderbook.OnChangeEpoch(epoch)
 
 			// Create encryptedOrderFragments
 			encryptedOrderFragments := make([]order.EncryptedFragment, numberOfOrders)
 			for i := 0; i < numberOfOrders; i++ {
 				ord := testutils.RandomOrder()
+				err = storer.OrderbookOrderStore().PutOrder(ord.ID, order.Open, "", uint(i))
+				Expect(err).ShouldNot(HaveOccurred())
 				fragments, err := ord.Split(5, 4)
 				encryptedOrderFragments[i], err = fragments[0].Encrypt(rsaKey.PublicKey)
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 
 			ctx, cancelCtx := context.WithCancel(context.Background())
 			defer cancelCtx()
 
 			// Open all encrypted order fragments
-			for i := 0; i < numberOfOrders; i++ {
+			for i := 0; i < len(encryptedOrderFragments); i++ {
 				err = orderbook.OpenOrder(ctx, encryptedOrderFragments[i])
-				Ω(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 
 			time.Sleep(time.Second)
-			iter, err := storer.OrderbookOrderFragmentStore().OrderFragments(registry.Epoch{})
-			Expect(err).ShouldNot(HaveOccurred())
-			defer iter.Release()
-			collection, err := iter.Collect()
-			Expect(err).ShouldNot(HaveOccurred())
-			Ω(len(collection)).Should(Equal(numberOfOrders))
+			countMu.Lock()
+			Expect(countNotifications).Should(Equal(numberOfOrders))
+			countMu.Unlock()
 		})
 
 		It("should be able to sync with the ledger by the syncer", func() {
 			// Generate new RSA key
 			rsaKey, err := crypto.RandomRsaKey()
-			Ω(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred())
 
 			// Create mock syncer and storer
 			// syncer := testutils.NewSyncer(numberOfOrders)
-			storer, err := leveldb.NewStore("./data.out", 72*time.Hour)
+			storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer func() {
 				os.RemoveAll("./data.out")
 			}()
 
 			// Create orderbook
-			orderbook := NewOrderbook(rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
+			addr, err := testutils.RandomAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			orderbook := NewOrderbook(addr, rsaKey, storer.OrderbookPointerStore(), storer.OrderbookOrderStore(), storer.OrderbookOrderFragmentStore(), testutils.NewMockContractBinder(), time.Hour, 100)
 
-			// Ω(syncer.HasSynced()).Should(BeFalse())
+			// Expect(syncer.HasSynced()).Should(BeFalse())
 			doneChan := make(<-chan struct{})
 			changeset, _ := orderbook.Sync(doneChan)
-			Ω(len(changeset)).Should(BeZero())
-			// Ω(syncer.HasSynced()).Should(BeTrue())
+			Expect(len(changeset)).Should(BeZero())
+			// Expect(syncer.HasSynced()).Should(BeTrue())
 		})
 	})
 })

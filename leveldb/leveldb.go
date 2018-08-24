@@ -6,6 +6,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/ome"
 	"github.com/republicprotocol/republic-go/orderbook"
+	"github.com/republicprotocol/republic-go/swarm"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -70,6 +71,16 @@ var (
 	SomerSellOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 )
 
+// Constants for use in the SwarmMultiAddress. Keys in the
+// SwarmMultiAddressTable have a length of 32 bytes, and so 32 bytes of padding is
+// needed to ensure that keys are 64 bytes.
+var (
+	SwarmMultiAddressTableBegin   = []byte{0x20, 0x00}
+	SwarmMultiAddressTablePadding = paddingBytes(0x00, 32)
+	SwarmMultiAddressIterBegin    = paddingBytes(0x00, 32)
+	SwarmMultiAddressIterEnd      = paddingBytes(0xFF, 32)
+)
+
 // Store is an aggregate of all tables that implement storage interfaces. It
 // provides access to all of these storage interfaces using different
 // underlying LevelDB instances, ensuring that data is shared where possible
@@ -84,13 +95,15 @@ type Store struct {
 
 	somerComputationTable   *SomerComputationTable
 	somerOrderFragmentTable *SomerOrderFragmentTable
+
+	swarmMultiAddressTable *SwarmMultiAddressTable
 }
 
 // NewStore returns a new Store with a new LevelDB instances that use the
 // the given directory as the root for all LevelDB instances. A call to
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
-func NewStore(dir string, expiry time.Duration) (*Store, error) {
+func NewStore(dir string, expiry time.Duration, multiAddressStorerExpiry time.Duration) (*Store, error) {
 	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
 	if err != nil {
 		return nil, err
@@ -104,6 +117,8 @@ func NewStore(dir string, expiry time.Duration) (*Store, error) {
 
 		somerComputationTable:   NewSomerComputationTable(db),
 		somerOrderFragmentTable: NewSomerOrderFragmentTable(db, expiry),
+
+		swarmMultiAddressTable: NewSwarmMultiAddressTable(db, multiAddressStorerExpiry),
 	}, nil
 }
 
@@ -124,6 +139,9 @@ func (store *Store) Prune() (err error) {
 		err = localErr
 	}
 	if localErr := store.somerOrderFragmentTable.Prune(); localErr != nil {
+		err = localErr
+	}
+	if localErr := store.swarmMultiAddressTable.Prune(); localErr != nil {
 		err = localErr
 	}
 	return err
@@ -157,6 +175,12 @@ func (store *Store) SomerComputationStore() ome.ComputationStorer {
 // It implements the ome.OrderFragmentStorer interface.
 func (store *Store) SomerOrderFragmentStore() ome.OrderFragmentStorer {
 	return store.somerOrderFragmentTable
+}
+
+// SwarmMultiAddressStore returns the SwarmMultiAddressTable used by the Store.
+// It implements the swarm.MultiAddressStorer interface.
+func (store *Store) SwarmMultiAddressStore() swarm.MultiAddressStorer {
+	return store.swarmMultiAddressTable
 }
 
 func paddingBytes(value byte, num int) []byte {

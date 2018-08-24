@@ -19,6 +19,7 @@ type OrderbookOrderValue struct {
 	Timestamp time.Time    `json:"timestamp"`
 	Status    order.Status `json:"status"`
 	Trader    string       `json:"trader"`
+	Priority  uint         `json:"priority"`
 }
 
 // OrderbookOrderIterator implements the orderbook.OrderIterator using a
@@ -39,10 +40,10 @@ func (iter *OrderbookOrderIterator) Next() bool {
 }
 
 // Cursor implements the orderbook.OrderIterator interface.
-func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, string, error) {
+func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, string, uint, error) {
 	orderID := order.ID{}
 	if !iter.inner.Valid() {
-		return orderID, order.Nil, "", orderbook.ErrCursorOutOfRange
+		return orderID, order.Nil, "", 0, orderbook.ErrCursorOutOfRange
 	}
 
 	// Copy the key into the order ID making sure to ignore the table prefix
@@ -52,26 +53,28 @@ func (iter *OrderbookOrderIterator) Cursor() (order.ID, order.Status, string, er
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(iter.inner.Value(), &value); err != nil {
-		return orderID, order.Nil, "", err
+		return orderID, order.Nil, "", 0, err
 	}
-	return orderID, value.Status, value.Trader, nil
+	return orderID, value.Status, value.Trader, value.Priority, iter.inner.Error()
 }
 
 // Collect implements the orderbook.OrderIterator interface.
-func (iter *OrderbookOrderIterator) Collect() ([]order.ID, []order.Status, []string, error) {
+func (iter *OrderbookOrderIterator) Collect() ([]order.ID, []order.Status, []string, []uint, error) {
 	orderIDs := []order.ID{}
 	orderStatuses := []order.Status{}
 	traders := []string{}
+	priorities := []uint{}
 	for iter.Next() {
-		orderID, orderStatus, trader, err := iter.Cursor()
+		orderID, orderStatus, trader, priority, err := iter.Cursor()
 		if err != nil {
-			return orderIDs, orderStatuses, traders, err
+			return orderIDs, orderStatuses, traders, priorities, err
 		}
 		orderIDs = append(orderIDs, orderID)
 		orderStatuses = append(orderStatuses, orderStatus)
 		traders = append(traders, trader)
+		priorities = append(priorities, priority)
 	}
-	return orderIDs, orderStatuses, traders, iter.inner.Error()
+	return orderIDs, orderStatuses, traders, priorities, iter.inner.Error()
 }
 
 // Release implements the orderbook.OrderIterator interface.
@@ -95,11 +98,12 @@ func NewOrderbookOrderTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrde
 }
 
 // PutOrder implements the orderbook.OrderStorer interface.
-func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, trader string) error {
+func (table *OrderbookOrderTable) PutOrder(id order.ID, status order.Status, trader string, priority uint) error {
 	value := OrderbookOrderValue{
 		Timestamp: time.Now(),
 		Status:    status,
 		Trader:    trader,
+		Priority:  priority,
 	}
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -114,20 +118,20 @@ func (table *OrderbookOrderTable) DeleteOrder(id order.ID) error {
 }
 
 // Order implements the orderbook.OrderStorer interface.
-func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, error) {
+func (table *OrderbookOrderTable) Order(id order.ID) (order.Status, string, uint, error) {
 	data, err := table.db.Get(table.key(id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderNotFound
 		}
-		return order.Nil, "", err
+		return order.Nil, "", 0, err
 	}
 
 	value := OrderbookOrderValue{}
 	if err := json.Unmarshal(data, &value); err != nil {
-		return order.Nil, "", err
+		return order.Nil, "", 0, err
 	}
-	return value.Status, value.Trader, nil
+	return value.Status, value.Trader, value.Priority, nil
 }
 
 // Orders implements the orderbook.OrderStorer interface.

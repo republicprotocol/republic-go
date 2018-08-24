@@ -25,8 +25,8 @@ var _ = Describe("Settler", func() {
 
 	BeforeEach(func() {
 		for i := 0; i < NumberOfNodes; i++ {
-			storer, err := leveldb.NewStore(fmt.Sprintf("./data-%v.out", i), 72*time.Hour)
-			Ω(err).ShouldNot(HaveOccurred())
+			storer, err := leveldb.NewStore(fmt.Sprintf("./data-%v.out", i), 24*time.Hour, time.Hour)
+			Expect(err).ShouldNot(HaveOccurred())
 			storers[i] = storer.SomerComputationStore()
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()
 			contracts[i] = newOmeBinder()
@@ -48,15 +48,15 @@ var _ = Describe("Settler", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			comp := NewComputation([32]byte{}, buyFragments[0], sellFragments[0], ComputationStateNil, true)
 			for i := 0; i < NumberOfNodes; i++ {
-				Ω(storers[i].PutComputation(comp)).ShouldNot(HaveOccurred())
+				Expect(storers[i].PutComputation(comp)).ShouldNot(HaveOccurred())
 			}
 
 			for i := 0; i < NumberOfNodes; i++ {
-				Ω(settles[i].Settle(comp)).ShouldNot(HaveOccurred())
+				Expect(settles[i].Settle(comp)).ShouldNot(HaveOccurred())
 			}
 
 			for i := 0; i < NumberOfNodes; i++ {
-				Ω(contracts[i].SettleCounts()).Should(Equal(1))
+				Expect(contracts[i].SettleCounts()).Should(Equal(1))
 			}
 		})
 	})

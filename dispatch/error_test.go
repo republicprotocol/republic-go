@@ -32,7 +32,7 @@ var _ = Describe("Error channels", func() {
 			close(errCh1)
 			close(errCh2)
 			close(errCh3)
-			Ω(len(errCh)).Should(Equal(3))
+			Expect(len(errCh)).Should(Equal(3))
 		})
 
 		It("should be able to read the errors originated from all the error channels", func() {
@@ -51,14 +51,14 @@ var _ = Describe("Error channels", func() {
 			errCh := MergeErrors(errCh1, errCh2, errCh3)
 
 			time.Sleep(time.Second)
-			Ω(len(errCh)).Should(Equal(3))
+			Expect(len(errCh)).Should(Equal(3))
 
 			close(errCh1)
 			close(errCh2)
 			close(errCh3)
 
 			for err := range errCh {
-				Ω(err == err1 || err == err2 || err == err3).Should(BeTrue())
+				Expect(err == err1 || err == err2 || err == err3).Should(BeTrue())
 			}
 
 		})
@@ -84,11 +84,11 @@ var _ = Describe("Error channels", func() {
 			filteredErrCh := FilterErrors(errCh, predicate)
 
 			time.Sleep(1 * time.Second)
-			Ω(len(filteredErrCh)).Should(Equal(1))
+			Expect(len(filteredErrCh)).Should(Equal(1))
 
 			err := <-filteredErrCh
 
-			Ω(err.Error()).Should(Equal("20"))
+			Expect(err.Error()).Should(Equal("20"))
 			close(errCh)
 		})
 	})

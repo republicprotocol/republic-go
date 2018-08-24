@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -55,6 +56,11 @@ type Network interface {
 	// Send a message to all addresses in a connected network.
 	Send(networkID NetworkID, message Message)
 
+	// Send a message to all addresses in a connected network with a delay
+	// between each message. The delay is linearly dependent on the position
+	// of the receiver.
+	SendWithDelay(networkID NetworkID, message Message)
+
 	// Send a message to a specific address on a specific network.
 	SendTo(networkID NetworkID, to identity.Address, message Message)
 }
@@ -65,8 +71,9 @@ type network struct {
 	swarmer  swarm.Swarmer
 
 	networkMu      *sync.RWMutex
-	networkSenders map[NetworkID](map[identity.Address]Sender)
-	networkCancels map[NetworkID](map[identity.Address]context.CancelFunc)
+	networkPos     map[NetworkID]map[identity.Address]uint64
+	networkSenders map[NetworkID]map[identity.Address]Sender
+	networkCancels map[NetworkID]map[identity.Address]context.CancelFunc
 }
 
 func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer) Network {
@@ -76,8 +83,9 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 		swarmer:  swarmer,
 
 		networkMu:      new(sync.RWMutex),
-		networkSenders: map[NetworkID](map[identity.Address]Sender){},
-		networkCancels: map[NetworkID](map[identity.Address]context.CancelFunc){},
+		networkPos:     map[NetworkID]map[identity.Address]uint64{},
+		networkSenders: map[NetworkID]map[identity.Address]Sender{},
+		networkCancels: map[NetworkID]map[identity.Address]context.CancelFunc{},
 	}
 }
 
@@ -90,6 +98,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 	func() {
 		network.networkMu.Lock()
 		defer network.networkMu.Unlock()
+		network.networkPos[networkID] = map[identity.Address]uint64{}
 		network.networkSenders[networkID] = map[identity.Address]Sender{}
 		network.networkCancels[networkID] = map[identity.Address]context.CancelFunc{}
 	}()
@@ -106,7 +115,9 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 		func() {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
-			network.networkCancels[networkID][addr] = cancel
+			if _, ok := network.networkCancels[networkID]; ok {
+				network.networkCancels[networkID][addr] = cancel
+			}
 		}()
 
 		// Connect, or listen for a connection, and store the sending handle
@@ -119,6 +130,11 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
 			if _, ok := network.networkSenders[networkID]; ok {
+				// Store the ordering of this address so that we can look it up
+				// when receiving messages
+				network.networkPos[networkID][addr] = uint64(i)
+
+				// Store the sender so we can send messages
 				network.networkSenders[networkID][addr] = sender
 			}
 		}()
@@ -138,6 +154,7 @@ func (network *network) Disconnect(networkID NetworkID) {
 			cancel()
 		}
 	}
+	delete(network.networkPos, networkID)
 	delete(network.networkSenders, networkID)
 	delete(network.networkCancels, networkID)
 }
@@ -157,9 +174,55 @@ func (network *network) Send(networkID NetworkID, message Message) {
 		sender := senders[addr]
 		if err := sender.Send(message); err != nil {
 			// These logs are disabled to prevent verbose output
-			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 	})
+}
+
+func (network *network) SendWithDelay(networkID NetworkID, message Message) {
+	network.networkMu.RLock()
+	defer network.networkMu.RUnlock()
+
+	positions, ok := network.networkPos[networkID]
+	if !ok {
+		log.Printf("[error] cannot send message to displaced network %v", networkID)
+		return
+	}
+	senders, ok := network.networkSenders[networkID]
+	if !ok {
+		log.Printf("[error] cannot send message to unknown network %v", networkID)
+		return
+	}
+
+	l := uint64(len(positions))
+	addrs := []identity.Address{}
+	offsetPositions := map[identity.Address]uint64{}
+	for addr, position := range positions {
+		addrs = append(addrs, addr)
+		offsetPositions[addr] = (position + message.Rotation(l)) % l
+	}
+
+	sort.Slice(addrs, func(i, j int) bool {
+		return offsetPositions[addrs[i]] < offsetPositions[addrs[j]]
+	})
+
+	go func() {
+		for _, addr := range addrs {
+			go func(addr identity.Address) {
+				sender, ok := senders[addr]
+				if !ok {
+					log.Printf("[error] cannot send message to node at position %v", addr)
+					return
+				}
+				if err := sender.Send(message); err != nil {
+					// These logs are disabled to prevent verbose output
+					// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+				}
+			}(addr)
+
+			time.Sleep(30 * time.Second)
+		}
+	}()
 }
 
 // SendTo implements the Network interface.
@@ -190,7 +253,7 @@ func (network *network) query(q identity.Address) (identity.MultiAddress, error)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	multiAddr, err := network.swarmer.Query(ctx, q, -1)
+	multiAddr, err := network.swarmer.Query(ctx, q)
 	if err != nil {
 		return multiAddr, fmt.Errorf("cannot query peer %v: %v", q, err)
 	}

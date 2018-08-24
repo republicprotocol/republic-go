@@ -11,8 +11,8 @@ import (
 // found.
 var ErrOrderNotFound = errors.New("order not found")
 
-// ErrOrderFragmentNotFound is returned when attempting to read an order that
-// cannot be found.
+// ErrOrderFragmentNotFound is returned when attempting to read an order
+// fragment that cannot be found.
 var ErrOrderFragmentNotFound = errors.New("order fragment not found")
 
 // ErrPointerNotFound is returned when attempting to read a pointer that cannot
@@ -26,9 +26,9 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 // OrderStorer for the order.Orders that are synchronised from the Ethereum
 // blockchain.
 type OrderStorer interface {
-	PutOrder(id order.ID, status order.Status, trader string) error
+	PutOrder(id order.ID, status order.Status, trader string, priority uint) error
 	DeleteOrder(id order.ID) error
-	Order(id order.ID) (order.Status, string, error)
+	Order(id order.ID) (order.Status, string, uint, error)
 	Orders() (OrderIterator, error)
 }
 
@@ -41,10 +41,10 @@ type OrderIterator interface {
 
 	// Cursor returns the order.Order at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (order.ID, order.Status, string, error)
+	Cursor() (order.ID, order.Status, string, uint, error)
 
 	// Collect all order.IDs and order.Statuses in the iterator into slices.
-	Collect() ([]order.ID, []order.Status, []string, error)
+	Collect() ([]order.ID, []order.Status, []string, []uint, error)
 
 	// Release the resources allocated by the iterator.
 	Release()
