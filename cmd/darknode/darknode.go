@@ -200,6 +200,7 @@ func main() {
 			}
 			if err == nil {
 				bootstrapMulti.Nonce = multi.Nonce
+				bootstrapMulti.Signature = multi.Signature
 			}
 			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
