@@ -255,7 +255,6 @@ func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-cha
 						case <-done:
 							return
 						case computations <- computationWeight.computation:
-							log.Printf("sent computation: buy=%v, sell=%v", computationWeight.computation.Buy.OrderID, computationWeight.computation.Sell.OrderID)
 						}
 					}
 				}
@@ -371,7 +370,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 				return comWeight.weight >= mat.sortedComputations[i].weight
 			})
 			mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
-			log.Printf("added computation: buy=%v, sell=%v", comWeight.computation.Buy.OrderID, comWeight.computation.Sell.OrderID)
 		}()
 	}
 	mat.sortedComputationsMu.Unlock()
