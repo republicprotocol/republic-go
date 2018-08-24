@@ -199,14 +199,14 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 			for _, multi := range multiAddrs {
 				if err := swarmer.verifier.Verify(multi.Hash(), multi.Signature); err != nil {
 					log.Println("cannot verify the multiAddress", err)
-					return
+					continue
 				}
 
 				// Mark the new multi as seen and add to the query backlog.
 				seenMu.Lock()
 				if _, ok := seenAddrs[multi.Address()]; ok {
 					seenMu.Unlock()
-					return
+					continue
 				}
 				seenAddrs[multi.Address()] = struct{}{}
 				randomMultiAddrs = append(randomMultiAddrs, multi)
@@ -216,12 +216,12 @@ func (swarmer *swarmer) query(ctx context.Context, query identity.Address) (iden
 				oldMulti, err := swarmer.storer.MultiAddress(multi.Address())
 				if err != nil && err != ErrMultiAddressNotFound {
 					log.Printf("cannot get nonce of %v : %v", multi.Address(), err)
-					return
+					continue
 				}
 				if err == ErrMultiAddressNotFound || oldMulti.Nonce < multi.Nonce {
 					if err = swarmer.storer.InsertMultiAddress(multi); err != nil {
 						log.Printf("cannot store %v: %v", multi.Address(), err)
-						return
+						continue
 					}
 				}
 			}

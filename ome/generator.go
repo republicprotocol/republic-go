@@ -334,7 +334,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		if !isCompatible(notification, orderFragment, trader, priority) {
 			continue
 		}
-		
+
 		// TODO: Check that at least one of the orders in the pairing was
 		// opened during this matrix epoch. Otherwise, orders that are opened
 		// in the same epoch will be matched twice. Once in the current epoch,
@@ -358,18 +358,18 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			continue
 		}
 		adjustment := uint64(len(commonPath) - (index + 1))
-		computationWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
+		comWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
 		func() {
 			// Insert sort into the list of sorted computations
 			didGenerateNewComputation = true
 			if len(mat.sortedComputations) == 0 {
-				mat.sortedComputations = append(mat.sortedComputations, computationWeight)
+				mat.sortedComputations = append(mat.sortedComputations, comWeight)
 				return
 			}
 			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-				return computationWeight.weight >= mat.sortedComputations[i].weight
+				return comWeight.weight >= mat.sortedComputations[i].weight
 			})
-			mat.sortedComputations = append(append(mat.sortedComputations[:n], computationWeight), mat.sortedComputations[n:]...)
+			mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
 		}()
 	}
 	mat.sortedComputationsMu.Unlock()
@@ -410,13 +410,11 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 		switch notification.OrderFragment.OrderType {
 		case order.TypeMidpointFOK, order.TypeLimitFOK:
 			// Both orders are FOK, thus, incompatible.
-			log.Println("[debug] (generator) cannot match incompatible FOK orders")
 			return false
 		default:
 			// Does notification.OrderFragment, which is not an FOK order, have a higher
 			// priority than the FOK order ?
 			if uint64(notification.Priority) > priority {
-				log.Println("[debug] (generator) cannot match incompatible orders: FOK order with low priority")
 				return false
 			}
 			return true
@@ -429,7 +427,6 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 			// Does notification.OrderFragment, which is an FOK order, have a lower
 			// priority than the other order ?
 			if priority > uint64(notification.Priority) {
-				log.Println("[debug] (generator) cannot match incompatible FOK orders: FOK incompatible priorities")
 				return false
 			}
 			return true
