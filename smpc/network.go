@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -173,7 +174,7 @@ func (network *network) Send(networkID NetworkID, message Message) {
 		sender := senders[addr]
 		if err := sender.Send(message); err != nil {
 			// These logs are disabled to prevent verbose output
-			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 	})
 }
@@ -193,31 +194,31 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		return
 	}
 
-	// Map the index to the actual address
-	sendPositions := map[uint64]identity.Address{}
+	l := uint64(len(positions))
+	addrs := []identity.Address{}
+	offsetPositions := map[identity.Address]uint64{}
 	for addr, position := range positions {
-		sendPositions[(position+message.Rotation(uint64(len(positions))))%uint64(len(positions))] = addr
+		addrs = append(addrs, addr)
+		offsetPositions[addr] = (position + message.Rotation(l)) % l
 	}
 
-	for i := uint64(0); i < uint64(len(sendPositions)); i++ {
-		done := make(chan struct{})
-		go func(done chan struct{}, i uint64) {
-			defer close(done)
-			sender, ok := senders[sendPositions[i]]
+	sort.Slice(addrs, func(i, j int) bool {
+		return offsetPositions[addrs[i]] < offsetPositions[addrs[j]]
+	})
+
+	for _, addr := range addrs {
+		go func(addr identity.Address) {
+			sender, ok := senders[addr]
 			if !ok {
-				log.Printf("[error] cannot send message to node at position %v", sendPositions[i])
+				log.Printf("[error] cannot send message to node at position %v", addr)
 				return
 			}
 			if err := sender.Send(message); err != nil {
 				// These logs are disabled to prevent verbose output
-				log.Printf("[error] cannot send message to %v on network %v: %v", sendPositions[i], networkID, err)
+				// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 			}
-		}(done, i)
-		timeout := time.After(6 * time.Second)
-		select {
-		case <-timeout:
-		case <-done:
-		}
+		}(addr)
+		time.Sleep(30 * time.Second)
 	}
 }
 
