@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sync"
 	"time"
@@ -13,6 +14,10 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
 )
+
+// ErrOrderFragmentIsNil is returned when an order fragment is nil or has nil
+// fields.
+var ErrOrderFragmentIsNil = errors.New("order fragment is nil")
 
 // Client for invoking the Server.OpenOrder ROC on a remote Server.
 type Client interface {
@@ -93,8 +98,8 @@ func NewOrderbook(addr identity.Address, rsaKey crypto.RsaKey, pointerStore Poin
 
 // OpenOrder implements the Server interface.
 func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragment order.EncryptedFragment) error {
-	if encryptedOrderFragment.IsEmpty() {
-		return ErrOrderFragmentNotFound
+	if encryptedOrderFragment.IsNil() {
+		return ErrOrderFragmentIsNil
 	}
 
 	orderFragment, err := encryptedOrderFragment.Decrypt(orderbook.rsaKey.PrivateKey)
@@ -135,7 +140,7 @@ func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-c
 
 // OnChangeEpoch implements the Orderbook interface.
 func (orderbook *orderbook) OnChangeEpoch(epoch registry.Epoch) {
-	if epoch.IsEmpty() {
+	if epoch.IsNil() {
 		return
 	}
 
