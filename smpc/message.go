@@ -121,7 +121,7 @@ func (message *Message) IsMessage() {}
 
 // IsEmpty return true if message is nil.
 func (message *Message) IsEmpty() bool {
-	return message == nil
+	return message == nil || (message.MessageJoin == nil && message.MessageJoinResponse == nil)
 }
 
 // A MessageJoin is used to broadcast a Join between nodes in the same network.
