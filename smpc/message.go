@@ -119,8 +119,8 @@ func (message *Message) Rotation(n uint64) uint64 {
 // IsMessage implements the stream.Message interface.
 func (message *Message) IsMessage() {}
 
-// IsEmpty return true if message is nil.
-func (message *Message) IsEmpty() bool {
+// IsNil return true if message is nil.
+func (message *Message) IsNil() bool {
 	return message == nil || (message.MessageJoin == nil && message.MessageJoinResponse == nil)
 }
 
