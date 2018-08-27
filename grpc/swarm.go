@@ -265,7 +265,6 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 			return ErrRateLimitExceeded
 		}
 	}
-	grpc.UnaryInterceptor()
 	service.rateLimits[clientIP] = time.Now()
 	return nil
 }
