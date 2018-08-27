@@ -15,8 +15,8 @@ import (
 // call grpc.ClientConn.Close to terminate all the pending operations after
 // this function returns.
 func Dial(ctx context.Context, multiAddress identity.MultiAddress) (*grpc.ClientConn, error) {
-	if multiAddress.IsEmpty() {
-		return nil, fmt.Errorf("cannot connect to nil multi-address")
+	if multiAddress.IsNil() {
+		return nil, ErrMultiAddressIsNil
 	}
 	host, err := multiAddress.ValueForProtocol(identity.IP4Code)
 	if err != nil {

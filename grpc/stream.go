@@ -18,6 +18,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+// ErrMessageIsNil is returned when the message contains nil fields.
+var ErrMessageIsNil = errors.New("message is nil")
+
+// ErrStreamIsNil is returned when the stream is nil.
+var ErrStreamIsNil = errors.New("stream is nil")
+
 // ErrUnverifiedConnection is returned when a StreamClient does not produce a
 // verifiable connection signature as its first StreamMessage to a
 // StreamServer.
@@ -60,8 +66,8 @@ func NewSender(secret []byte, stream grpc.Stream) *Sender {
 }
 
 func (sender *Sender) Send(message smpc.Message) error {
-	if message.IsEmpty() {
-		return fmt.Errorf("invalid send message")
+	if message.IsNil() {
+		return ErrMessageIsNil
 	}
 
 	sender.streamMu.Lock()
@@ -123,8 +129,8 @@ func NewConnector(addr identity.Address, signer crypto.Signer, encrypter crypto.
 }
 
 func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
-	if len(networkID) == 0 || networkID == [32]byte{} || to.IsEmpty() || receiver == nil {
-		return nil, fmt.Errorf("invalid connect: one or more empty fields detected: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
+	if len(networkID) == 0 || networkID == [32]byte{} || to.IsNil() || receiver == nil {
+		return nil, fmt.Errorf("invalid connect: one or more fields are nil: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
 
 	secret, stream, err := connector.connect(ctx, networkID, to)
@@ -132,7 +138,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 		return nil, err
 	}
 	if secret == nil || stream == nil {
-		return nil, fmt.Errorf("nil secret or stream detected")
+		return nil, fmt.Errorf("secret or stream is nil")
 	}
 	sender := NewSender(secret, stream)
 
@@ -290,7 +296,7 @@ func NewListener() *Listener {
 
 func (lis *Listener) Listen(ctx context.Context, networkID smpc.NetworkID, to identity.Address, receiver smpc.Receiver) (smpc.Sender, error) {
 	if networkID == [32]byte{} || len(to) == 0 || receiver == nil {
-		return nil, fmt.Errorf("invalid listen: one or more empty fields detected: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
+		return nil, fmt.Errorf("invalid listen: one or more fields are nil: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
 
 	lis.mu.Lock()
@@ -355,7 +361,7 @@ func NewStreamerService(addr identity.Address, verifier crypto.Verifier, decrypt
 // Register the StreamerService to a Server.
 func (service *StreamerService) Register(server *Server) {
 	if server == nil {
-		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		logger.Network(logger.LevelError, "server is nil")
 		return
 	}
 	RegisterStreamServiceServer(server.Server, service)
@@ -363,7 +369,7 @@ func (service *StreamerService) Register(server *Server) {
 
 func (service *StreamerService) Connect(stream StreamService_ConnectServer) error {
 	if stream == nil {
-		return fmt.Errorf("cannot connect to nil stream")
+		return ErrStreamIsNil
 	}
 	// Verify the address of this connection
 	message, err := stream.Recv()

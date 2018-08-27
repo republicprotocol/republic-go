@@ -18,9 +18,24 @@ import (
 // request to the server within a specified rate limit.
 var ErrRateLimitExceeded = errors.New("cannot process request, rate limit exceeded")
 
-// ErrInvalidRequest is returned when the a gRPC request is nil or has nil
+// ErrPingRequestIsNil is returned when a gRPC ping request is nil or has nil
 // fields.
-var ErrInvalidRequest = errors.New("invalid request")
+var ErrPingRequestIsNil = errors.New("ping request is nil")
+
+// ErrPongRequestIsNil is returned when a gRPC pong request is nil or has nil
+// fields.
+var ErrPongRequestIsNil = errors.New("pong request is nil")
+
+// ErrQueryRequestIsNil is returned when a gRPC query request is nil or has nil
+// fields.
+var ErrQueryRequestIsNil = errors.New("query request is nil")
+
+// ErrMultiAddressIsNil is returned when a multi-address is nil or has nil
+// fields.
+var ErrMultiAddressIsNil = errors.New("multi-address is nil")
+
+// ErrAddressIsNil is returned when an address is nil.
+var ErrAddressIsNil = errors.New("address is nil")
 
 type swarmClient struct {
 	addr  identity.Address
@@ -38,8 +53,8 @@ func NewSwarmClient(store swarm.MultiAddressStorer, addr identity.Address) swarm
 
 // Ping implements the swarm.Client interface.
 func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
-	if multiAddr.IsEmpty() {
-		return fmt.Errorf("cannot propagate empty multi-address")
+	if multiAddr.IsNil() {
+		return ErrMultiAddressIsNil
 	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
@@ -92,8 +107,8 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 
 // Query implements the swarm.Client interface.
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
-	if len(query) == 0 {
-		return identity.MultiAddresses{}, fmt.Errorf("cannot query empty query address")
+	if query == "" {
+		return identity.MultiAddresses{}, ErrAddressIsNil
 	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
@@ -164,7 +179,7 @@ func NewSwarmService(server swarm.Server, rate time.Duration) SwarmService {
 // Register implements the Service interface.
 func (service *SwarmService) Register(server *Server) {
 	if server == nil {
-		logger.Network(logger.LevelError, fmt.Sprint("cannot register with invalid server"))
+		logger.Network(logger.LevelError, "server is nil")
 		return
 	}
 	RegisterSwarmServiceServer(server.Server, service)
@@ -178,8 +193,11 @@ func (service *SwarmService) Register(server *Server) {
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
 	// Check for empty or invalid request fields.
-	if request == nil || request.MultiAddress == nil {
-		return nil, ErrInvalidRequest
+	if request == nil {
+		return nil, ErrPingRequestIsNil
+	}
+	if request.MultiAddress == nil {
+		return nil, ErrMultiAddressIsNil
 	}
 
 	if err := service.isRateLimited(ctx); err != nil {
@@ -209,9 +227,14 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PongResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
-	if request == nil || request.MultiAddress == nil {
-		return nil, ErrInvalidRequest
+	// Check for empty or invalid request fields.
+	if request == nil {
+		return nil, ErrPongRequestIsNil
 	}
+	if request.MultiAddress == nil {
+		return nil, ErrMultiAddressIsNil
+	}
+
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
 	}
@@ -239,8 +262,12 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
-	if request == nil || len(request.Address) == 0 {
-		return nil, ErrInvalidRequest
+	// Check for empty or invalid request fields.
+	if request == nil {
+		return nil, ErrQueryRequestIsNil
+	}
+	if request.Address == "" {
+		return nil, ErrAddressIsNil
 	}
 
 	if err := service.isRateLimited(ctx); err != nil {
