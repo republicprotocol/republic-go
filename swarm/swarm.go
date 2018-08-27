@@ -13,13 +13,13 @@ import (
 	"github.com/republicprotocol/republic-go/registry"
 )
 
-// ErrInvalidMultiAddress is returned when the multi-address is nil or
+// ErrMultiAddressIsNil is returned when the multi-address is nil or
 // has nil fields.
-var ErrInvalidMultiAddress = errors.New("invalid multi-address")
+var ErrMultiAddressIsNil = errors.New("multi-address is nil")
 
-// ErrInvalidQuery is returned when the query address is nil or
+// ErrAddressIsNil is returned when the query address is nil or
 // has nil fields.
-var ErrInvalidQuery = errors.New("invalid query address")
+var ErrAddressIsNil = errors.New("query address is nil")
 
 // A Client exposes methods for invoking RPCs on a remote server.
 type Client interface {
@@ -106,24 +106,24 @@ func (swarmer *swarmer) Ping(ctx context.Context) error {
 
 // Pong implements the Swarmer interface.
 func (swarmer *swarmer) Pong(ctx context.Context, to identity.MultiAddress) error {
-	if to.IsEmpty() {
-		return ErrInvalidMultiAddress
+	if to.IsNil() {
+		return ErrMultiAddressIsNil
 	}
 	return swarmer.client.Pong(ctx, to)
 }
 
 // BroadcastMultiAddress implements the Swarmer interface.
 func (swarmer *swarmer) BroadcastMultiAddress(ctx context.Context, multiAddr identity.MultiAddress) error {
-	if multiAddr.IsEmpty() {
-		return ErrInvalidMultiAddress
+	if multiAddr.IsNil() {
+		return ErrMultiAddressIsNil
 	}
 	return swarmer.pingNodes(ctx, multiAddr)
 }
 
 // Query implements the Swarmer interface.
 func (swarmer *swarmer) Query(ctx context.Context, query identity.Address) (identity.MultiAddress, error) {
-	if len(query) == 0 {
-		return identity.MultiAddress{}, ErrInvalidQuery
+	if query == "" {
+		return identity.MultiAddress{}, ErrAddressIsNil
 	}
 	return swarmer.query(ctx, query)
 }
@@ -327,8 +327,8 @@ func NewServer(swarmer Swarmer, multiAddrStore MultiAddressStorer, α int, verif
 
 // Ping implements the Server interface.
 func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress) error {
-	if multiAddr.IsEmpty() {
-		return ErrInvalidMultiAddress
+	if multiAddr.IsNil() {
+		return ErrMultiAddressIsNil
 	}
 	// Verify the signature
 	if err := server.verifier.Verify(multiAddr.Hash(), multiAddr.Signature); err != nil {
@@ -357,8 +357,8 @@ func (server *server) Ping(ctx context.Context, multiAddr identity.MultiAddress)
 
 // Pong will store unseen multi-addresses in the storer.
 func (server *server) Pong(ctx context.Context, from identity.MultiAddress) error {
-	if from.IsEmpty() {
-		return ErrInvalidMultiAddress
+	if from.IsNil() {
+		return ErrMultiAddressIsNil
 	}
 	// Verify the signature
 	if err := server.verifier.Verify(from.Hash(), from.Signature); err != nil {
@@ -375,8 +375,8 @@ func (server *server) Pong(ctx context.Context, from identity.MultiAddress) erro
 
 // Query implements the Swarmer interface.
 func (server *server) Query(ctx context.Context, query identity.Address) (identity.MultiAddresses, error) {
-	if len(query) == 0 {
-		return identity.MultiAddresses{}, ErrInvalidQuery
+	if query == "" {
+		return identity.MultiAddresses{}, ErrAddressIsNil
 	}
 	multiAddr, err := server.multiAddrStore.MultiAddress(query)
 	if err == nil {
