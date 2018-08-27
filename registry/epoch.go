@@ -41,5 +41,5 @@ func (ξ *Epoch) Pod(addr identity.Address) (Pod, error) {
 
 // IsEmpty returns true if the Epoch is nil.
 func (ξ *Epoch) IsEmpty() bool {
-	return ξ == nil
+	return ξ == nil || len(ξ.Hash) != 32 || len(ξ.Darknodes) == 0 || len(ξ.Pods) == 0
 }
