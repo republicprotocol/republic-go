@@ -110,7 +110,6 @@ func main() {
 	if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
 		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
 	}
-	log.Printf("current nonce %v, length of signature: %v", multiAddr.Nonce, len(multiAddr.Signature))
 
 	// New gRPC components
 	server := grpc.NewServer()
@@ -201,6 +200,7 @@ func main() {
 			}
 			if err == nil {
 				bootstrapMulti.Nonce = multi.Nonce
+				bootstrapMulti.Signature = multi.Signature
 			}
 			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
 				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
@@ -290,12 +290,15 @@ func getIPAddress() (string, error) {
 }
 
 func pingNetwork(swarmer swarm.Swarmer) {
-	if err := swarmer.Ping(context.Background()); err != nil {
-		log.Printf("cannot bootstrap: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := swarmer.Ping(ctx); err != nil {
+		log.Printf("[error] (bootstrap) %v", err)
 	}
 	peers, err := swarmer.Peers()
 	if err != nil {
-		logger.Error(fmt.Sprintf("cannot get connected peers: %v", err))
+		log.Printf("[error] (bootstrap) cannot get connected peers: %v", err)
 	}
-	log.Printf("connected to %v peers", len(peers)-1)
+	log.Printf("[info] connected to %v peers", len(peers)-1)
 }

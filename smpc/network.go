@@ -206,20 +206,23 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 		return offsetPositions[addrs[i]] < offsetPositions[addrs[j]]
 	})
 
-	for _, addr := range addrs {
-		go func(addr identity.Address) {
-			sender, ok := senders[addr]
-			if !ok {
-				log.Printf("[error] cannot send message to node at position %v", addr)
-				return
-			}
-			if err := sender.Send(message); err != nil {
-				// These logs are disabled to prevent verbose output
-				// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
-			}
-		}(addr)
-		time.Sleep(30 * time.Second)
-	}
+	go func() {
+		for _, addr := range addrs {
+			go func(addr identity.Address) {
+				sender, ok := senders[addr]
+				if !ok {
+					log.Printf("[error] cannot send message to node at position %v", addr)
+					return
+				}
+				if err := sender.Send(message); err != nil {
+					// These logs are disabled to prevent verbose output
+					// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+				}
+			}(addr)
+
+			time.Sleep(30 * time.Second)
+		}
+	}()
 }
 
 // SendTo implements the Network interface.

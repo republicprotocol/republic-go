@@ -106,9 +106,9 @@ func (service *OracleService) UpdateMidpoint(ctx context.Context, request *Updat
 	}
 
 	midpointPrice := oracle.MidpointPrice{
-		Signature:  request.Signature,
-		Prices:     request.Prices,
-		Nonce:      request.Nonce,
+		Signature: request.Signature,
+		Prices:    request.Prices,
+		Nonce:     request.Nonce,
 	}
 
 	return &UpdateMidpointResponse{}, service.server.UpdateMidpoint(ctx, midpointPrice)
