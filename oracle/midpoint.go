@@ -57,5 +57,5 @@ func (midpointPrice MidpointPrice) Hash() []byte {
 
 // IsEmpty returns true if the MidpointPrice is nil.
 func (midpointPrice *MidpointPrice) IsEmpty() bool {
-	return midpointPrice == nil
+	return midpointPrice == nil || len(midpointPrice.Prices) == 0
 }
