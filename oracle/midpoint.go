@@ -55,7 +55,7 @@ func (midpointPrice MidpointPrice) Hash() []byte {
 	return crypto.Keccak256(data)
 }
 
-// IsEmpty returns true if the MidpointPrice is nil.
-func (midpointPrice *MidpointPrice) IsEmpty() bool {
+// IsNil returns true if the MidpointPrice is nil.
+func (midpointPrice *MidpointPrice) IsNil() bool {
 	return midpointPrice == nil || len(midpointPrice.Prices) == 0
 }
