@@ -123,13 +123,16 @@ func NewConnector(addr identity.Address, signer crypto.Signer, encrypter crypto.
 }
 
 func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress, receiver smpc.Receiver) (smpc.Sender, error) {
-	if networkID == [32]byte{} || to.IsEmpty() || receiver == nil {
+	if len(networkID) == 0 || networkID == [32]byte{} || to.IsEmpty() || receiver == nil {
 		return nil, fmt.Errorf("invalid connect: one or more empty fields detected: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
 
 	secret, stream, err := connector.connect(ctx, networkID, to)
 	if err != nil {
 		return nil, err
+	}
+	if secret == nil || stream == nil {
+		return nil, fmt.Errorf("nil secret or stream detected")
 	}
 	sender := NewSender(secret, stream)
 
