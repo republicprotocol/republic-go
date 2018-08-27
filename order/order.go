@@ -200,18 +200,18 @@ func (status Status) String() string {
 
 // An Order represents the want to perform a trade of assets.
 type Order struct {
-	Signature  Signature  `json:"signature"`
-	ID         ID         `json:"id"`
-	Type       Type       `json:"type"`
-	Parity     Parity     `json:"parity"`
-	Settlement Settlement `json:"settlement"`
-	Expiry     time.Time  `json:"expiry"`
+	Signature  Signature  `json:"signature,omitempty"`
+	ID         ID         `json:"id,omitempty"`
+	Type       Type       `json:"type,omitempty"`
+	Parity     Parity     `json:"parity,omitempty"`
+	Settlement Settlement `json:"settlement,omitempty"`
+	Expiry     time.Time  `json:"expiry,omitempty"`
 
-	Tokens        Tokens `json:"tokens"`
-	Price         CoExp  `json:"price"`
-	Volume        CoExp  `json:"volume"`
-	MinimumVolume CoExp  `json:"minimumVolume"`
-	Nonce         uint64 `json:"nonce"`
+	Tokens        Tokens `json:"tokens,omitempty"`
+	Price         CoExp  `json:"price,omitempty"`
+	Volume        CoExp  `json:"volume,omitempty"`
+	MinimumVolume CoExp  `json:"minimumVolume,omitempty"`
+	Nonce         uint64 `json:"nonce,omitempty"`
 }
 
 // NewOrder returns a new Order and computes the ID.
