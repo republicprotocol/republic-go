@@ -340,6 +340,35 @@ func (order *Order) Hash() [32]byte {
 	return hash32
 }
 
+// PrefixHash returns the data used in the prefix header for the order. Returns
+// an empty slice if the order cannot be marshaled into bytes.
+func (order *Order) PrefixHash() []byte {
+	buf := new(bytes.Buffer)
+
+	// Marshal the prefix data
+	if err := binary.Write(buf, binary.BigEndian, order.Parity); err != nil {
+		return []byte{}
+	}
+	if err := binary.Write(buf, binary.BigEndian, order.Type); err != nil {
+		return []byte{}
+	}
+	if err := binary.Write(buf, binary.BigEndian, uint64(order.Expiry.Unix())); err != nil {
+		return []byte{}
+	}
+	if err := binary.Write(buf, binary.BigEndian, order.Nonce); err != nil {
+		return []byte{}
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, order.Settlement); err != nil {
+		return []byte{}
+	}
+	if err := binary.Write(buf, binary.BigEndian, order.Tokens); err != nil {
+		return []byte{}
+	}
+
+	return buf.Bytes()
+}
+
 // Equal returns an equality check between two Orders.
 func (order *Order) Equal(other *Order) bool {
 	return bytes.Equal(order.ID[:], other.ID[:]) &&
@@ -358,23 +387,7 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	// Marshal the prefix data
-	if err := binary.Write(buf, binary.BigEndian, order.Parity); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, order.Type); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, uint64(order.Expiry.Unix())); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, order.Nonce); err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(buf, binary.BigEndian, order.Settlement); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, order.Tokens); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, order.PrefixHash()); err != nil {
 		return nil, err
 	}
 	// Price is packed as a uint256
@@ -426,6 +439,16 @@ func PriceToCoExp(volume uint64) CoExp {
 }
 
 func VolumeToCoExp(volume uint64) CoExp {
+	// FIXME: Unimplemented!
+	panic("unimplemented")
+}
+
+func PriceFromCoExp(co uint64, exp uint64) uint64 {
+	// FIXME: Unimplemented!
+	panic("unimplemented")
+}
+
+func VolumeFromCoExp(co uint64, exp uint64) uint64 {
 	// FIXME: Unimplemented!
 	panic("unimplemented")
 }

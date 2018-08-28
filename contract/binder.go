@@ -186,9 +186,9 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		}()
 	}
 
-	nonceHash := big.NewInt(0).SetBytes(ord.BytesFromNonce())
 	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, uint32(ord.Settlement), uint8(ord.Type), uint8(ord.Parity), uint64(ord.Expiry.Unix()), uint64(ord.Tokens), uint16(ord.Price.Co), uint16(ord.Price.Exp), uint16(ord.Volume.Co), uint16(ord.Volume.Exp), uint16(ord.MinimumVolume.Co), uint16(ord.MinimumVolume.Exp), nonceHash)
+
+	return binder.renExSettlement.SubmitOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts
@@ -856,7 +856,6 @@ func (binder *Binder) orderDepth(id order.ID) (*big.Int, error) {
 }
 
 func (binder *Binder) confirmOrder(id order.ID, match order.ID) (*types.Transaction, error) {
-	orderMatches := [][32]byte{match}
 	return binder.orderbook.ConfirmOrder(binder.transactOpts, [32]byte(id), [32]byte(match))
 }
 
