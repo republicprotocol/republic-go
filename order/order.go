@@ -516,11 +516,11 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 }
 
 func PriceFromCoExp(co uint64, exp uint64) uint64 {
-	return PriceFloatFromCoExp(co, exp) * 1e12
+	return uint64(PriceFloatFromCoExp(co, exp) * 1e12)
 }
 
 func VolumeFromCoExp(co uint64, exp uint64) uint64 {
-	return VolumeFloatFromCoExp(co, exp) * 1e12
+	return uint64(VolumeFloatFromCoExp(co, exp) * 1e12)
 }
 
 func PriceFloatFromCoExp(co uint64, exp uint64) float64 {
