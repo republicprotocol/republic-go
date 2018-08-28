@@ -54,8 +54,9 @@ type Binder struct {
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
 	orderbook        *bindings.Orderbook
-	renExSettlement  *bindings.Settlement
-	erc20            *bindings.ERC20
+
+	settlementRegistry *bindings.SettlementRegistry
+	renExSettlement    *bindings.Settlement
 }
 
 // NewBinder returns a Binder to communicate with contracts
@@ -87,7 +88,19 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
-	renExSettlement, err := bindings.NewSettlement(common.HexToAddress(conn.Config.RenExSettlementAddress), bind.ContractBackend(conn.Client))
+	settlementRegistry, err := bindings.NewSettlementRegistry(common.HexToAddress(conn.Config.SettlementRegistryAddress), bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to SettlementRegistry: %v", err))
+		return Binder{}, err
+	}
+
+	renExSettlementAddress, err := settlementRegistry.SettlementContract(&bind.CallOpts{}, uint64(order.SettlementRenEx))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to RenExSettlementAddress: %v", err))
+		return Binder{}, err
+	}
+
+	renExSettlement, err := bindings.NewSettlement(renExSettlementAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
 		return Binder{}, err
@@ -103,7 +116,9 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		republicToken:    republicToken,
 		darknodeRegistry: darknodeRegistry,
 		orderbook:        orderbook,
-		renExSettlement:  renExSettlement,
+
+		settlementRegistry: settlementRegistry,
+		renExSettlement:    renExSettlement,
 	}, nil
 }
 
