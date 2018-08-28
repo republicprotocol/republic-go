@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -441,7 +440,7 @@ func PriceToCoExp(price uint64) CoExp {
 }
 
 func VolumeToCoExp(volume uint64) CoExp {
-	volumeF := float64(price) / 1e12
+	volumeF := float64(volume) / 1e12
 	return VolumeFloatToCoExp(volumeF)
 }
 
@@ -468,7 +467,7 @@ func PriceFloatToCoExp(price float64) CoExp {
 		}
 		if price < 1 {
 			prev := PriceFloatToCoExp(price * 10)
-			return order.CoExp{
+			return CoExp{
 				Co:  prev.Co,
 				Exp: prev.Exp - 1,
 			}
