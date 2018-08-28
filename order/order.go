@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"math"
 	"os"
 	"time"
 
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 )
 
@@ -433,22 +435,99 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func PriceToCoExp(volume uint64) CoExp {
-	// FIXME: Unimplemented!
-	panic("unimplemented")
+func PriceToCoExp(price uint64) CoExp {
+	priceF := float64(price) / 1e12
+	return PriceFloatToCoExp(priceF)
 }
 
 func VolumeToCoExp(volume uint64) CoExp {
-	// FIXME: Unimplemented!
-	panic("unimplemented")
+	volumeF := float64(price) / 1e12
+	return VolumeFloatToCoExp(volumeF)
+}
+
+func PriceFloatToCoExp(price float64) CoExp {
+	if price > 10.0 {
+		prev := PriceFloatToCoExp(price / 10)
+		return CoExp{
+			Co:  prev.Co,
+			Exp: prev.Exp + 1,
+		}
+
+	} else if price < 0.005 {
+		prev := PriceFloatToCoExp(price * 10)
+		return CoExp{
+			Co:  prev.Co,
+			Exp: prev.Exp - 1,
+		}
+	} else {
+		if price == 0 {
+			return CoExp{
+				Co:  0,
+				Exp: 0,
+			}
+		}
+		if price < 1 {
+			prev := PriceFloatToCoExp(price * 10)
+			return order.CoExp{
+				Co:  prev.Co,
+				Exp: prev.Exp - 1,
+			}
+		}
+	}
+	try := math.Round(price / 0.005)
+	return CoExp{
+		Co:  uint64(try),
+		Exp: 26,
+	}
+}
+
+func VolumeFloatToCoExp(volume float64) CoExp {
+	if volume > 10 {
+		prev := VolumeFloatToCoExp(volume / 10)
+		return CoExp{
+			Co:  prev.Co,
+			Exp: prev.Exp + 1,
+		}
+	} else if volume < 0.2 {
+		prev := VolumeFloatToCoExp(volume * 10)
+		return CoExp{
+			Co:  prev.Co,
+			Exp: prev.Exp - 1,
+		}
+	} else {
+		if volume == 0 {
+			return CoExp{
+				Co:  0,
+				Exp: 0,
+			}
+		}
+		if volume < 1 {
+			prev := VolumeFloatToCoExp(volume * 10)
+			return CoExp{
+				Co:  prev.Co,
+				Exp: prev.Exp - 1,
+			}
+		}
+	}
+	try := math.Round(volume / 0.2)
+	return CoExp{
+		Co:  uint64(try),
+		Exp: 0,
+	}
 }
 
 func PriceFromCoExp(co uint64, exp uint64) uint64 {
-	// FIXME: Unimplemented!
-	panic("unimplemented")
+	return PriceFloatFromCoExp(co, exp) * 1e12
 }
 
 func VolumeFromCoExp(co uint64, exp uint64) uint64 {
-	// FIXME: Unimplemented!
-	panic("unimplemented")
+	return VolumeFloatFromCoExp(co, exp) * 1e12
+}
+
+func PriceFloatFromCoExp(co uint64, exp uint64) float64 {
+	return 0.005 * float64(co) * math.Pow(10, float64(exp)-26)
+}
+
+func VolumeFloatFromCoExp(co uint64, exp uint64) float64 {
+	return 0.2 * float64(co) * math.Pow(10, float64(exp))
 }
