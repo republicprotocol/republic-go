@@ -62,7 +62,7 @@ type Binder struct {
 // NewBinder returns a Binder to communicate with contracts
 func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := *auth
-	transactOpts.GasPrice = big.NewInt(20000000000)
+	transactOpts.GasPrice = big.NewInt(5000000000)
 
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
 	if err != nil {
@@ -741,14 +741,6 @@ func (binder *Binder) epoch(epoch struct {
 // the turning of the Epoch failed, the current Epoch is returned.
 func (binder *Binder) NextEpoch() (registry.Epoch, error) {
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-
-		// FIXME: Such a low gas price is only appropriate during testnet.
-		previousGasPrice := binder.transactOpts.GasPrice
-		binder.transactOpts.GasPrice = big.NewInt(1000000000)
-		defer func() {
-			binder.transactOpts.GasPrice = previousGasPrice
-		}()
-
 		return binder.nextEpoch()
 	})
 	if err != nil {
