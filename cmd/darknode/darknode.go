@@ -88,28 +88,20 @@ func main() {
 
 	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
-	// Get own nonce from leveldb, if present and store multiaddress.
-	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+	// Insert self multiAddress if not in the storer.
+	_, err = store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
-		if err != swarm.ErrMultiAddressNotFound {
-			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
+		if err == swarm.ErrMultiAddressNotFound {
+			if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+				log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
+			}
 		} else {
-			multi.Nonce = 0
+			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
 		}
 	}
 
-	multiAddr.Nonce = multi.Nonce + 1
-
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
-	multiAddrSignature, err := crypter.Sign(multiAddr.Hash())
-	if err != nil {
-		log.Fatalf("cannot sign own multiaddress: %v", err)
-	}
-	multiAddr.Signature = multiAddrSignature
-	if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
-		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
-	}
 
 	// New gRPC components
 	server := grpc.NewServer()
@@ -190,25 +182,23 @@ func main() {
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
 		for _, bootstrapMulti := range config.BootstrapMultiAddresses {
-			if bootstrapMulti.Address() == multiAddr.Address() {
-				continue
-			}
-			multi, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
-			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
-				continue
-			}
-			if err == nil {
-				bootstrapMulti.Nonce = multi.Nonce
-				bootstrapMulti.Signature = multi.Signature
-			}
-			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
-			}
 			fmtStr += "  " + bootstrapMulti.String() + "\n"
+			_, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
+			if err != nil {
+				if err == swarm.ErrMultiAddressNotFound {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
+					}
+				} else {
+					logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
+					continue
+				}
+			}
 		}
 		log.Printf(fmtStr)
-		pingNetwork(swarmer)
+		if err := pingNetwork(swarmer); err != nil {
+			log.Fatalf("[error] (bootstrap) cannot ping network: %v", err)
+		}
 
 		// New secure multi-party computer
 		smpcer := smpc.NewSmpcer(connectorListener, swarmer)
@@ -234,7 +224,6 @@ func main() {
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(5 * time.Second)
-				rand.Seed(time.Now().UnixNano())
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
@@ -258,8 +247,14 @@ func main() {
 			// darknode address
 			for {
 				time.Sleep(time.Hour)
-				pingNetwork(swarmer)
-				store.Prune()
+				if err := pingNetwork(swarmer); err != nil {
+					log.Printf("[error] (prune) cannot ping network: %v", err)
+					continue
+				}
+				if err := store.Prune(); err != nil {
+					log.Printf("[error] (prune) cannot prune the storer: %v", err)
+					continue
+				}
 			}
 		})
 	}()
@@ -289,16 +284,20 @@ func getIPAddress() (string, error) {
 	return string(out), nil
 }
 
-func pingNetwork(swarmer swarm.Swarmer) {
+// pingNetwork start ping the entire network with a new multiAddress with an
+// updated nonce
+func pingNetwork(swarmer swarm.Swarmer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := swarmer.Ping(ctx); err != nil {
-		log.Printf("[error] (bootstrap) %v", err)
+		return err
 	}
 	peers, err := swarmer.Peers()
 	if err != nil {
-		log.Printf("[error] (bootstrap) cannot get connected peers: %v", err)
+		return err
 	}
 	log.Printf("[info] connected to %v peers", len(peers)-1)
+
+	return nil
 }
