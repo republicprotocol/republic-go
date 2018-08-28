@@ -150,7 +150,7 @@ func (parity Parity) String() string {
 
 // Settlement is a unique identifier for the settlement layer used by the
 // Order.
-type Settlement uint32
+type Settlement uint64
 
 // Values for Settlementt.
 const (
