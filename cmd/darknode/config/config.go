@@ -34,5 +34,9 @@ func NewConfigFromJSONFile(filename string) (Config, error) {
 	if err := json.NewDecoder(file).Decode(&conf); err != nil {
 		return Config{}, err
 	}
+	if conf.Alpha == 0 {
+		conf.Alpha = 8
+	}
+
 	return conf, nil
 }

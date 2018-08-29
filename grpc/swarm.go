@@ -317,7 +317,6 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 			return ErrRateLimitExceeded
 		}
 	}
-
 	service.rateLimits[clientIP] = time.Now()
 	return nil
 }

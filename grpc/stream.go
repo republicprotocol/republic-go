@@ -95,6 +95,13 @@ func (sender *Sender) inject(secret []byte, stream grpc.Stream) {
 	sender.streamMu.Lock()
 	defer sender.streamMu.Unlock()
 
+	if sender.stream != nil {
+		if stream, ok := sender.stream.(grpc.ClientStream); ok {
+			if err := stream.CloseSend(); err != nil {
+				log.Printf("[error] cannot release stream: %v", err)
+			}
+		}
+	}
 	sender.cipher = crypto.NewAESCipher(secret)
 	sender.stream = stream
 }
@@ -108,7 +115,7 @@ func (sender *Sender) release() {
 	}
 	if stream, ok := sender.stream.(grpc.ClientStream); ok {
 		if err := stream.CloseSend(); err != nil {
-			log.Printf("[error] cannot release stream: %v", err)
+			log.Printf("[error] (release) cannot close stream client = %v", err)
 		}
 	}
 	sender.stream = nil
@@ -132,9 +139,11 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	if len(networkID) == 0 || networkID == [32]byte{} || to.IsNil() || receiver == nil {
 		return nil, fmt.Errorf("invalid connect: one or more fields are nil: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
-
-	secret, stream, err := connector.connect(ctx, networkID, to)
+  
+	connCtx, connCancel := context.WithCancel(ctx)
+	secret, stream, err := connector.connect(connCtx, networkID, to)
 	if err != nil {
+		connCancel()
 		return nil, err
 	}
 	if secret == nil || stream == nil {
@@ -181,8 +190,11 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 					}
 
 					if err := recv(); err != nil {
+						connCancel()
+						connCtx, connCancel = context.WithCancel(ctx)
+
 						// Reconnect when an error occurs
-						secret, stream, err = connector.connect(ctx, networkID, to)
+						secret, stream, err = connector.connect(connCtx, networkID, to)
 						if err != nil {
 							return err
 						}
@@ -199,6 +211,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				// Check the context for termination conditions
 				select {
 				case <-ctx.Done():
+					connCancel()
 					return
 				default:
 				}
@@ -207,6 +220,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 				// no hope of reconnecting
 				if backoffErr != nil {
 					log.Printf("[error] cannot reconnect to %v on network %v: %v", to.Address(), networkID, backoffErr)
+					connCancel()
 					return
 				}
 			}
@@ -228,7 +242,11 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		return nil, nil, fmt.Errorf("cannot dial %v: %v", to, err)
 	}
 	go func() {
-		defer conn.Close()
+		defer func() {
+			if err := conn.Close(); err != nil {
+				log.Printf("[error] (connect) cannot close connection = %v", err)
+			}
+		}()
 		<-ctx.Done()
 	}()
 
@@ -238,6 +256,11 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 		// On an error backoff and retry until the context.Context is done
 		stream, err = NewStreamServiceClient(conn).Connect(ctx)
 		if err != nil {
+			if stream != nil {
+				if err := stream.CloseSend(); err != nil {
+					log.Printf("[error] (connect) cannot close stream client = %v", err)
+				}
+			}
 			return err
 		}
 		return nil
@@ -409,8 +432,6 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		// TODO: Return a more appropriate error
 		return fmt.Errorf("not ready to accept connection")
 	}
-	sender.inject(secret[:], stream)
-	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	done := func() chan struct{} {
 		service.donesMu.Lock()
@@ -424,6 +445,10 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 		service.dones[networkID][addr] = make(chan struct{})
 		return service.dones[networkID][addr]
 	}()
+
+	time.Sleep(time.Second)
+	sender.inject(secret[:], stream)
+	log.Printf("[debug] (stream) accepted connection from %v", addr)
 
 	go func() {
 		for {
