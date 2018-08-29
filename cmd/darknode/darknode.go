@@ -146,7 +146,7 @@ func main() {
 	statusProvider.WriteEthereumNetwork(ethNetwork)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
 	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
-	statusProvider.WriteRewardVaultAddress(conn.Config.RewardVaultAddress)
+	statusProvider.WriteRewardVaultAddress(conn.Config.DarknodeRewardVaultAddress)
 	statusProvider.WriteInfuraURL(conn.Config.URI)
 	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
