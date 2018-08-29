@@ -486,7 +486,7 @@ func (binder *Binder) darknodes() (identity.Addresses, error) {
 				// We are finished when a nil address is returned
 				return darknodes, nil
 			}
-			darknodes = append(darknodes, identity.Address(value.Bytes()))
+			darknodes = append(darknodes, identity.ID(value.Bytes()).Address())
 		}
 		lastValue := values[len(values)-1]
 		values, err = binder.darknodeRegistry.GetDarknodes(binder.callOpts, lastValue, big.NewInt(480))
@@ -520,7 +520,7 @@ func (binder *Binder) previousDarknodes() (identity.Addresses, error) {
 				// We are finished when a nil address is returned
 				return darknodes, nil
 			}
-			darknodes = append(darknodes, identity.Address(value.Bytes()))
+			darknodes = append(darknodes, identity.ID(value.Bytes()).Address())
 		}
 		lastValue := values[len(values)-1]
 		values, err = binder.darknodeRegistry.GetPreviousDarknodes(binder.callOpts, lastValue, big.NewInt(480))
