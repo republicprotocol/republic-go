@@ -115,6 +115,7 @@ func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, 
 		multiAddr.Signature = multiAddrMsg.Signature
 		multiAddrs = append(multiAddrs, multiAddr)
 	}
+
 	return multiAddrs, nil
 }
 

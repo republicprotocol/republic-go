@@ -17,8 +17,23 @@ type Server struct {
 }
 
 // NewServer re-exports the grpc.NewServer function.
-func NewServer() *Server {
-	return &Server{grpc.NewServer()}
+func NewServer(unaryLimiter, streamLimiter *rate.Limiter) *Server {
+	unaryInterceptor := grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if unaryLimiter.Allow() {
+			return handler(ctx, req)
+		}
+
+		return nil, nil
+	})
+
+	streamInterceptor := grpc.StreamInterceptor(func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if streamLimiter.Allow() {
+			return handler(srv, stream)
+		}
+		return nil
+	})
+
+	return &Server{grpc.NewServer(unaryInterceptor, streamInterceptor)}
 }
 
 // Start the Server listening on a TCP connection at the given binding address.

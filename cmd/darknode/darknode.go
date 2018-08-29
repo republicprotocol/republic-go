@@ -32,6 +32,7 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/status"
 	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -104,7 +105,9 @@ func main() {
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 
 	// New gRPC components
-	server := grpc.NewServer()
+	unaryLimiter := rate.NewLimiter(5, 10)
+	streamLimiter := rate.NewLimiter(10, 20)
+	server := grpc.NewServer(unaryLimiter, streamLimiter)
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
 	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &crypter)
