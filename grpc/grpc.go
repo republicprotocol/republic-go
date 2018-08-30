@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sync"
 
 	"github.com/pkg/errors"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )
@@ -66,77 +64,6 @@ func (server *Server) Start(addr string) error {
 // Server is started. The Service will be available when the Server is started.
 type Service interface {
 	Register(server *Server)
-}
-
-type rateLimiter struct {
-	mu       *sync.Mutex
-	limiters map[string]*rate.Limiter
-}
-
-func (limiter rateLimiter) UnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		client, ok := peer.FromContext(ctx)
-		if !ok {
-			return nil, fmt.Errorf("fail to get peer from ctx")
-		}
-		if client.Addr == net.Addr(nil) {
-			return nil, fmt.Errorf("fail to get peer address")
-		}
-
-		clientAddr, ok := client.Addr.(*net.TCPAddr)
-		if !ok {
-			return nil, fmt.Errorf("fail to read peer TCP address")
-		}
-		clientIP := clientAddr.IP.String()
-		limiter.mu.Lock()
-		defer limiter.mu.Unlock()
-		if l, ok := limiter.limiters[clientIP]; ok {
-			if l.Allow() {
-				return handler(ctx, req)
-			}
-		} else {
-			l := rate.NewLimiter(5, 25)
-			limiter.limiters[clientIP] = l
-			if l.Allow() {
-				return handler(ctx, req)
-			}
-		}
-
-		return nil, nil
-	}
-}
-
-func (limiter rateLimiter) StreamServerInterceptor() grpc.StreamServerInterceptor {
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		client, ok := peer.FromContext(stream.Context())
-		if !ok {
-			return fmt.Errorf("fail to get peer from ctx")
-		}
-		if client.Addr == net.Addr(nil) {
-			return fmt.Errorf("fail to get peer address")
-		}
-
-		clientAddr, ok := client.Addr.(*net.TCPAddr)
-		if !ok {
-			return fmt.Errorf("fail to read peer TCP address")
-		}
-		clientIP := clientAddr.IP.String()
-		limiter.mu.Lock()
-		defer limiter.mu.Unlock()
-		if l, ok := limiter.limiters[clientIP]; ok {
-			if l.Allow() {
-				return handler(srv, stream)
-			}
-		} else {
-			l := rate.NewLimiter(5, 25)
-			limiter.limiters[clientIP] = l
-			if l.Allow() {
-				return handler(srv, stream)
-			}
-		}
-
-		return nil
-	}
 }
 
 func addressFromContext(ctx context.Context) (string, error) {
