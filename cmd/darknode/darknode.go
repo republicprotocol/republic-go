@@ -105,8 +105,8 @@ func main() {
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 
 	// New gRPC components
-	unaryLimiter := rate.NewLimiter(5, 10)
-	streamLimiter := rate.NewLimiter(10, 20)
+	unaryLimiter := rate.NewLimiter(20, 40)
+	streamLimiter := rate.NewLimiter(40, 80)
 	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
