@@ -105,7 +105,7 @@ func main() {
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 
 	// New gRPC components
-	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 2.0, 10)
+	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 1.0, 5)
 	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
 	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
