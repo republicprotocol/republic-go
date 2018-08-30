@@ -16,8 +16,12 @@ type Server struct {
 	*grpc.Server
 }
 
+func NewServer() *Server {
+	return &Server{grpc.NewServer()}
+}
+
 // NewServer re-exports the grpc.NewServer function.
-func NewServer(unaryLimiter, streamLimiter *rate.Limiter) *Server {
+func NewServerwithLimiter(unaryLimiter, streamLimiter *rate.Limiter) *Server {
 	unaryInterceptor := grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if unaryLimiter.Allow() {
 			return handler(ctx, req)
