@@ -274,31 +274,35 @@ func WriteOrdersToJSONFile(fileName string, orders []*Order) error {
 // Split the Order into n OrderFragments, where k OrderFragments are needed to
 // reconstruct the Order. Returns a slice of all n OrderFragments, or an error.
 func (order *Order) Split(n, k int64) ([]Fragment, error) {
+	priceCoExp := PriceToCoExp(order.Price)
+	volumeCoExp := VolumeToCoExp(order.Volume)
+	minimumVolumeCoExp := VolumeToCoExp(order.MinimumVolume)
+
 	tokens, err := shamir.Split(n, k, uint64(order.Tokens))
 	if err != nil {
 		return nil, err
 	}
-	priceCos, err := shamir.Split(n, k, PriceToCoExp(order.Price).Co)
+	priceCos, err := shamir.Split(n, k, priceCoExp.Co)
 	if err != nil {
 		return nil, err
 	}
-	priceExps, err := shamir.Split(n, k, VolumeToCoExp(order.Price).Exp)
+	priceExps, err := shamir.Split(n, k, priceCoExp.Exp)
 	if err != nil {
 		return nil, err
 	}
-	volumeCos, err := shamir.Split(n, k, VolumeToCoExp(order.Volume).Co)
+	volumeCos, err := shamir.Split(n, k, volumeCoExp.Co)
 	if err != nil {
 		return nil, err
 	}
-	volumeExps, err := shamir.Split(n, k, VolumeToCoExp(order.Volume).Exp)
+	volumeExps, err := shamir.Split(n, k, volumeCoExp.Exp)
 	if err != nil {
 		return nil, err
 	}
-	minimumVolumeCos, err := shamir.Split(n, k, VolumeToCoExp(order.MinimumVolume).Co)
+	minimumVolumeCos, err := shamir.Split(n, k, minimumVolumeCoExp.Co)
 	if err != nil {
 		return nil, err
 	}
-	minimumVolumeExps, err := shamir.Split(n, k, VolumeToCoExp(order.MinimumVolume).Exp)
+	minimumVolumeExps, err := shamir.Split(n, k, minimumVolumeCoExp.Exp)
 	if err != nil {
 		return nil, err
 	}
