@@ -16,17 +16,17 @@ var _ = Describe("Orders", func() {
 	n := int64(17)
 	k := int64(12)
 
-	price := NewCoExp(uint64(1), uint64(2))
-	minVolume := NewCoExp(uint64(1), uint64(3))
-	maxVolume := NewCoExp(uint64(1), uint64(3))
+	price := uint64(1e12)
+	minVolume := uint64(1e12)
+	maxVolume := uint64(1e12)
 
 	Context("when testing for equality", func() {
 
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
 			nonce := uint64(10)
-			lhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, expiry, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Expect(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
 			Expect(lhs.Equal(&rhs)).Should(Equal(true))
@@ -34,9 +34,9 @@ var _ = Describe("Orders", func() {
 
 		It("should return false for orders that are not equal", func() {
 			nonce := uint64(10)
-			lhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			rhs := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Expect(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
 			Expect(lhs.Equal(&rhs)).Should(Equal(false))
@@ -47,7 +47,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return the correct number of order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -57,7 +57,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return different order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -74,9 +74,9 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load orders from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			ord2 := NewOrder(TypeLimit, ParitySell, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord2 := NewOrder(ParitySell, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
 			Expect(err).ShouldNot(HaveOccurred())
@@ -88,7 +88,7 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load a single order from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(TypeLimit, ParityBuy, SettlementRenEx, time.Now().Add(time.Hour), TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := writeOrderToJSONFile("orders.out", &ord1)
 			Expect(err).ShouldNot(HaveOccurred())
