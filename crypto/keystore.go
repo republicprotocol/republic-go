@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/randentropy"
@@ -67,6 +68,21 @@ func (keystore *Keystore) NewKeystore(ecdsaKey EcdsaKey, rsaKey RsaKey) Keystore
 		EcdsaKey: ecdsaKey,
 		RsaKey:   rsaKey,
 	}
+}
+
+// NewKeystoreFromJSONFile unmarshals an unencrypted keystore JSON file
+func NewKeystoreFromJSONFile(filename string) (Keystore, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return Keystore{}, err
+	}
+	defer file.Close()
+
+	ks := Keystore{}
+	if err := json.NewDecoder(file).Decode(&ks); err != nil {
+		return Keystore{}, err
+	}
+	return ks, nil
 }
 
 // EncryptToJSON will encrypt the EcdsaKey and RsaKey in the Keystore. It

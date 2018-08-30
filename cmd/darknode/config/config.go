@@ -5,13 +5,11 @@ import (
 	"os"
 
 	"github.com/republicprotocol/republic-go/contract"
-	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 )
 
 type Config struct {
-	Keystore crypto.Keystore `json:"keystore"`
 	Ethereum contract.Config `json:"ethereum"` // TODO: Darknode package should not be dependent on blockchain/ethereum
 	Logs     logger.Options  `json:"logs"`
 

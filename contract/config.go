@@ -1,5 +1,10 @@
 package contract
 
+import (
+	"encoding/json"
+	"os"
+)
+
 // Network is used to represent a Republic Protocol network.
 type Network string
 
@@ -27,4 +32,19 @@ type Config struct {
 	RewardVaultAddress      string  `json:"rewardVaultAddress"`
 	RenExBalancesAddress    string  `json:"renExBalancesAddress"`
 	RenExSettlementAddress  string  `json:"renExSettlementAddress"`
+}
+
+// NewConfigFromJSONFile unmarshals a JSON into a Config object
+func NewConfigFromJSONFile(filename string) (Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
+
+	conf := Config{}
+	if err := json.NewDecoder(file).Decode(&conf); err != nil {
+		return Config{}, err
+	}
+	return conf, nil
 }

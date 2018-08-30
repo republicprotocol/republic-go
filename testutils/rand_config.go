@@ -22,7 +22,6 @@ func RandomConfigs(n int, b int) ([]config.Config, error) {
 
 		addr := identity.Address(keystore.Address())
 		configs = append(configs, config.Config{
-			Keystore:                keystore,
 			Host:                    "0.0.0.0",
 			Port:                    fmt.Sprintf("%d", 18514+i),
 			Address:                 addr,
