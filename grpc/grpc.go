@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 
@@ -31,6 +32,7 @@ func NewServerwithLimiter(unaryLimiter, streamLimiter *RateLimiter) *Server {
 		if unaryLimiter.Allow(clientIP) {
 			return handler(ctx, req)
 		}
+		log.Println(clientIP, "hit the unary rate limit")
 
 		return nil, errors.New("429: Too Many Requests")
 	})
@@ -43,6 +45,8 @@ func NewServerwithLimiter(unaryLimiter, streamLimiter *RateLimiter) *Server {
 		if streamLimiter.Allow(clientIP) {
 			return handler(srv, stream)
 		}
+		log.Println(clientIP, "hit the stream rate limit")
+
 		return errors.New("429: Too Many Requests")
 	})
 
