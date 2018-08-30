@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -38,10 +39,15 @@ func (limiter *RateLimiter) Allow(addr string) bool {
 	limiter.mu.Unlock()
 
 	if !addrLimiter.Allow() {
+		log.Println(addr, "hit your personal limiting")
 		return false
 	}
 
-	return limiter.global.Allow()
+	if !limiter.global.Allow() {
+		log.Println(addr, "hit global limiting")
+		return false
+	}
+	return true
 }
 
 func (limiter *RateLimiter) Wait(ctx context.Context, addr string) error {
