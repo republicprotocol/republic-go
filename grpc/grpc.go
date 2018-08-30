@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 
@@ -24,9 +25,10 @@ func NewServer() *Server {
 func NewServerwithLimiter(unaryLimiter, streamLimiter *rate.Limiter) *Server {
 	unaryInterceptor := grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if unaryLimiter.Allow() {
+			log.Println("allow")
 			return handler(ctx, req)
 		}
-
+		log.Println("not allowed")
 		return nil, nil
 	})
 
