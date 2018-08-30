@@ -3,10 +3,10 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 
+	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
@@ -22,21 +22,28 @@ func NewServer() *Server {
 }
 
 // NewServer re-exports the grpc.NewServer function.
-func NewServerwithLimiter(unaryLimiter, streamLimiter *rate.Limiter) *Server {
+func NewServerwithLimiter(unaryLimiter, streamLimiter *RateLimiter) *Server {
 	unaryInterceptor := grpc.UnaryInterceptor(func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		if unaryLimiter.Allow() {
-			log.Println("allow")
+		clientIP, err := addressFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if unaryLimiter.Allow(clientIP) {
 			return handler(ctx, req)
 		}
-		log.Println("not allowed")
-		return nil, nil
+
+		return nil, errors.New("429: Too Many Requests")
 	})
 
 	streamInterceptor := grpc.StreamInterceptor(func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if streamLimiter.Allow() {
+		clientIP, err := addressFromContext(stream.Context())
+		if err != nil {
+			return err
+		}
+		if streamLimiter.Allow(clientIP) {
 			return handler(srv, stream)
 		}
-		return nil
+		return errors.New("429: Too Many Requests")
 	})
 
 	return &Server{grpc.NewServer(unaryInterceptor, streamInterceptor)}
@@ -126,4 +133,20 @@ func (limiter rateLimiter) StreamServerInterceptor() grpc.StreamServerIntercepto
 
 		return nil
 	}
+}
+
+func addressFromContext(ctx context.Context) (string, error) {
+	client, ok := peer.FromContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("fail to get peer from ctx")
+	}
+	if client.Addr == net.Addr(nil) {
+		return "", fmt.Errorf("fail to get peer address")
+	}
+	clientAddr, ok := client.Addr.(*net.TCPAddr)
+	if !ok {
+		return "", fmt.Errorf("fail to read peer TCP address")
+	}
+
+	return clientAddr.IP.String(), nil
 }
