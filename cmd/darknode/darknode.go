@@ -89,20 +89,25 @@ func main() {
 
 	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
+	// New crypter for signing and verification
+	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+
 	// Insert self multiAddress if not in the storer.
 	_, err = store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
 		if err == swarm.ErrMultiAddressNotFound {
+			signature, err := crypter.Sign(multiAddr.Hash())
+			if err != nil {
+				log.Fatalf("cannot sign own multiAddress: %v", err)
+			}
+			multiAddr.Signature = signature
 			if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
-				log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
+				log.Fatalf("cannot store own multiAddress in leveldb: %v", err)
 			}
 		} else {
-			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
+			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own multiAddress from store: %v", err))
 		}
 	}
-
-	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 
 	// New gRPC components
 	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
