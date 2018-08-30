@@ -177,7 +177,7 @@ func generateMocknodes(n, α int) ([]*mockNode, []identity.Address, []swarm.Mult
 
 		swarmer := swarm.NewSwarmer(swarmClient, stores[i], α, &verifier)
 
-		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α, &verifier), time.Microsecond)
+		swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, stores[i], α, &verifier))
 
 		streamer := grpc.NewConnectorListener(addr, testutils.NewCrypter(), testutils.NewCrypter())
 		streamerService := grpc.NewStreamerService(addr, testutils.NewCrypter(), testutils.NewCrypter(), streamer.Listener)

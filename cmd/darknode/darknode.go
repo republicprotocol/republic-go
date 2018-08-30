@@ -111,7 +111,7 @@ func main() {
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
 	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &crypter)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter), time.Millisecond)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter))
 	swarmService.Register(server)
 
 	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
