@@ -476,7 +476,7 @@ func PriceFloatToCoExp(price float64) CoExp {
 	try := math.Round(price / 0.005)
 	return CoExp{
 		Co:  uint64(try),
-		Exp: 26,
+		Exp: 38,
 	}
 }
 
@@ -511,7 +511,7 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 	try := math.Round(volume / 0.2)
 	return CoExp{
 		Co:  uint64(try),
-		Exp: 0,
+		Exp: 12,
 	}
 }
 
