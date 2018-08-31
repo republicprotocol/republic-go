@@ -203,7 +203,12 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 
 	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
 
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
+	tokens := uint64(ord.Tokens)
+	if ord.Parity == order.ParitySell {
+		tokens = (tokens << 32) | (tokens >> 32)
+	}
+
+	return binder.renExSettlement.SubmitOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), tokens, big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
 }
 
 // SubmitMatch will submit a matched order pair to the RenEx accounts

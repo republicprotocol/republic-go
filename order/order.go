@@ -354,9 +354,6 @@ func (order *Order) PrefixHash() []byte {
 	buf := new(bytes.Buffer)
 
 	// Marshal the prefix data
-	if err := binary.Write(buf, binary.BigEndian, order.Parity); err != nil {
-		return []byte{}
-	}
 	if err := binary.Write(buf, binary.BigEndian, order.Type); err != nil {
 		return []byte{}
 	}
@@ -394,8 +391,14 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 	if err := binary.Write(buf, binary.BigEndian, order.Settlement); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(buf, binary.BigEndian, order.Tokens); err != nil {
-		return nil, err
+	if order.Parity == ParityBuy {
+		if err := binary.Write(buf, binary.BigEndian, order.Tokens); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := binary.Write(buf, binary.BigEndian, (order.Tokens<<32)|(order.Tokens>>32)); err != nil {
+			return nil, err
+		}
 	}
 	// Price is packed as a uint256
 	if err := binary.Write(buf, binary.BigEndian, uint64(0)); err != nil {
