@@ -3,6 +3,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -10,9 +11,30 @@ import (
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
+	"github.com/republicprotocol/republic-go/testutils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/peer"
 )
+
+// RedNodeBehaviour indicates the malicious behaviours the
+// red node will exhibit during swarming.
+type RedNodeBehaviour int
+
+// Values for a RedNodeBehaviour
+const (
+	InvalidRequests RedNodeBehaviour = iota
+	InvalidNonce
+	DropMultiAddresses
+	DropSignatures
+)
+
+// RedNodeTypes contains an array of all possible red-node behaviours.
+var RedNodeTypes = []RedNodeBehaviour{
+	InvalidRequests,
+	InvalidNonce,
+	DropMultiAddresses,
+	DropSignatures,
+}
 
 // ErrRateLimitExceeded is returned when the same client sends more than one
 // request to the server within a specified rate limit.
@@ -41,13 +63,7 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	}
 	defer conn.Close()
 
-	request := &PingRequest{
-		MultiAddress: &MultiAddress{
-			Signature:         multiAddr.Signature,
-			MultiAddress:      multiAddr.String(),
-			MultiAddressNonce: multiAddr.Nonce,
-		},
-	}
+	request := getPingRequest(multiAddr)
 
 	return Backoff(ctx, func() error {
 		_, err = NewSwarmServiceClient(conn).Ping(ctx, request)
@@ -266,4 +282,60 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 	}
 	service.rateLimits[clientIP] = time.Now()
 	return nil
+}
+
+func getPingRequest(multiAddr identity.MultiAddress) *PingRequest {
+	redNodeType := RedNodeTypes[rand.Intn(len(RedNodeTypes))]
+	pingRequest := PingRequest{
+		MultiAddress: &MultiAddress{
+			Signature:         multiAddr.Signature,
+			MultiAddress:      multiAddr.String(),
+			MultiAddressNonce: multiAddr.Nonce,
+		},
+	}
+
+	switch redNodeType {
+	case InvalidRequests:
+		pingRequest.MultiAddress.Signature = tamperSignature(multiAddr)
+		pingRequest.MultiAddress.Nonce = tamperNonce(multiAddr)
+		pingRequest.MultiAddress.MultiAddress = tamperMultiAddress(multiAddr)
+	case InvalidNonce:
+		pingRequest.MultiAddress.Nonce = tamperNonce(multiAddr)
+	case DropMultiAddresses:
+		pingRequest.MultiAddress.MultiAddress = ""
+	case DropSignatures:
+		pingRequest.MultiAddress.Signature = []byte{}
+	default:
+	}
+	return &pingRequest
+}
+
+func tamperSignature(multiAddr identity.MultiAddress) []byte {
+	r := rand.Intn(100)
+	if r < 75 {
+		return testutils.Random32Bytes()
+	}
+	return multiAddr.Signature
+}
+
+func tamperMultiAddress(multiAddr identity.MultiAddress) string {
+	r = rand.Intn(100)
+	if r < 75 {
+		return testutils.RandomMultiAddress().String()
+	}
+	return multiAddr.String()
+}
+
+func tamperNonce(multiAddr identity.MultiAddress) uint64 {
+	r = rand.Intn(100)
+	if r < 33 {
+		return multiAddr.Nonce + r
+	}
+	if r < 66 {
+		return multiAddr.Nonce - r
+	}
+	if r < 99 {
+		return nil
+	}
+	return multiAddr.Nonce
 }
