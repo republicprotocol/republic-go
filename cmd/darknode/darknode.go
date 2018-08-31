@@ -91,21 +91,33 @@ func main() {
 
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+	updateOwnAddress := func() {
+		signature, err := crypter.Sign(multiAddr.Hash())
+		if err != nil {
+			log.Fatalf("cannot sign own multiAddress: %v", err)
+		}
+		multiAddr.Signature = signature
+		if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+			log.Fatalf("cannot store own multiAddress in leveldb: %v", err)
+		}
+	}
 
 	// Insert self multiAddress if not in the storer.
-	_, err = store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
+	oldMulti, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
 		if err == swarm.ErrMultiAddressNotFound {
-			signature, err := crypter.Sign(multiAddr.Hash())
-			if err != nil {
-				log.Fatalf("cannot sign own multiAddress: %v", err)
-			}
-			multiAddr.Signature = signature
-			if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
-				log.Fatalf("cannot store own multiAddress in leveldb: %v", err)
-			}
+			updateOwnAddress()
 		} else {
 			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own multiAddress from store: %v", err))
+		}
+	} else {
+		// Update own multiAddress if the ip address has been changed.
+		oldIP, err := oldMulti.ValueForProtocol(identity.IP4Code)
+		if err != nil {
+			log.Fatalf("cannot read own ip address from storer: %v", err)
+		}
+		if oldIP != ipAddr {
+			updateOwnAddress()
 		}
 	}
 
@@ -191,7 +203,7 @@ func main() {
 		fmtStr := "bootstrapping\n"
 		for _, bootstrapMulti := range config.BootstrapMultiAddresses {
 			fmtStr += "  " + bootstrapMulti.String() + "\n"
-			_, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
+			oldBootstrapAddr, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
 			if err != nil {
 				if err == swarm.ErrMultiAddressNotFound {
 					if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
@@ -199,7 +211,23 @@ func main() {
 					}
 				} else {
 					logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
+				}
+			} else {
+				// Update bootstrap multiAddress if the ip address has been changed.
+				oldBootstrapIP, err := oldBootstrapAddr.ValueForProtocol(identity.IP4Code)
+				if err != nil {
+					log.Printf("cannot read own ip address from storer: %v", err)
 					continue
+				}
+				newBootstrapIP, err := bootstrapMulti.ValueForProtocol(identity.IP4Code)
+				if err != nil {
+					log.Printf("cannot read own ip address from storer: %v", err)
+					continue
+				}
+				if oldBootstrapIP != newBootstrapIP {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
+					}
 				}
 			}
 		}
