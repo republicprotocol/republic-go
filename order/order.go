@@ -444,12 +444,12 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 }
 
 func PriceToCoExp(price uint64) CoExp {
-	priceF := float64(price) / 1e12
+	priceF := float64(price) / float64(1e12)
 	return PriceFloatToCoExp(priceF)
 }
 
 func VolumeToCoExp(volume uint64) CoExp {
-	volumeF := float64(volume) / 1e12
+	volumeF := float64(volume) / float64(1e12)
 	return VolumeFloatToCoExp(volumeF)
 }
 
@@ -525,11 +525,11 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 }
 
 func PriceFromCoExp(co uint64, exp uint64) uint64 {
-	return uint64(PriceFloatFromCoExp(co, exp) * 1e12)
+	return uint64(PriceFloatFromCoExp(co, exp))
 }
 
 func VolumeFromCoExp(co uint64, exp uint64) uint64 {
-	return uint64(VolumeFloatFromCoExp(co, exp) * 1e12)
+	return uint64(VolumeFloatFromCoExp(co, exp))
 }
 
 func PriceFloatFromCoExp(co uint64, exp uint64) float64 {
