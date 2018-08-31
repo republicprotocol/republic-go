@@ -8,7 +8,6 @@ import (
 	"github.com/republicprotocol/republic-go/contract"
 
 	"github.com/onsi/ginkgo"
-	"github.com/republicprotocol/republic-go/testutils/ganache"
 )
 
 const reset = "\x1b[0m"
