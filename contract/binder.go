@@ -229,6 +229,8 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	binder.transactOpts.GasLimit = 3000000
+
 	// TODO: Do we need to be able to check the Settlement contract for the
 	// order status, or can we rely on Infura to block transactions that are
 	// known to fail?
