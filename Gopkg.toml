@@ -1,6 +1,6 @@
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  version = "v1.8.12"
+  version = "=1.8.12"
 
 [[constraint]]
   name = "github.com/golang/protobuf"
@@ -37,7 +37,7 @@
 # Fix to resolve dependency issues within go-ethereum
 [[override]]
   name = "gopkg.in/fatih/set.v0"
-  version = "v0.1.0"
+  version = "=0.1.0"
 
 # Temporary fix https://github.com/golang/dep/issues/1799
 [[override]]
