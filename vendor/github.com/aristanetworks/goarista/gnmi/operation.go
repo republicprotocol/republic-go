@@ -5,6 +5,7 @@
 package gnmi
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -13,11 +14,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aristanetworks/glog"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/grpc/codes"
 )
@@ -200,6 +203,13 @@ func update(p *pb.Path, val string) *pb.Update {
 	case "cli", "test-regen-cli":
 		v = &pb.TypedValue{
 			Value: &pb.TypedValue_AsciiVal{AsciiVal: val}}
+	case "p4_config":
+		b, err := ioutil.ReadFile(val)
+		if err != nil {
+			glog.Fatalf("Cannot read p4 file: %s", err)
+		}
+		v = &pb.TypedValue{
+			Value: &pb.TypedValue_ProtoBytes{ProtoBytes: b}}
 	default:
 		panic(fmt.Errorf("unexpected origin: %q", p.Origin))
 	}
@@ -255,16 +265,18 @@ func Set(ctx context.Context, client pb.GNMIClient, setOps []*Operation) error {
 }
 
 // Subscribe sends a SubscribeRequest to the given client.
-func Subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string,
+func Subscribe(ctx context.Context, client pb.GNMIClient, subscribeOptions *SubscribeOptions,
 	respChan chan<- *pb.SubscribeResponse, errChan chan<- error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	defer close(respChan)
+
 	stream, err := client.Subscribe(ctx)
 	if err != nil {
 		errChan <- err
 		return
 	}
-	req, err := NewSubscribeRequest(paths)
+	req, err := NewSubscribeRequest(subscribeOptions)
 	if err != nil {
 		errChan <- err
 		return
@@ -284,6 +296,26 @@ func Subscribe(ctx context.Context, client pb.GNMIClient, paths [][]string,
 			return
 		}
 		respChan <- resp
+
+		// For POLL subscriptions, initiate a poll request by pressing ENTER
+		if subscribeOptions.Mode == "poll" {
+			switch resp.Response.(type) {
+			case *pb.SubscribeResponse_SyncResponse:
+				fmt.Print("Press ENTER to send a poll request: ")
+				reader := bufio.NewReader(os.Stdin)
+				reader.ReadString('\n')
+
+				pollReq := &pb.SubscribeRequest{
+					Request: &pb.SubscribeRequest_Poll{
+						Poll: &pb.Poll{},
+					},
+				}
+				if err := stream.Send(pollReq); err != nil {
+					errChan <- err
+					return
+				}
+			}
+		}
 	}
 }
 

@@ -5,9 +5,26 @@
 // between the start and the end of the operation.
 package set
 
+// SetType denotes which type of set is created. ThreadSafe or NonThreadSafe
+type SetType int
+
+const (
+	ThreadSafe = iota
+	NonThreadSafe
+)
+
+func (s SetType) String() string {
+	switch s {
+	case ThreadSafe:
+		return "ThreadSafe"
+	case NonThreadSafe:
+		return "NonThreadSafe"
+	}
+	return ""
+}
+
 // Interface is describing a Set. Sets are an unordered, unique list of values.
 type Interface interface {
-	New(items ...interface{}) Interface
 	Add(items ...interface{})
 	Remove(items ...interface{})
 	Pop() interface{}
@@ -28,6 +45,16 @@ type Interface interface {
 
 // helpful to not write everywhere struct{}{}
 var keyExists = struct{}{}
+
+// New creates and initalizes a new Set interface. Its single parameter
+// denotes the type of set to create. Either ThreadSafe or
+// NonThreadSafe. The default is ThreadSafe.
+func New(settype SetType) Interface {
+	if settype == NonThreadSafe {
+		return newNonTS()
+	}
+	return newTS()
+}
 
 // Union is the merger of multiple sets. It returns a new set with all the
 // elements present in all the sets that are passed.
@@ -66,9 +93,14 @@ func Difference(set1, set2 Interface, sets ...Interface) Interface {
 func Intersection(set1, set2 Interface, sets ...Interface) Interface {
 	all := Union(set1, set2, sets...)
 	result := Union(set1, set2, sets...)
+
 	all.Each(func(item interface{}) bool {
+		if !set1.Has(item) || !set2.Has(item) {
+			result.Remove(item)
+		}
+
 		for _, set := range sets {
-			if !set.Has(item) || !set1.Has(item) || !set2.Has(item) {
+			if !set.Has(item) {
 				result.Remove(item)
 			}
 		}
