@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
+	"golang.org/x/time/rate"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -123,7 +124,9 @@ var _ = Describe("Swarming", func() {
 
 			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier))
 			serviceMultiAddr = serviceClient.MultiAddress()
-			server = NewServer()
+			unaryLimiter := NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
+			streamLimiter := NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+			server = NewServerwithLimiter(unaryLimiter, streamLimiter)
 			service.Register(server)
 
 			go func() {
