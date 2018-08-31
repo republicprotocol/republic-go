@@ -204,7 +204,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
 
 	tokens := uint64(ord.Tokens)
-	if ord.Parity == order.ParityBuy {
+	if ord.Parity == order.ParitySell {
 		tokens = (tokens << 32) | (tokens >> 32)
 	}
 

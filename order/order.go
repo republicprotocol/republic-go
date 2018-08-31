@@ -391,7 +391,7 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 	if err := binary.Write(buf, binary.BigEndian, order.Settlement); err != nil {
 		return nil, err
 	}
-	if order.Parity == ParitySell {
+	if order.Parity == ParityBuy {
 		if err := binary.Write(buf, binary.BigEndian, order.Tokens); err != nil {
 			return nil, err
 		}
