@@ -217,6 +217,9 @@ type Order struct {
 
 // NewOrder returns a new Order and computes the ID.
 func NewOrder(parity Parity, ty Type, expiry time.Time, settlement Settlement, tokens Tokens, price, volume, minimumVolume, nonce uint64) Order {
+	priceCoExp := PriceToCoExp(price)
+	volumeCoExp := VolumeToCoExp(volume)
+	minimumVolumeCoExp := VolumeToCoExp(minimumVolume)
 	order := Order{
 		Parity: parity,
 		Type:   ty,
@@ -225,9 +228,9 @@ func NewOrder(parity Parity, ty Type, expiry time.Time, settlement Settlement, t
 
 		Settlement:    settlement,
 		Tokens:        tokens,
-		Price:         price,
-		Volume:        volume,
-		MinimumVolume: minimumVolume,
+		Price:         PriceFromCoExp(priceCoExp.Co, priceCoExp.Exp),
+		Volume:        VolumeFromCoExp(volumeCoExp.Co, volumeCoExp.Exp),
+		MinimumVolume: VolumeFromCoExp(minimumVolumeCoExp.Co, minimumVolumeCoExp.Exp),
 	}
 	order.ID = ID(order.Hash())
 	return order
