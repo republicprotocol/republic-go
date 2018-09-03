@@ -206,6 +206,12 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 		return nil, err
 	}
 
+	// Atleast 75% of the time, the red node will not attempt to do anything
+	// with the ping request.
+	if rand.Intn(100) < 75 {
+		return &PingResponse{}, nil
+	}
+
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -233,6 +239,12 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 		return nil, err
 	}
 
+	// Atleast 50% of the time, the red node will not attempt to do anything
+	// with the pong request.
+	if rand.Intn(100) < 50 {
+		return &PongResponse{}, nil
+	}
+
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -258,6 +270,12 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
 	if err := service.isRateLimited(ctx); err != nil {
 		return nil, err
+	}
+
+	// Atleast 25% of the time, the red node will not attempt to do anything
+	// with the query request.
+	if rand.Intn(100) < 25 {
+		return &QueryResponse{}, nil
 	}
 
 	query := identity.Address(request.GetAddress())
