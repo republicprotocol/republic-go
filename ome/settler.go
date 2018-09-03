@@ -100,6 +100,12 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
+	// todo : check the order is actually a match
+	// 1. token are the same
+	// 2. buy volume >= sell min_volume
+	// 3. sell volume >= buy min_volume
+	// 4. buy price >= sell price
+
 	if err := settler.contract.Settle(buy, sell); err != nil {
 		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return

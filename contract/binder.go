@@ -234,7 +234,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
+	// todo : check the minimum volume is greater than transaction fees in ETH
+	// todo : how do we do the transaction fee.
 	binder.transactOpts.GasLimit = 3000000
+	binder.conn.Client.EstimateGas()
 
 	// TODO: Do we need to be able to check the Settlement contract for the
 	// order status, or can we rely on Infura to block transactions that are
