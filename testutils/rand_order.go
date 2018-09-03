@@ -15,9 +15,9 @@ func RandomOrder() order.Order {
 		order.TokensETHREN,
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
-	volume := RandomCoExp()
+	volume := rand.Uint64()
 
-	ord := order.NewOrder(order.TypeLimit, parity, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), volume, LessRandomUint64(volume), rand.Uint64())
 	return ord
 }
 
@@ -28,9 +28,9 @@ func RandomBuyOrder() order.Order {
 		order.TokensETHREN,
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
-	volume := RandomCoExp()
+	volume := rand.Uint64()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), volume, LessRandomUint64(volume), rand.Uint64())
 	return ord
 }
 
@@ -49,9 +49,9 @@ func RandomSellOrder() order.Order {
 		order.TokensETHREN,
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
-	volume := RandomCoExp()
+	volume := rand.Uint64()
 
-	ord := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(1*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
+	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), volume, LessRandomUint64(volume), rand.Uint64())
 	return ord
 }
 
@@ -70,10 +70,10 @@ func RandomOrderMatch() (order.Order, order.Order) {
 		order.TokensETHREN,
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
-	volume := RandomCoExp()
+	volume := rand.Uint64()
 
-	buy := order.NewOrder(order.TypeLimit, order.ParityBuy, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, RandomCoExp(), volume, LessRandomCoExp(volume), rand.Uint64())
-	sell := order.NewOrder(order.TypeLimit, order.ParitySell, order.SettlementRenEx, time.Now().Add(24*time.Hour), tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
+	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), volume, LessRandomUint64(volume), rand.Uint64())
+	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(24*time.Hour), order.SettlementRenEx, tokens, buy.Price, buy.Volume, buy.MinimumVolume, buy.Nonce)
 	return buy, sell
 }
 
@@ -87,12 +87,7 @@ func RandomCoExp() order.CoExp {
 	}
 }
 
-// LessRandomCoExp will generate a random CoExp that is no more than the given CoExp.
-func LessRandomCoExp(coExp order.CoExp) order.CoExp {
-	co := uint64(rand.Intn(int(coExp.Co)) + 1)
-	exp := uint64(rand.Intn(int(coExp.Exp + 1)))
-	return order.CoExp{
-		Co:  co,
-		Exp: exp,
-	}
+// LessRandomUint64 will generate a random Uint64 that is no more than the given Uint64.
+func LessRandomUint64(uint64Val uint64) uint64 {
+	return uint64Val - 1
 }

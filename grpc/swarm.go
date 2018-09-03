@@ -80,10 +80,10 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	}
 	defer conn.Close()
 
-	multiAddr = getTamperedMultiAddress(multiAddr)
+	multiAddress := getTamperedMultiAddress(multiAddr)
 
-	pingRequest := PingRequest{
-		MultiAddress: &multiAddr,
+	request := &PingRequest{
+		MultiAddress: &multiAddress,
 	}
 
 	return Backoff(ctx, func() error {
@@ -109,7 +109,7 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 	multiAddress := getTamperedMultiAddress(multiAddr)
 
 	request := &PongRequest{
-		MultiAddress: &multiAddr,
+		MultiAddress: &multiAddress,
 	}
 
 	return Backoff(ctx, func() error {
@@ -312,10 +312,10 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	switch redNodeType {
 	case InvalidRequests:
 		multiAddress.Signature = tamperSignature(multiAddr)
-		multiAddress.Nonce = tamperNonce(multiAddr)
+		multiAddress.MultiAddressNonce = tamperNonce(multiAddr)
 		multiAddress.MultiAddress = tamperMultiAddress(multiAddr)
 	case InvalidNonce:
-		multiAddress.Nonce = tamperNonce(multiAddr)
+		multiAddress.MultiAddressNonce = tamperNonce(multiAddr)
 	case DropMultiAddresses:
 		multiAddress.MultiAddress = ""
 	case DropSignatures:
@@ -331,29 +331,31 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 func tamperSignature(multiAddr identity.MultiAddress) []byte {
 	r := rand.Intn(100)
 	if r < 75 {
-		return testutils.Random32Bytes()
+		randBytes := testutils.Random32Bytes()
+		return randBytes[:]
 	}
 	return multiAddr.Signature
 }
 
 func tamperMultiAddress(multiAddr identity.MultiAddress) string {
-	r = rand.Intn(100)
+	r := rand.Intn(100)
 	if r < 75 {
-		return testutils.RandomMultiAddress().String()
+		multiAddr, _ := testutils.RandomMultiAddress()
+		return multiAddr.String()
 	}
 	return multiAddr.String()
 }
 
 func tamperNonce(multiAddr identity.MultiAddress) uint64 {
-	r = rand.Intn(100)
+	r := rand.Intn(100)
 	if r < 33 {
-		return multiAddr.Nonce + r
+		return multiAddr.Nonce + uint64(r)
 	}
 	if r < 66 {
-		return multiAddr.Nonce - r
+		return multiAddr.Nonce - uint64(r)
 	}
 	if r < 99 {
-		return nil
+		return 0
 	}
 	return multiAddr.Nonce
 }

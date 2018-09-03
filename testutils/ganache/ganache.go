@@ -244,21 +244,21 @@ func deployContracts(conn *contract.Conn, transactor *bind.TransactOpts) error {
 		panic(err)
 	}
 	conn.Config.OrderbookAddress = orderbookAddress.String()
-	_, rewardVaultAddress, err := deployRewardVault(context.Background(), *conn, transactor, darknodeRegistryAddress)
-	if err != nil {
-		panic(err)
-	}
-	conn.Config.RewardVaultAddress = rewardVaultAddress.String()
-	_, renExBalancesAddress, err := deployRenExBalances(context.Background(), *conn, transactor, rewardVaultAddress)
-	if err != nil {
-		panic(err)
-	}
-	conn.Config.RenExBalancesAddress = renExBalancesAddress.String()
-	_, renExSettlementAddress, err := deployRenExSettlement(context.Background(), *conn, transactor, orderbookAddress, republicTokenAddress, renExBalancesAddress)
-	if err != nil {
-		panic(err)
-	}
-	conn.Config.RenExSettlementAddress = renExSettlementAddress.String()
+	// _, rewardVaultAddress, err := deployRewardVault(context.Background(), *conn, transactor, darknodeRegistryAddress)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// conn.Config.RewardVaultAddress = rewardVaultAddress.String()
+	// _, renExBalancesAddress, err := deployRenExBalances(context.Background(), *conn, transactor, rewardVaultAddress)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// conn.Config.RenExBalancesAddress = renExBalancesAddress.String()
+	// _, renExSettlementAddress, err := deployRenExSettlement(context.Background(), *conn, transactor, orderbookAddress, republicTokenAddress, renExBalancesAddress)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// conn.Config.RenExSettlementAddress = renExSettlementAddress.String()
 
 	return nil
 }
@@ -273,59 +273,59 @@ func deployRepublicToken(ctx context.Context, conn contract.Conn, auth *bind.Tra
 }
 
 func deployDarknodeRegistry(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, republicTokenAddress common.Address) (*bindings.DarknodeRegistry, common.Address, error) {
-	// 0 aiREN
-	minimumBond := big.NewInt(0)
-	// 1 second
-	minimumEpochInterval := big.NewInt(1)
-	// 24 Darknode in a Pod
-	minimumPodSize := big.NewInt(24)
+	// // 0 aiREN
+	// minimumBond := big.NewInt(0)
+	// // 1 second
+	// minimumEpochInterval := big.NewInt(1)
+	// // 24 Darknode in a Pod
+	// minimumPodSize := big.NewInt(24)
 
-	address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPodSize, minimumEpochInterval)
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy DarknodeRegistry: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return dnr, address, nil
+	// address, tx, dnr, err := bindings.DeployDarknodeRegistry(auth, conn.Client, republicTokenAddress, minimumBond, minimumPodSize, minimumEpochInterval)
+	// if err != nil {
+	// 	return nil, common.Address{}, fmt.Errorf("cannot deploy DarknodeRegistry: %v", err)
+	// }
+	// conn.PatchedWaitDeployed(ctx, tx)
+	return nil, common.Address{}, nil
 }
 
 func deployOrderbook(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, republicTokenAddress, registryAddress common.Address) (*bindings.Orderbook, common.Address, error) {
-	// 0 REN
-	minimumFee := big.NewInt(0)
+	// // 0 REN
+	// minimumFee := big.NewInt(0)
 
-	address, tx, ren, err := bindings.DeployOrderbook(auth, conn.Client, minimumFee, republicTokenAddress, registryAddress)
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy Orderbook: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return ren, address, nil
+	// address, tx, ren, err := bindings.DeployOrderbook(auth, conn.Client, minimumFee, republicTokenAddress, registryAddress)
+	// if err != nil {
+	// 	return nil, common.Address{}, fmt.Errorf("cannot deploy Orderbook: %v", err)
+	// }
+	// conn.PatchedWaitDeployed(ctx, tx)
+	return nil, common.Address{}, nil
 }
 
-func deployRewardVault(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, darknodeRegistryAddress common.Address) (*bindings.RewardVault, common.Address, error) {
-	address, tx, vault, err := bindings.DeployRewardVault(auth, conn.Client, darknodeRegistryAddress)
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy RewardVault: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return vault, address, nil
+func deployRewardVault(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, darknodeRegistryAddress common.Address) (common.Address, error) {
+	// address, tx, vault, err := bindings.DeployRewardVault(auth, conn.Client, darknodeRegistryAddress)
+	// if err != nil {
+	// 	return nil, common.Address{}, fmt.Errorf("cannot deploy RewardVault: %v", err)
+	// }
+	// conn.PatchedWaitDeployed(ctx, tx)
+	return common.Address{}, nil
 }
 
-func deployRenExBalances(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, rewardVaultAddress common.Address) (*bindings.RenExBalances, common.Address, error) {
-	address, tx, balances, err := bindings.DeployRenExBalances(auth, conn.Client, rewardVaultAddress)
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy RenExBalances: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return balances, address, nil
+func deployRenExBalances(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, rewardVaultAddress common.Address) (common.Address, error) {
+	// address, tx, balances, err := bindings.DeployRenExBalances(auth, conn.Client, rewardVaultAddress)
+	// if err != nil {
+	// 	return nil, common.Address{}, fmt.Errorf("cannot deploy RenExBalances: %v", err)
+	// }
+	// conn.PatchedWaitDeployed(ctx, tx)
+	return common.Address{}, nil
 }
 
-func deployRenExSettlement(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, orderbookAddress, tokenAddress, balancesAddress common.Address) (*bindings.RenExSettlement, common.Address, error) {
-	GWEI := 1000000000
-	address, tx, accounts, err := bindings.DeployRenExSettlement(auth, conn.Client, orderbookAddress, tokenAddress, balancesAddress, big.NewInt(int64(100*GWEI)))
-	if err != nil {
-		return nil, common.Address{}, fmt.Errorf("cannot deploy RenExSettlements: %v", err)
-	}
-	conn.PatchedWaitDeployed(ctx, tx)
-	return accounts, address, nil
+func deployRenExSettlement(ctx context.Context, conn contract.Conn, auth *bind.TransactOpts, orderbookAddress, tokenAddress, balancesAddress common.Address) (common.Address, error) {
+	// GWEI := 1000000000
+	// address, tx, accounts, err := bindings.DeployRenExSettlement(auth, conn.Client, orderbookAddress, tokenAddress, balancesAddress, big.NewInt(int64(100*GWEI)))
+	// if err != nil {
+	// 	return nil, common.Address{}, fmt.Errorf("cannot deploy RenExSettlements: %v", err)
+	// }
+	// conn.PatchedWaitDeployed(ctx, tx)
+	return common.Address{}, nil
 }
 
 // Snapshot current Ganache state
