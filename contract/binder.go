@@ -53,6 +53,7 @@ type Binder struct {
 
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
+	darknodeSlasher  *bindings.DarknodeSlasher
 	orderbook        *bindings.Orderbook
 
 	settlementRegistry *bindings.SettlementRegistry
@@ -1051,6 +1052,19 @@ func (binder *Binder) orderCounts() (uint64, error) {
 	}
 
 	return counts.Uint64(), nil
+}
+
+// SubmitChallenge will submit a challenge and, if successful, slash the bond
+// of the darknode that confirmed the order.
+func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
+	binder.mu.RLock()
+	defer binder.mu.RUnlock()
+
+	return binder.submitChallenge(buyID, sellID)
+}
+
+func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
+	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {

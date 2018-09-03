@@ -100,11 +100,18 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
-	// todo : check the order is actually a match
-	// 1. token are the same
-	// 2. buy volume >= sell min_volume
-	// 3. sell volume >= buy min_volume
-	// 4. buy price >= sell price
+	// Submit a challenge if the orders do not match.
+	if buy.Tokens != sell.Tokens ||
+		buy.Volume < sell.MinimumVolume ||
+		sell.Volume < buy.MinimumVolume ||
+		buy.Price < sell.Price {
+		if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+			return
+		}
+		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: invalid match", buy.ID, sell.ID)
+		return
+	}
 
 	if err := settler.contract.Settle(buy, sell); err != nil {
 		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
