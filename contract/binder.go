@@ -243,8 +243,18 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	// Estimate gas and decide whether or not it is profitable to settle an
 	// order match.
 	toAddress := common.HexToAddress(binder.conn.Config.SettlementRegistryAddress)
-	buyOrderData := getOrderData(buy)
-	sellOrderData := getOrderData(sell)
+	buyOrderData, err := getOrderData(buy)
+	if err != nil {
+		return fmt.Errorf("cannot get buy order data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+	}
+	sellOrderData, err := getOrderData(sell)
+	if err != nil {
+		return fmt.Errorf("cannot get sell order data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+	}
+	settleData, err := getSettleData(buy.ID, sell.ID)
+	if err != nil {
+		return fmt.Errorf("cannot get settle data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+	}
 
 	buyOrderGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
 		To:   &toAddress,
@@ -254,8 +264,12 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		To:   &toAddress,
 		Data: sellOrderData,
 	})
+	settleGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		To:   &toAddress,
+		Data: settleData,
+	})
 
-	log.Println("buyOrdergasLimit:", buyOrderGasLimit, "sellOrdergasLimit:", sellOrderGasLimit)
+	log.Println("buyOrderGasLimit:", buyOrderGasLimit, "sellOrderGasLimit:", sellOrderGasLimit, "settleGasLimit:", settleGasLimit)
 
 	if err != nil {
 		log.Printf("[error] (settle) cannot estimate gas for settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
@@ -1095,7 +1109,7 @@ func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transactio
 	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
 }
 
-func getOrderData(ord order.Order) []byte {
+func getOrderData(ord order.Order) ([]byte, error) {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, 192)
 	paddedPrefixStart := common.LeftPadBytes(bytes, 32)
@@ -1115,7 +1129,11 @@ func getOrderData(ord order.Order) []byte {
 	copy(paddedPrefix[:], ord.PrefixHash())
 
 	var orderData []byte
-	orderMethodID, _ := hexutil.Decode("0xb86f602c") // MethodID for submitOrder()
+	orderMethodID, err := hexutil.Decode("0xb86f602c") // MethodID for submitOrder()
+	if err != nil {
+		return nil, err
+	}
+
 	orderData = append(orderData, orderMethodID...)
 	orderData = append(orderData, paddedPrefixStart...)
 	orderData = append(orderData, paddedSettlement...)
@@ -1126,7 +1144,20 @@ func getOrderData(ord order.Order) []byte {
 	orderData = append(orderData, paddedPrefixLength...)
 	orderData = append(orderData, paddedPrefix[:]...)
 
-	return orderData
+	return orderData, nil
+}
+
+func getSettleData(buyID, sellID order.ID) ([]byte, error) {
+	var orderData []byte
+	orderMethodID, err := hexutil.Decode("0xd32a9cd9") // MethodID for settle()
+	if err != nil {
+		return nil, err
+	}
+	orderData = append(orderData, orderMethodID...)
+	orderData = append(orderData, buyID[:]...)
+	orderData = append(orderData, sellID[:]...)
+
+	return orderData, nil
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
