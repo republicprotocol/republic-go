@@ -63,7 +63,11 @@ func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, m
 	}
 	defer conn.Close()
 
-	request := getPingRequest(multiAddr)
+	multiAddr = getTamperedMultiAddress(multiAddr)
+
+	pingRequest := PingRequest{
+		MultiAddress: &multiAddr,
+	}
 
 	return Backoff(ctx, func() error {
 		_, err = NewSwarmServiceClient(conn).Ping(ctx, request)
@@ -85,12 +89,10 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 		return fmt.Errorf("cannot get self details: %v", err)
 	}
 
+	multiAddress := getTamperedMultiAddress(multiAddr)
+
 	request := &PongRequest{
-		MultiAddress: &MultiAddress{
-			Signature:         multiAddr.Signature,
-			MultiAddress:      multiAddr.String(),
-			MultiAddressNonce: multiAddr.Nonce,
-		},
+		MultiAddress: &multiAddr,
 	}
 
 	return Backoff(ctx, func() error {
@@ -245,11 +247,8 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 
 	multiAddrMsgs := make([]*MultiAddress, len(multiAddrs))
 	for i, multiAddr := range multiAddrs {
-		multiAddrMsgs[i] = &MultiAddress{
-			MultiAddress:      multiAddr.String(),
-			Signature:         multiAddr.Signature,
-			MultiAddressNonce: multiAddr.Nonce,
-		}
+		multiAddress := getTamperedMultiAddress(multiAddr)
+		multiAddrMsgs[i] = &multiAddress
 	}
 
 	return &QueryResponse{
@@ -284,30 +283,28 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 	return nil
 }
 
-func getPingRequest(multiAddr identity.MultiAddress) *PingRequest {
+func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	redNodeType := RedNodeTypes[rand.Intn(len(RedNodeTypes))]
-	pingRequest := PingRequest{
-		MultiAddress: &MultiAddress{
-			Signature:         multiAddr.Signature,
-			MultiAddress:      multiAddr.String(),
-			MultiAddressNonce: multiAddr.Nonce,
-		},
+	multiAddress := MultiAddress{
+		Signature:         multiAddr.Signature,
+		MultiAddress:      multiAddr.String(),
+		MultiAddressNonce: multiAddr.Nonce,
 	}
 
 	switch redNodeType {
 	case InvalidRequests:
-		pingRequest.MultiAddress.Signature = tamperSignature(multiAddr)
-		pingRequest.MultiAddress.Nonce = tamperNonce(multiAddr)
-		pingRequest.MultiAddress.MultiAddress = tamperMultiAddress(multiAddr)
+		multiAddress.Signature = tamperSignature(multiAddr)
+		multiAddress.Nonce = tamperNonce(multiAddr)
+		multiAddress.MultiAddress = tamperMultiAddress(multiAddr)
 	case InvalidNonce:
-		pingRequest.MultiAddress.Nonce = tamperNonce(multiAddr)
+		multiAddress.Nonce = tamperNonce(multiAddr)
 	case DropMultiAddresses:
-		pingRequest.MultiAddress.MultiAddress = ""
+		multiAddress.MultiAddress = ""
 	case DropSignatures:
-		pingRequest.MultiAddress.Signature = []byte{}
+		multiAddress.Signature = []byte{}
 	default:
 	}
-	return &pingRequest
+	return multiAddress
 }
 
 func tamperSignature(multiAddr identity.MultiAddress) []byte {
