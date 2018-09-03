@@ -3,6 +3,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -34,6 +35,22 @@ var RedNodeTypes = []RedNodeBehaviour{
 	InvalidNonce,
 	DropMultiAddresses,
 	DropSignatures,
+}
+
+// String returns a human-readable representation of RedNodeTypes.
+func (behaviours RedNodeBehaviour) String() string {
+	switch behaviours {
+	case InvalidRequests:
+		return "invalid requests"
+	case InvalidNonce:
+		return "invalid nonce"
+	case DropMultiAddresses:
+		return "drop multi-addresses"
+	case DropSignatures:
+		return "drop multi-address signatures"
+	default:
+		return "unexpected behaviour"
+	}
 }
 
 // ErrRateLimitExceeded is returned when the same client sends more than one
@@ -285,6 +302,7 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 
 func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	redNodeType := RedNodeTypes[rand.Intn(len(RedNodeTypes))]
+
 	multiAddress := MultiAddress{
 		Signature:         multiAddr.Signature,
 		MultiAddress:      multiAddr.String(),
@@ -304,6 +322,9 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 		multiAddress.Signature = []byte{}
 	default:
 	}
+
+	log.Printf("Red-node swarmer will exhibit behaviour: %v\n", redNodeType)
+	log.Printf("Red-node tampered multi-address %v to look like %v", multiAddr, multiAddress)
 	return multiAddress
 }
 
