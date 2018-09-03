@@ -66,6 +66,7 @@ func (sender *Sender) Send(message smpc.Message) error {
 		return ErrStreamDisconnected
 	}
 
+	message = tamperMessage(message)
 	data, err := message.MarshalBinary()
 	if err != nil {
 		return err

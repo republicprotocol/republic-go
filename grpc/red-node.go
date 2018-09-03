@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/testutils"
 )
 
@@ -18,6 +19,9 @@ const (
 	InvalidRequests RedNodeBehaviour = iota
 	InvalidNonce
 	InvalidSignature
+	InvalidBlindings
+	InvalidJoins
+	DropMessages
 	DropMultiAddresses
 	DropSignatures
 )
@@ -40,7 +44,7 @@ func (behaviours RedNodeBehaviour) String() string {
 	}
 }
 
-// RedNodeSwarmerTypes contains an array of all possible red-node swarming
+// RedNodeSwarmerTypes contains an array of all possible malicious swarming
 // behaviours.
 var RedNodeSwarmerTypes = []RedNodeBehaviour{
 	InvalidRequests,
@@ -48,6 +52,15 @@ var RedNodeSwarmerTypes = []RedNodeBehaviour{
 	InvalidSignature,
 	DropMultiAddresses,
 	DropSignatures,
+}
+
+// RedNodeStreamerTypes contains an array of all possible malicious streaming
+// behaviours.
+var RedNodeStreamerTypes = []RedNodeBehaviour{
+	InvalidRequests,
+	InvalidBlindings,
+	InvalidJoins,
+	DropMessages,
 }
 
 func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
@@ -79,6 +92,14 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	log.Printf("Red-node swarmer will exhibit behaviour: %v\n", redNodeType)
 	log.Printf("Red-node tampered multi-address %v to look like %v", multiAddr, multiAddress)
 	return multiAddress
+}
+
+func tamperMessage(message smpc.Message) smpc.Message {
+	// r := rand.Intn(100)
+	// if r < 75 {
+	// message.MessageJoin.Join
+	// }
+	return message
 }
 
 func tamperSignature(multiAddr identity.MultiAddress) []byte {
