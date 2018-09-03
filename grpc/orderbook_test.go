@@ -71,7 +71,7 @@ func (server *mockOrderbookServer) OpenOrder(ctx context.Context, orderFragment 
 }
 
 func createEncryptedFragment() (order.EncryptedFragment, error) {
-	ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now().Add(time.Hour), order.TokensBTCETH, order.NewCoExp(1, 1), order.NewCoExp(1, 1), order.NewCoExp(1, 1), 1)
+	ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now().Add(time.Hour), order.SettlementRenEx, order.TokensBTCETH, 1, 1, 1, 1)
 	ordFragments, err := ord.Split(6, 4)
 	if err != nil {
 		return order.EncryptedFragment{}, err
