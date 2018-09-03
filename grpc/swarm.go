@@ -25,6 +25,7 @@ type RedNodeBehaviour int
 const (
 	InvalidRequests RedNodeBehaviour = iota
 	InvalidNonce
+	InvalidSignature
 	DropMultiAddresses
 	DropSignatures
 )
@@ -33,6 +34,7 @@ const (
 var RedNodeTypes = []RedNodeBehaviour{
 	InvalidRequests,
 	InvalidNonce,
+	InvalidSignature,
 	DropMultiAddresses,
 	DropSignatures,
 }
@@ -44,6 +46,8 @@ func (behaviours RedNodeBehaviour) String() string {
 		return "invalid requests"
 	case InvalidNonce:
 		return "invalid nonce"
+	case InvalidSignature:
+		return "invalid multi-address signature"
 	case DropMultiAddresses:
 		return "drop multi-addresses"
 	case DropSignatures:
@@ -317,6 +321,8 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 		multiAddress.MultiAddress = tamperMultiAddress(multiAddr)
 	case InvalidNonce:
 		multiAddress.MultiAddressNonce = tamperNonce(multiAddr)
+	case InvalidSignature:
+		multiAddress.Signature = tamperSignature(multiAddr)
 	case DropMultiAddresses:
 		multiAddress.MultiAddress = ""
 	case DropSignatures:
