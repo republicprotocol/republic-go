@@ -15,3 +15,12 @@ func Random32Bytes() [32]byte {
 	copy(res[:], hash)
 	return res
 }
+
+// Random64Bytes creates a random [64]byte.
+func Random64Bytes() [64]byte {
+	var res [64]byte
+	i := fmt.Sprintf("%d", rand.Int())
+	hash := crypto.Keccak256([]byte(i))
+	copy(res[:], hash)
+	return res
+}

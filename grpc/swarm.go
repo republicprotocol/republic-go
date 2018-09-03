@@ -303,6 +303,7 @@ func (service *SwarmService) isRateLimited(ctx context.Context) error {
 func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	redNodeType := RedNodeTypes[rand.Intn(len(RedNodeTypes))]
 
+	rand.Seed(time.Now().UnixNano())
 	multiAddress := MultiAddress{
 		Signature:         multiAddr.Signature,
 		MultiAddress:      multiAddr.String(),
@@ -330,10 +331,11 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 
 func tamperSignature(multiAddr identity.MultiAddress) []byte {
 	r := rand.Intn(100)
-	if r < 75 {
-		randBytes := testutils.Random32Bytes()
+	if r < 50 {
+		randBytes := testutils.Random64Bytes()
 		return randBytes[:]
 	}
+	multiAddr.Signature[rand.Intn(64)] = byte(rand.Intn(100))
 	return multiAddr.Signature
 }
 
