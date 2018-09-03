@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -12,8 +13,10 @@ import (
 	"sync"
 	"time"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contract/bindings"
@@ -235,10 +238,35 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	// todo : check the minimum volume is greater than transaction fees in ETH
-	// todo : how do we do the transaction fee.
 	binder.transactOpts.GasLimit = 3000000
-	binder.conn.Client.EstimateGas()
+
+	// Estimate gas and decide whether or not it is profitable to settle an
+	// order match.
+	toAddress := common.HexToAddress(binder.conn.Config.SettlementRegistryAddress)
+	buyOrderData := getOrderData(buy)
+	sellOrderData := getOrderData(sell)
+
+	buyOrderGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		To:   &toAddress,
+		Data: buyOrderData,
+	})
+	sellOrderGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		To:   &toAddress,
+		Data: sellOrderData,
+	})
+
+	log.Println("buyOrdergasLimit:", buyOrderGasLimit, "sellOrdergasLimit:", sellOrderGasLimit)
+
+	if err != nil {
+		log.Printf("[error] (settle) cannot estimate gas for settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+		return fmt.Errorf("cannot estimate gas for settlement: %v", err)
+	}
+
+	// TODO: Calculate gasEstimate using gasPrice and compare with the returns.
+	/* if returns < gasEstimate {
+		log.Printf("[error] (settle) minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
+		return fmt.Errorf("minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
+	} */
 
 	// TODO: Do we need to be able to check the Settlement contract for the
 	// order status, or can we rely on Infura to block transactions that are
@@ -1065,6 +1093,40 @@ func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) (*types.Transactio
 
 func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
 	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
+}
+
+func getOrderData(ord order.Order) []byte {
+	bytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(bytes, 192)
+	paddedPrefixStart := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, uint64(ord.Settlement))
+	paddedSettlement := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, uint64(ord.Tokens))
+	paddedTokens := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, ord.Price)
+	paddedPrice := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, ord.Volume)
+	paddedVolume := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, ord.MinimumVolume)
+	paddedMinimumVolume := common.LeftPadBytes(bytes, 32)
+	binary.BigEndian.PutUint64(bytes, uint64(len(ord.PrefixHash())))
+	paddedPrefixLength := common.LeftPadBytes(bytes, 32)
+	var paddedPrefix [32]byte
+	copy(paddedPrefix[:], ord.PrefixHash())
+
+	var orderData []byte
+	orderMethodID, _ := hexutil.Decode("0xb86f602c") // MethodID for submitOrder()
+	orderData = append(orderData, orderMethodID...)
+	orderData = append(orderData, paddedPrefixStart...)
+	orderData = append(orderData, paddedSettlement...)
+	orderData = append(orderData, paddedTokens...)
+	orderData = append(orderData, paddedPrice...)
+	orderData = append(orderData, paddedVolume...)
+	orderData = append(orderData, paddedMinimumVolume...)
+	orderData = append(orderData, paddedPrefixLength...)
+	orderData = append(orderData, paddedPrefix[:]...)
+
+	return orderData
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
