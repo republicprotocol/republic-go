@@ -28,3 +28,11 @@ type Config struct {
 	OrderbookAddress           string  `json:"orderbookAddress"`
 	SettlementRegistryAddress  string  `json:"settlementRegistryAddress"`
 }
+
+// IsNil returns true if Config or any of its fields are nil.
+func (config *Config) IsNil() bool {
+	if config == nil || len(config.Network) == 0 || len(config.URI) == 0 || len(config.RepublicTokenAddress) == 0 || len(config.DarknodeRegistryAddress) == 0 || len(config.OrderbookAddress) == 0 {
+		return true
+	}
+	return false
+}

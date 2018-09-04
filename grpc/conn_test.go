@@ -52,6 +52,13 @@ var _ = Describe("Connections", func() {
 			Expect(conn).ShouldNot(BeNil())
 
 		})
+
+		It("should error for nil multi-addresses", func() {
+			conn, err := Dial(context.Background(), identity.MultiAddress{})
+			Expect(err).Should(HaveOccurred())
+			Expect(conn).Should(BeNil())
+
+		})
 	})
 
 	Context("when backing off", func() {

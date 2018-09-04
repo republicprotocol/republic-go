@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -13,6 +14,15 @@ import (
 	"github.com/republicprotocol/republic-go/swarm"
 	"google.golang.org/grpc/peer"
 )
+
+// ErrMidPointPriceIsNil is returned when the midpoint price contains
+// nil fields.
+var ErrMidPointPriceIsNil = errors.New("midpoint price data is nil")
+
+// ErrMidPointRequestIsNil is returned when a gRPC request is nil or has nil
+// fields.
+var ErrMidPointRequestIsNil = errors.New("mid-point request is nil")
+
 
 type oracleClient struct {
 	addr  identity.Address
@@ -29,6 +39,9 @@ func NewOracleClient(addr identity.Address, store swarm.MultiAddressStorer) orac
 
 // UpdateMidpoint implements the oracle.Client interface.
 func (client *oracleClient) UpdateMidpoint(ctx context.Context, to identity.MultiAddress, midpointPrice oracle.MidpointPrice) error {
+	if midpointPrice.IsNil() {
+		return ErrMidPointPriceIsNil
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -87,6 +100,10 @@ func NewOracleService(server oracle.Server, rate time.Duration) OracleService {
 
 // Register implements the Service interface.
 func (service *OracleService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, "server is nil")
+		return
+	}
 	RegisterOracleServiceServer(server.Server, service)
 }
 
@@ -96,13 +113,13 @@ func (service *OracleService) Register(server *Server) {
 // handling this signed object to its oracle.Server. If its oracle.Server
 // accepts data from the client it will return an empty UpdateMidpointResponse.
 func (service *OracleService) UpdateMidpoint(ctx context.Context, request *UpdateMidpointRequest) (*UpdateMidpointResponse, error) {
-	if err := service.isRateLimited(ctx); err != nil {
-		return nil, err
-	}
-
 	// Check for empty or invalid request fields.
 	if request.Signature == nil || len(request.Signature) == 0 || len(request.Prices) == 0 || request.Nonce == 0 {
-		return nil, fmt.Errorf("invalid midpoint data request")
+		return nil, ErrMidPointRequestIsNil
+	}
+
+	if err := service.isRateLimited(ctx); err != nil {
+		return nil, err
 	}
 
 	midpointPrice := oracle.MidpointPrice{

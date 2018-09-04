@@ -14,6 +14,25 @@ import (
 // request to the server within a specified rate limit.
 var ErrRateLimitExceeded = errors.New("cannot process request, rate limit exceeded")
 
+// ErrPingRequestIsNil is returned when a gRPC ping request is nil or has nil
+// fields.
+var ErrPingRequestIsNil = errors.New("ping request is nil")
+
+// ErrPongRequestIsNil is returned when a gRPC pong request is nil or has nil
+// fields.
+var ErrPongRequestIsNil = errors.New("pong request is nil")
+
+// ErrQueryRequestIsNil is returned when a gRPC query request is nil or has nil
+// fields.
+var ErrQueryRequestIsNil = errors.New("query request is nil")
+
+// ErrMultiAddressIsNil is returned when a multi-address is nil or has nil
+// fields.
+var ErrMultiAddressIsNil = errors.New("multi-address is nil")
+
+// ErrAddressIsNil is returned when an address is nil.
+var ErrAddressIsNil = errors.New("address is nil")
+
 type swarmClient struct {
 	addr  identity.Address
 	store swarm.MultiAddressStorer
@@ -30,6 +49,9 @@ func NewSwarmClient(store swarm.MultiAddressStorer, addr identity.Address) swarm
 
 // Ping implements the swarm.Client interface.
 func (client *swarmClient) Ping(ctx context.Context, to identity.MultiAddress, multiAddr identity.MultiAddress) error {
+	if multiAddr.IsNil() {
+		return ErrMultiAddressIsNil
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -81,6 +103,9 @@ func (client *swarmClient) Pong(ctx context.Context, to identity.MultiAddress) e
 
 // Query implements the swarm.Client interface.
 func (client *swarmClient) Query(ctx context.Context, to identity.MultiAddress, query identity.Address) (identity.MultiAddresses, error) {
+	if query == "" {
+		return identity.MultiAddresses{}, ErrAddressIsNil
+	}
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot dial %v: %v", to, err))
@@ -141,6 +166,10 @@ func NewSwarmService(server swarm.Server) SwarmService {
 
 // Register implements the Service interface.
 func (service *SwarmService) Register(server *Server) {
+	if server == nil {
+		logger.Network(logger.LevelError, "server is nil")
+		return
+	}
 	RegisterSwarmServiceServer(server.Server, service)
 }
 
@@ -151,6 +180,13 @@ func (service *SwarmService) Register(server *Server) {
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PingResponse.
 func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*PingResponse, error) {
+	// Check for empty or invalid request fields.
+	if request == nil {
+		return nil, ErrPingRequestIsNil
+	}
+	if request.MultiAddress == nil {
+		return nil, ErrMultiAddressIsNil
+	}
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -174,6 +210,13 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 // signed identity.MultiAddress of the client it will return its own signed
 // identity.MultiAddress in a PongResponse.
 func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*PongResponse, error) {
+	// Check for empty or invalid request fields.
+	if request == nil {
+		return nil, ErrPongRequestIsNil
+	}
+	if request.MultiAddress == nil {
+		return nil, ErrMultiAddressIsNil
+	}
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -197,6 +240,13 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 // responsibility to its swarm.Server to return identity.MultiAddresses that
 // are close to the queried identity.Address.
 func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (*QueryResponse, error) {
+	// Check for empty or invalid request fields.
+	if request == nil {
+		return nil, ErrQueryRequestIsNil
+	}
+	if request.Address == "" {
+		return nil, ErrAddressIsNil
+	}
 	query := identity.Address(request.GetAddress())
 	multiAddrs, err := service.server.Query(ctx, query)
 	if err != nil {
