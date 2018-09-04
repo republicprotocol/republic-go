@@ -237,13 +237,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 	binder.transactOpts.GasLimit = 3000000
 
-	// TODO: Estimate gas and decide whether or not it is profitable to settle an
-	// order match.
-	// if returns < gasEstimate {
-	// 	log.Printf("[error] (settle) minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
-	// 	return fmt.Errorf("minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
-	// }
-
 	// TODO: Do we need to be able to check the Settlement contract for the
 	// order status, or can we rely on Infura to block transactions that are
 	// known to fail?
