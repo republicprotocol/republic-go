@@ -158,6 +158,7 @@ func tamperJoin(join smpc.Join) smpc.Join {
 		join.ID = tamperJoinID(join.ID)
 		join.Index = tamperJoinIndex(join.Index)
 		join.Shares = tamperShares(join.Shares)
+		join.Blindings = tamperBlindings(join.Blindings)
 	}
 	return join
 }
@@ -202,23 +203,43 @@ func tamperJoinIndex(joinIndex smpc.JoinIndex) smpc.JoinIndex {
 }
 
 func tamperShares(shares shamir.Shares) shamir.Shares {
+	r := rand.Intn(100)
+	// Return an empty list of shamir.Shares.
+	if r < 10 {
+		return shamir.Shares{}
+	}
+	// Return a random set of shamir.Shares.
+	if r < 50 {
+		secret := ((uint64(rand.Int63()) % shamir.Prime) / 2) + (shamir.Prime / 2)
+		shares, _ = shamir.Split(72, 48, secret)
+		return shares
+	}
+	// Modify the shares slightly.
+	if r < 90 {
+		index := rand.Intn(len(shares))
+		shares[index] = shamir.Share{Index: uint64(index), Value: uint64(index)}
+	}
+	return shares
+}
+
+func tamperBlindings(blindings shamir.Blindings) shamir.Blindings {
 	// r := rand.Intn(100)
-	// // Return an empty spmc.JoinID.
+	// // Return an empty list of shamir.Blindings.
 	// if r < 10 {
-	// 	return smpc.JoinID{}
+	// 	return shamir.Blindings{}
 	// }
-	// // Return a random [33]byte array as JoinID.
+	// // Return a random set of shamir.Blindings.
 	// if r < 50 {
-	// 	return smpc.JoinID(testutils.Random33Bytes())
+	// 	blindings
+	// 	return shares
 	// }
-	// // Modify the joinID slightly.
+	// // Modify the shares slightly.
 	// if r < 90 {
-	// 	index := rand.Intn(33)
-	// 	joinID[index] = byte(index)
-	// 	return joinID
+	// 	index := rand.Intn(len(shares))
+	// 	shares[index] = shamir.Share{Index: uint64(index), Value: uint64(index)}
 	// }
-	// return joinID
-	return shamir.Shares{}
+	// return shares
+	return blindings
 }
 
 func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
