@@ -26,7 +26,7 @@ const orderStatus = order.Open
 var _ = Describe("Orderbook storage", func() {
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
-			ord := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
+			ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, order.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord
