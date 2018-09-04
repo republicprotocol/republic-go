@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"log"
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -130,13 +131,13 @@ func tamperMessage(message smpc.Message) smpc.Message {
 		}
 
 		message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
-		message.MessageJoin.Join = tamperJoin(message.MessageJoin.Join)
+		message.MessageJoin.Join = tamperMessageJoin(message.MessageJoin.Join)
 	case smpc.MessageTypeJoinResponse:
 		if r < 50 {
 			message.MessageType = smpc.MessageTypeJoin
 		}
 		message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
-		message.MessageJoinResponse.Join = tamperJoin(message.MessageJoinResponse.Join)
+		message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 	default:
 		message.MessageType = smpc.MessageType(15)
 	}
@@ -147,7 +148,7 @@ func tamperMessage(message smpc.Message) smpc.Message {
 	return message
 }
 
-func tamperJoin(join smpc.Join) smpc.Join {
+func tamperMessageJoin(join smpc.Join) smpc.Join {
 	r := rand.Intn(100)
 	// Return an empty smpc.Join.
 	if r < 10 {
@@ -223,26 +224,42 @@ func tamperShares(shares shamir.Shares) shamir.Shares {
 }
 
 func tamperBlindings(blindings shamir.Blindings) shamir.Blindings {
-	// r := rand.Intn(100)
-	// // Return an empty list of shamir.Blindings.
-	// if r < 10 {
-	// 	return shamir.Blindings{}
-	// }
-	// // Return a random set of shamir.Blindings.
-	// if r < 50 {
-	// 	blindings
-	// 	return shares
-	// }
-	// // Modify the shares slightly.
-	// if r < 90 {
-	// 	index := rand.Intn(len(shares))
-	// 	shares[index] = shamir.Share{Index: uint64(index), Value: uint64(index)}
-	// }
-	// return shares
+	r := rand.Intn(100)
+	// Return an empty list of shamir.Blindings.
+	if r < 10 {
+		return shamir.Blindings{}
+	}
+	// Return a completely different random set of shamir.Blindings.
+	if r < 50 {
+		for i := range blindings {
+			blindings[i] = shamir.Blinding{Int: big.NewInt(int64(rand.Intn(100)))}
+		}
+		return blindings
+	}
+	// Modify the blindings slightly.
+	if r < 90 {
+		index := rand.Intn(len(blindings))
+		blindings[index] = shamir.Blinding{Int: big.NewInt(int64(index))}
+	}
 	return blindings
 }
 
 func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
+	r := rand.Intn(100)
+	// Return a randomly generated [32]byte array.
+	if r < 50 {
+		return testutils.Random32Bytes()
+	}
+	// Return a slightly modified networkID.
+	if r < 70 {
+		index := rand.Intn(32)
+		networkID[index] = byte(index)
+		return networkID
+	}
+	// Return a nil array.
+	if r < 90 {
+		return [32]byte{}
+	}
 	return networkID
 }
 
@@ -277,16 +294,4 @@ func tamperNonce(multiAddr identity.MultiAddress) uint64 {
 		return 0
 	}
 	return multiAddr.Nonce
-}
-
-func tamperMessageJoin(join smpc.Join) smpc.Join {
-	r := rand.Intn(100)
-	if r < 33 {
-
-	}
-	if r < 66 {
-	}
-	if r < 99 {
-	}
-	return smpc.Join{}
 }
