@@ -454,7 +454,7 @@ func VolumeToCoExp(volume uint64) CoExp {
 }
 
 func PriceFloatToCoExp(price float64) CoExp {
-	if price > 10.0 {
+	if price >= 10.0 {
 		prev := PriceFloatToCoExp(price / 10)
 		return CoExp{
 			Co:  prev.Co,
@@ -490,7 +490,7 @@ func PriceFloatToCoExp(price float64) CoExp {
 }
 
 func VolumeFloatToCoExp(volume float64) CoExp {
-	if volume > 10 {
+	if volume >= 10 {
 		prev := VolumeFloatToCoExp(volume / 10)
 		return CoExp{
 			Co:  prev.Co,
