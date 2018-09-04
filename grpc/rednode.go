@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/republicprotocol/republic-go/shamir"
+
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/testutils"
@@ -146,7 +148,77 @@ func tamperMessage(message smpc.Message) smpc.Message {
 }
 
 func tamperJoin(join smpc.Join) smpc.Join {
+	r := rand.Intn(100)
+	// Return an empty smpc.Join.
+	if r < 10 {
+		return smpc.Join{}
+	}
+	// Return an updated smpc.Join.
+	if r < 90 {
+		join.ID = tamperJoinID(join.ID)
+		join.Index = tamperJoinIndex(join.Index)
+		join.Shares = tamperShares(join.Shares)
+	}
 	return join
+}
+
+func tamperJoinID(joinID smpc.JoinID) smpc.JoinID {
+	r := rand.Intn(100)
+	// Return an empty spmc.JoinID.
+	if r < 10 {
+		return smpc.JoinID{}
+	}
+	// Return a random [33]byte array as JoinID.
+	if r < 50 {
+		return smpc.JoinID(testutils.Random33Bytes())
+	}
+	// Modify the joinID slightly.
+	if r < 90 {
+		index := rand.Intn(33)
+		joinID[index] = byte(index)
+		return joinID
+	}
+	return joinID
+}
+
+func tamperJoinIndex(joinIndex smpc.JoinIndex) smpc.JoinIndex {
+	r := rand.Intn(100)
+	// Return an 0.
+	if r < 10 {
+		return 0
+	}
+	// Return a random uint64 as JoinIndex.
+	if r < 50 {
+		return smpc.JoinIndex(rand.Intn(200))
+	}
+	// Modify the joinIndex slightly.
+	if r < 70 {
+		return joinIndex + 1
+	}
+	if r < 90 {
+		return joinIndex - 1
+	}
+	return joinIndex
+}
+
+func tamperShares(shares shamir.Shares) shamir.Shares {
+	// r := rand.Intn(100)
+	// // Return an empty spmc.JoinID.
+	// if r < 10 {
+	// 	return smpc.JoinID{}
+	// }
+	// // Return a random [33]byte array as JoinID.
+	// if r < 50 {
+	// 	return smpc.JoinID(testutils.Random33Bytes())
+	// }
+	// // Modify the joinID slightly.
+	// if r < 90 {
+	// 	index := rand.Intn(33)
+	// 	joinID[index] = byte(index)
+	// 	return joinID
+	// }
+	// return joinID
+	return shamir.Shares{}
 }
 
 func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
