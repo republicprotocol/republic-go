@@ -453,6 +453,12 @@ func VolumeToCoExp(volume uint64) CoExp {
 	return VolumeFloatToCoExp(volumeF)
 }
 
+// PriceFloatToCoExp converts a float64 to a CoExp.
+// Price = 0.005 * Co * 10^(Exp - 26)
+// Co is in the range 1 to 1999
+// Exp is in the range of 0 to 52
+// If the price can be represented by multiple Co-Exp pairs, the pair with the
+// lowest Exp is used. If the price is invalid, it returns {Co:0, Exp:0}.
 func PriceFloatToCoExp(price float64) CoExp {
 	if price >= 10.0 {
 		prev := PriceFloatToCoExp(price / 10)
@@ -460,67 +466,56 @@ func PriceFloatToCoExp(price float64) CoExp {
 			Co:  prev.Co,
 			Exp: prev.Exp + 1,
 		}
-
-	} else if price < 0.005 {
+	} else if price >= 1 {
+		try := math.Round(price / 0.005)
+		return CoExp{
+			Co:  uint64(try),
+			Exp: 38,
+		}
+	} else if price > 0 {
 		prev := PriceFloatToCoExp(price * 10)
 		return CoExp{
 			Co:  prev.Co,
 			Exp: prev.Exp - 1,
 		}
 	} else {
-		if price == 0 {
-			return CoExp{
-				Co:  0,
-				Exp: 0,
-			}
+		return CoExp{
+			Co:  0,
+			Exp: 0,
 		}
-		if price < 1 {
-			prev := PriceFloatToCoExp(price * 10)
-			return CoExp{
-				Co:  prev.Co,
-				Exp: prev.Exp - 1,
-			}
-		}
-	}
-	try := math.Round(price / 0.005)
-	return CoExp{
-		Co:  uint64(try),
-		Exp: 38,
 	}
 }
 
+// VolumeFloatToCoExp converts a float64 to a CoExp.
+// Price = 0.2 * Co * 10^Exp
+// Co is in the range 1 to 49
+// Exp is in the range of 0 to 52
+// If the price can be represented by multiple Co-Exp pairs, the pair with the
+// lowest Exp is used. If the price is invalid, it returns {Co:0, Exp:0}.
 func VolumeFloatToCoExp(volume float64) CoExp {
-	if volume >= 10 {
+	if volume >= 10.0 {
 		prev := VolumeFloatToCoExp(volume / 10)
 		return CoExp{
 			Co:  prev.Co,
 			Exp: prev.Exp + 1,
 		}
-	} else if volume < 0.2 {
+	} else if volume >= 1 {
+		try := math.Round(volume / 0.2)
+		return CoExp{
+			Co:  uint64(try),
+			Exp: 12,
+		}
+	} else if volume > 0 {
 		prev := VolumeFloatToCoExp(volume * 10)
 		return CoExp{
 			Co:  prev.Co,
 			Exp: prev.Exp - 1,
 		}
 	} else {
-		if volume == 0 {
-			return CoExp{
-				Co:  0,
-				Exp: 0,
-			}
+		return CoExp{
+			Co:  0,
+			Exp: 0,
 		}
-		if volume < 1 {
-			prev := VolumeFloatToCoExp(volume * 10)
-			return CoExp{
-				Co:  prev.Co,
-				Exp: prev.Exp - 1,
-			}
-		}
-	}
-	try := math.Round(volume / 0.2)
-	return CoExp{
-		Co:  uint64(try),
-		Exp: 12,
 	}
 }
 
