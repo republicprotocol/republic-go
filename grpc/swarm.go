@@ -3,15 +3,11 @@ package grpc
 import (
 	"errors"
 	"fmt"
-	"net"
-	"sync"
-	"time"
 
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/swarm"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/peer"
 )
 
 // ErrRateLimitExceeded is returned when the same client sends more than one
@@ -158,21 +154,13 @@ func (client *swarmClient) MultiAddress() identity.MultiAddress {
 // to a swarm.Server.
 type SwarmService struct {
 	server swarm.Server
-
-	rate         time.Duration
-	rateLimitsMu *sync.Mutex
-	rateLimits   map[string]time.Time
 }
 
 // NewSwarmService returns a SwarmService that uses the swarm.Server as a
 // delegate.
-func NewSwarmService(server swarm.Server, rate time.Duration) SwarmService {
+func NewSwarmService(server swarm.Server) SwarmService {
 	return SwarmService{
 		server: server,
-
-		rate:         rate,
-		rateLimitsMu: new(sync.Mutex),
-		rateLimits:   make(map[string]time.Time),
 	}
 }
 
@@ -199,11 +187,6 @@ func (service *SwarmService) Ping(ctx context.Context, request *PingRequest) (*P
 	if request.MultiAddress == nil {
 		return nil, ErrMultiAddressIsNil
 	}
-
-	if err := service.isRateLimited(ctx); err != nil {
-		return nil, err
-	}
-
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -234,11 +217,6 @@ func (service *SwarmService) Pong(ctx context.Context, request *PongRequest) (*P
 	if request.MultiAddress == nil {
 		return nil, ErrMultiAddressIsNil
 	}
-
-	if err := service.isRateLimited(ctx); err != nil {
-		return nil, err
-	}
-
 	from, err := identity.NewMultiAddressFromString(request.GetMultiAddress().GetMultiAddress())
 	if err != nil {
 		logger.Network(logger.LevelError, fmt.Sprintf("cannot unmarshal multiaddress: %v", err))
@@ -269,11 +247,6 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 	if request.Address == "" {
 		return nil, ErrAddressIsNil
 	}
-
-	if err := service.isRateLimited(ctx); err != nil {
-		return nil, err
-	}
-
 	query := identity.Address(request.GetAddress())
 	multiAddrs, err := service.server.Query(ctx, query)
 	if err != nil {
@@ -292,31 +265,4 @@ func (service *SwarmService) Query(ctx context.Context, request *QueryRequest) (
 	return &QueryResponse{
 		MultiAddresses: multiAddrMsgs,
 	}, nil
-}
-
-func (service *SwarmService) isRateLimited(ctx context.Context) error {
-	client, ok := peer.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("fail to get peer from ctx")
-	}
-	if client.Addr == net.Addr(nil) {
-		return fmt.Errorf("fail to get peer address")
-	}
-
-	clientAddr, ok := client.Addr.(*net.TCPAddr)
-	if !ok {
-		return fmt.Errorf("fail to read peer TCP address")
-	}
-	clientIP := clientAddr.IP.String()
-
-	service.rateLimitsMu.Lock()
-	defer service.rateLimitsMu.Unlock()
-
-	if lastPing, ok := service.rateLimits[clientIP]; ok {
-		if service.rate > time.Since(lastPing) {
-			return ErrRateLimitExceeded
-		}
-	}
-	service.rateLimits[clientIP] = time.Now()
-	return nil
 }
