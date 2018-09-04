@@ -41,5 +41,5 @@ func (ξ *Epoch) Pod(addr identity.Address) (Pod, error) {
 
 // IsNil returns true if the Epoch is nil.
 func (ξ *Epoch) IsNil() bool {
-	return ξ == nil || len(ξ.Hash) != 32 || len(ξ.Darknodes) == 0 || len(ξ.Pods) == 0
+	return ξ == nil || ξ.Hash != [32]byte{} || len(ξ.Darknodes) == 0 || len(ξ.Pods) == 0
 }
