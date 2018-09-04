@@ -68,8 +68,10 @@ func RandomOrderMatch() (order.Order, order.Order) {
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
-	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
-	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
+	price := rand.Uint64()
+	volume := rand.Uint64()
+	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, price, volume, 0, uint64(rand.Int63()))
+	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, price, volume, 0, uint64(rand.Int63()))
 	return buy, sell
 }
 
