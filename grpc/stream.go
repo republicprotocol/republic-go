@@ -156,7 +156,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 			return err
 		}
 		// Notify the receiver of the message
-		receiver.Receive(addr, message)
+		receiver.Receive(addr, tamperMessage(message))
 		return nil
 	}
 
@@ -458,7 +458,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 					log.Printf("[error] received malformed message from %v on network %v: %v", addr, networkID, err)
 					return err
 				}
-				receiver.Receive(addr, message)
+				receiver.Receive(addr, tamperMessage(message))
 				return nil
 			}, 30000)
 
