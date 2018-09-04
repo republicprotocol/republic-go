@@ -165,6 +165,14 @@ var _ = Describe("Orders", func() {
 			Expect(Settlement(100).String()).Should(Equal("unexpected order settlement"))
 		})
 	})
+
+	Context("when converting volume to CoExp", func() {
+		It("should not convert volume into values out of the expected range", func() {
+			vol := VolumeFloatToCoExp(100000)
+			Expect(vol.Co).Should(BeNumerically("<=", 49))
+			Expect(vol.Exp).Should(BeNumerically("<=", 52))
+		})
+	})
 })
 
 // Write a single order into a JSON file.
