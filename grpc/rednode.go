@@ -22,8 +22,7 @@ const (
 	InvalidRequests RedNodeBehaviour = iota
 	InvalidNonce
 	InvalidSignature
-	InvalidBlindings
-	InvalidJoins
+	InvalidMessageRequests
 	DropMessages
 	DropMultiAddresses
 	DropSignatures
@@ -38,6 +37,10 @@ func (behaviours RedNodeBehaviour) String() string {
 		return "invalid nonce"
 	case InvalidSignature:
 		return "invalid multi-address signature"
+	case InvalidMessageRequests:
+		return "invalid smpc message requests"
+	case DropMessages:
+		return "drop smpc messages"
 	case DropMultiAddresses:
 		return "drop multi-addresses"
 	case DropSignatures:
@@ -60,9 +63,7 @@ var RedNodeSwarmerTypes = []RedNodeBehaviour{
 // RedNodeStreamerTypes contains an array of all possible malicious streaming
 // behaviours.
 var RedNodeStreamerTypes = []RedNodeBehaviour{
-	InvalidRequests,
-	InvalidBlindings,
-	InvalidJoins,
+	InvalidMessageRequests,
 	DropMessages,
 }
 
@@ -102,20 +103,15 @@ func getTamperedMessage(message smpc.Message) smpc.Message {
 
 	redNodeType := RedNodeStreamerTypes[rand.Intn(len(RedNodeStreamerTypes))]
 
+	log.Printf("Red-node streamer will exhibit behaviour: %v; with original message: %v\n", redNodeType, message)
 	switch redNodeType {
-	case InvalidRequests:
+	case InvalidMessageRequests:
 		message = tamperMessage(message)
-	case InvalidBlindings:
-
-	case InvalidJoins:
-
 	case DropMessages:
-
+		message = smpc.Message{}
 	default:
 	}
-
-	log.Printf("Red-node streamer will exhibit behaviour: %v\n", redNodeType)
-	log.Printf("Red-node tampered with smpc message %v to look like %v", message, message.MessageJoin)
+	log.Printf("Red-node with behaviour %v tampered the message to look like %v", redNodeType, message)
 
 	return message
 }
