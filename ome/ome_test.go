@@ -252,6 +252,14 @@ func (binder *omeBinder) SettleCounts() int {
 	return binder.comps
 }
 
+func (binder *omeBinder) SubmitChallengeOrder(ord order.Order) error {
+	return nil
+}
+
+func (binder *omeBinder) SubmitChallenge(buyID, sellID order.ID) error {
+	return nil
+}
+
 func (binder *omeBinder) setOrderStatus(orderID order.ID, status order.Status) error {
 	binder.ordersMu.Lock()
 	defer binder.ordersMu.Unlock()

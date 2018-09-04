@@ -1,11 +1,8 @@
 package testutils
 
 import (
-	"log"
 	"os"
 	"strconv"
-
-	"github.com/republicprotocol/republic-go/contract"
 
 	"github.com/onsi/ginkgo"
 )
@@ -57,39 +54,6 @@ func SkipCIDescribe(d string, f func()) bool {
 		return ginkgo.Describe(d, f)
 	}
 	return false
-}
-
-func GanacheBeforeSuite(body interface{}, timeout ...float64) (contract.Conn, contract.Binder, bool) {
-	if !GetCIEnv() {
-		conn, err := ganache.StartAndConnect()
-		if err != nil {
-			log.Fatalf("cannot connect to ganache: %v", err)
-		}
-
-		auth := ganache.GenesisTransactor()
-		// GasLimit must not be set to 0 to avoid "Out Of Gas" errors
-		auth.GasLimit = 3000000
-		binder, err := contract.NewBinder(&auth, conn)
-
-		return conn, binder, ginkgo.BeforeSuite(body, timeout...)
-	}
-	return contract.Conn{}, contract.Binder{}, ginkgo.BeforeSuite(body, timeout...)
-}
-
-func GanacheAfterSuite(body interface{}, timeout ...float64) bool {
-	if !GetCIEnv() {
-		ganache.Stop()
-	}
-	return ginkgo.AfterSuite(body, timeout...)
-}
-
-func GanacheBeforeEach(body interface{}, timeout ...float64) bool {
-	_, err := ganache.StartAndConnect()
-	if err != nil {
-		log.Fatalf("cannot connect to ganache: %v", err)
-	}
-
-	return ginkgo.BeforeEach(body, timeout...)
 }
 
 func GanacheAfterEach(body interface{}, timeout ...float64) bool {

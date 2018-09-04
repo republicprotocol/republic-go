@@ -3,6 +3,7 @@ package ome
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -100,6 +101,35 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
+	// Submit a challenge if the orders do not match.
+	if buy.Tokens != sell.Tokens ||
+		buy.Volume < sell.MinimumVolume ||
+		sell.Volume < buy.MinimumVolume ||
+		buy.Price < sell.Price {
+		if err := settler.contract.SubmitChallengeOrder(buy); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for buy order = %v: %v", buy.ID, err)
+			return
+		}
+		if err := settler.contract.SubmitChallengeOrder(sell); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for sell order = %v: %v", sell.ID, err)
+			return
+		}
+		if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+			return
+		}
+		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: invalid match", buy.ID, sell.ID)
+		return
+	}
+
+	// Leave the orders if volume is too low and there is no profit for
+	// submitting such orders. Note: minimum volume is set to 1 ETH.
+	settleVolume := volumeInEth(buy, sell)
+	if settleVolume < 1 {
+		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %f ETH too low", buy.ID, sell.ID, settleVolume)
+		return
+	}
+
 	if err := settler.contract.Settle(buy, sell); err != nil {
 		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
@@ -110,5 +140,26 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	if err := settler.computationStore.PutComputation(com); err != nil {
 		log.Printf("[error] (settle) cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
+	}
+}
+
+func volumeInEth(buy, sell order.Order) float64 {
+	if buy.Tokens.PriorityToken() == order.TokenETH {
+		// BTC-ETH
+		if buy.Volume >= sell.Volume {
+			return float64(sell.Volume)
+		} else {
+			return float64(buy.Volume)
+		}
+	} else {
+		// ETH-ERC20
+		var erc20Volume uint64
+		if buy.Volume >= sell.Volume {
+			erc20Volume = sell.Volume
+		} else {
+			erc20Volume = buy.Volume
+		}
+		price := float64(buy.Price) / math.Pow10(12)
+		return price * float64(erc20Volume) / math.Pow10(12)
 	}
 }

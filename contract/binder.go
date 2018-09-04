@@ -53,6 +53,7 @@ type Binder struct {
 
 	republicToken    *bindings.RepublicToken
 	darknodeRegistry *bindings.DarknodeRegistry
+	darknodeSlasher  *bindings.DarknodeSlasher
 	orderbook        *bindings.Orderbook
 
 	settlementRegistry *bindings.SettlementRegistry
@@ -1048,6 +1049,54 @@ func (binder *Binder) orderCounts() (uint64, error) {
 	}
 
 	return counts.Uint64(), nil
+}
+
+// SubmitChallengeOrder will submit the details for one of the two orders of a
+// challenge.
+func (binder *Binder) SubmitChallengeOrder(ord order.Order) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		return binder.submitChallengeOrder(ord)
+	})
+	if err != nil {
+		return err
+	}
+
+	receipt, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	if err != nil {
+		return err
+	}
+	if receipt.Status == types.ReceiptStatusFailed {
+		return errors.New("transaction reverted")
+	}
+	return nil
+}
+
+func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction, error) {
+	return binder.darknodeSlasher.SubmitChallengeOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
+}
+
+// SubmitChallenge will submit a challenge and, if successful, slash the bond
+// of the darknode that confirmed the order.
+func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		return binder.submitChallenge(buyID, sellID)
+	})
+	if err != nil {
+		return err
+	}
+
+	receipt, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	if err != nil {
+		return err
+	}
+	if receipt.Status == types.ReceiptStatusFailed {
+		return errors.New("transaction reverted")
+	}
+	return nil
+}
+
+func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
+	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
