@@ -94,12 +94,63 @@ func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
 	return multiAddress
 }
 
-func tamperMessage(message smpc.Message) smpc.Message {
-	// r := rand.Intn(100)
-	// if r < 75 {
-	// message.MessageJoin.Join
-	// }
+func getTamperedMessage(message smpc.Message) smpc.Message {
+	rand.Seed(time.Now().UnixNano())
+
+	redNodeType := RedNodeStreamerTypes[rand.Intn(len(RedNodeStreamerTypes))]
+
+	switch redNodeType {
+	case InvalidRequests:
+		message = tamperMessage(message)
+	case InvalidBlindings:
+
+	case InvalidJoins:
+
+	case DropMessages:
+
+	default:
+	}
+
+	log.Printf("Red-node streamer will exhibit behaviour: %v\n", redNodeType)
+	log.Printf("Red-node tampered with smpc message %v to look like %v", message, message.MessageJoin)
+
 	return message
+}
+
+func tamperMessage(message smpc.Message) smpc.Message {
+
+	r := rand.Intn(100)
+
+	switch message.MessageType {
+	case smpc.MessageTypeJoin:
+		if r < 50 {
+			message.MessageType = smpc.MessageTypeJoinResponse
+		}
+
+		message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
+		message.MessageJoin.Join = tamperJoin(message.MessageJoin.Join)
+	case smpc.MessageTypeJoinResponse:
+		if r < 50 {
+			message.MessageType = smpc.MessageTypeJoin
+		}
+		message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
+		message.MessageJoinResponse.Join = tamperJoin(message.MessageJoinResponse.Join)
+	default:
+		message.MessageType = smpc.MessageType(15)
+	}
+	if r < 80 && r >= 50 {
+		message.MessageType = smpc.MessageType(0)
+	}
+
+	return message
+}
+
+func tamperJoin(join smpc.Join) smpc.Join {
+	return join
+}
+
+func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
+	return networkID
 }
 
 func tamperSignature(multiAddr identity.MultiAddress) []byte {
@@ -129,8 +180,20 @@ func tamperNonce(multiAddr identity.MultiAddress) uint64 {
 	if r < 66 {
 		return multiAddr.Nonce - uint64(r)
 	}
-	if r < 99 {
+	if r < 90 {
 		return 0
 	}
 	return multiAddr.Nonce
+}
+
+func tamperMessageJoin(join smpc.Join) smpc.Join {
+	r := rand.Intn(100)
+	if r < 33 {
+
+	}
+	if r < 66 {
+	}
+	if r < 99 {
+	}
+	return smpc.Join{}
 }
