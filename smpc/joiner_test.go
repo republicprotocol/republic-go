@@ -91,7 +91,7 @@ var _ = Describe("Joiner", func() {
 			})
 		})
 
-		/* Context("when inserting computed joins", func() {
+		Context("when inserting computed joins", func() {
 			It("should pass the computed values to the callback", func() {
 				joins := generateMatchedJoins(n, k)
 				called := int64(0)
@@ -117,7 +117,7 @@ var _ = Describe("Joiner", func() {
 					}
 				}
 			})
-		}) */
+		})
 	})
 
 	Context("when marshaling and unmarshaling joins", func() {
