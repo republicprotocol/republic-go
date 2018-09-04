@@ -122,10 +122,11 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 		return
 	}
 
-	// Leave the orders if volume is too low and there is no profit for submitting such orders.
+	// Leave the orders if volume is too low and there is no profit for
+	// submitting such orders. Note: minimum volume is set to 1 ETH.
 	settleVolume := volumeInEth(buy, sell)
 	if settleVolume < 1 {
-		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume=%fETH too low", buy.ID, sell.ID, settleVolume)
+		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %f ETH too low", buy.ID, sell.ID, settleVolume)
 		return
 	}
 
