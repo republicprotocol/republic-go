@@ -1053,11 +1053,22 @@ func (binder *Binder) orderCounts() (uint64, error) {
 
 // SubmitChallengeOrder will submit the details for one of the two orders of a
 // challenge.
-func (binder *Binder) SubmitChallengeOrder(ord order.Order) (*types.Transaction, error) {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
+func (binder *Binder) SubmitChallengeOrder(ord order.Order) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		return binder.submitChallengeOrder(ord)
+	})
+	if err != nil {
+		return err
+	}
 
-	return binder.submitChallengeOrder(ord)
+	receipt, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	if err != nil {
+		return err
+	}
+	if receipt.Status == types.ReceiptStatusFailed {
+		return errors.New("transaction reverted")
+	}
+	return nil
 }
 
 func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction, error) {
@@ -1066,11 +1077,22 @@ func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction,
 
 // SubmitChallenge will submit a challenge and, if successful, slash the bond
 // of the darknode that confirmed the order.
-func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
+func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) error {
+	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+		return binder.submitChallenge(buyID, sellID)
+	})
+	if err != nil {
+		return err
+	}
 
-	return binder.submitChallenge(buyID, sellID)
+	receipt, err := binder.conn.PatchedWaitMined(context.Background(), tx)
+	if err != nil {
+		return err
+	}
+	if receipt.Status == types.ReceiptStatusFailed {
+		return errors.New("transaction reverted")
+	}
+	return nil
 }
 
 func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
