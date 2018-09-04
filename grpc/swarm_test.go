@@ -141,6 +141,9 @@ var _ = Describe("Swarming", func() {
 				err := server.Start("0.0.0.0:18514")
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
+
+			_, err := client.Query(context.Background(), serviceMultiAddr, "")
+			Expect(err).Should(HaveOccurred())
 		})
 
 		It("should error when too many requests are sent to the server", func(done Done) {
