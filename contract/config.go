@@ -31,7 +31,7 @@ type Config struct {
 
 // IsNil returns true if Config or any of its fields are nil.
 func (config *Config) IsNil() bool {
-	if config == nil || len(config.Network) == 0 || len(config.URI) == 0 || len(config.RepublicTokenAddress) == 0 || len(config.DarknodeRegistryAddress) == 0 || len(config.OrderbookAddress) == 0 || len(config.RewardVaultAddress) == 0 || len(config.RenExBalancesAddress) == 0 || len(config.RenExSettlementAddress) == 0 {
+	if config == nil || len(config.Network) == 0 || len(config.URI) == 0 || len(config.RepublicTokenAddress) == 0 || len(config.DarknodeRegistryAddress) == 0 || len(config.OrderbookAddress) == 0 {
 		return true
 	}
 	return false
