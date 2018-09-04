@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -13,10 +12,8 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contract/bindings"
@@ -240,47 +237,12 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 	binder.transactOpts.GasLimit = 3000000
 
-	// Estimate gas and decide whether or not it is profitable to settle an
+	// TODO: Estimate gas and decide whether or not it is profitable to settle an
 	// order match.
-	toAddress := common.HexToAddress(binder.conn.Config.SettlementRegistryAddress)
-	buyOrderData, err := getOrderData(buy)
-	if err != nil {
-		return fmt.Errorf("cannot get buy order data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
-	}
-	sellOrderData, err := getOrderData(sell)
-	if err != nil {
-		return fmt.Errorf("cannot get sell order data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
-	}
-	settleData, err := getSettleData(buy.ID, sell.ID)
-	if err != nil {
-		return fmt.Errorf("cannot get settle data for gas estimate buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
-	}
-
-	buyOrderGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &toAddress,
-		Data: buyOrderData,
-	})
-	sellOrderGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &toAddress,
-		Data: sellOrderData,
-	})
-	settleGasLimit, err := binder.conn.Client.EstimateGas(context.Background(), ethereum.CallMsg{
-		To:   &toAddress,
-		Data: settleData,
-	})
-
-	log.Println("buyOrderGasLimit:", buyOrderGasLimit, "sellOrderGasLimit:", sellOrderGasLimit, "settleGasLimit:", settleGasLimit)
-
-	if err != nil {
-		log.Printf("[error] (settle) cannot estimate gas for settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
-		return fmt.Errorf("cannot estimate gas for settlement: %v", err)
-	}
-
-	// TODO: Calculate gasEstimate using gasPrice and compare with the returns.
-	/* if returns < gasEstimate {
-		log.Printf("[error] (settle) minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
-		return fmt.Errorf("minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
-	} */
+	// if returns < gasEstimate {
+	// 	log.Printf("[error] (settle) minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
+	// 	return fmt.Errorf("minimum volume too low for buy = %v, sell = %v", buy.ID, sell.ID)
+	// }
 
 	// TODO: Do we need to be able to check the Settlement contract for the
 	// order status, or can we rely on Infura to block transactions that are
@@ -1096,68 +1058,30 @@ func (binder *Binder) orderCounts() (uint64, error) {
 	return counts.Uint64(), nil
 }
 
+// SubmitChallengeOrder will submit the details for one of the two orders of a
+// challenge.
+func (binder *Binder) SubmitChallengeOrder(ord order.Order) (*types.Transaction, error) {
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
+
+	return binder.submitChallengeOrder(ord)
+}
+
+func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction, error) {
+	return binder.darknodeSlasher.SubmitChallengeOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
+}
+
 // SubmitChallenge will submit a challenge and, if successful, slash the bond
 // of the darknode that confirmed the order.
 func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
-	binder.mu.RLock()
-	defer binder.mu.RUnlock()
+	binder.mu.Lock()
+	defer binder.mu.Unlock()
 
 	return binder.submitChallenge(buyID, sellID)
 }
 
 func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
 	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
-}
-
-func getOrderData(ord order.Order) ([]byte, error) {
-	bytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(bytes, 192)
-	paddedPrefixStart := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, uint64(ord.Settlement))
-	paddedSettlement := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, uint64(ord.Tokens))
-	paddedTokens := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, ord.Price)
-	paddedPrice := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, ord.Volume)
-	paddedVolume := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, ord.MinimumVolume)
-	paddedMinimumVolume := common.LeftPadBytes(bytes, 32)
-	binary.BigEndian.PutUint64(bytes, uint64(len(ord.PrefixHash())))
-	paddedPrefixLength := common.LeftPadBytes(bytes, 32)
-	var paddedPrefix [32]byte
-	copy(paddedPrefix[:], ord.PrefixHash())
-
-	var orderData []byte
-	orderMethodID, err := hexutil.Decode("0xb86f602c") // MethodID for submitOrder()
-	if err != nil {
-		return nil, err
-	}
-
-	orderData = append(orderData, orderMethodID...)
-	orderData = append(orderData, paddedPrefixStart...)
-	orderData = append(orderData, paddedSettlement...)
-	orderData = append(orderData, paddedTokens...)
-	orderData = append(orderData, paddedPrice...)
-	orderData = append(orderData, paddedVolume...)
-	orderData = append(orderData, paddedMinimumVolume...)
-	orderData = append(orderData, paddedPrefixLength...)
-	orderData = append(orderData, paddedPrefix[:]...)
-
-	return orderData, nil
-}
-
-func getSettleData(buyID, sellID order.ID) ([]byte, error) {
-	var orderData []byte
-	orderMethodID, err := hexutil.Decode("0xd32a9cd9") // MethodID for settle()
-	if err != nil {
-		return nil, err
-	}
-	orderData = append(orderData, orderMethodID...)
-	orderData = append(orderData, buyID[:]...)
-	orderData = append(orderData, sellID[:]...)
-
-	return orderData, nil
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {

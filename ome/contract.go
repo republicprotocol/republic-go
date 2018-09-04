@@ -29,5 +29,7 @@ type ContractBinder interface {
 
 	Settle(buy order.Order, sell order.Order) error
 
+	SubmitChallengeOrder(ord order.Order) error
+
 	SubmitChallenge(buyID, sellID order.ID) error
 }

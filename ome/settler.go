@@ -105,6 +105,14 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 		buy.Volume < sell.MinimumVolume ||
 		sell.Volume < buy.MinimumVolume ||
 		buy.Price < sell.Price {
+		if err := settler.contract.SubmitChallengeOrder(buy); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for buy order = %v: %v", buy.ID, err)
+			return
+		}
+		if err := settler.contract.SubmitChallengeOrder(sell); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for sell order = %v: %v", sell.ID, err)
+			return
+		}
 		if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
 			log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 			return
