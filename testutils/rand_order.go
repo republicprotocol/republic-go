@@ -16,7 +16,7 @@ func RandomOrder() order.Order {
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
-	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, rand.Uint64())
+	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
@@ -28,7 +28,7 @@ func RandomBuyOrder() order.Order {
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
-	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, rand.Uint64())
+	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
@@ -48,7 +48,7 @@ func RandomSellOrder() order.Order {
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
-	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, rand.Uint64())
+	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
@@ -68,8 +68,8 @@ func RandomOrderMatch() (order.Order, order.Order) {
 		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
-	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, rand.Uint64())
-	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, rand.Uint64())
+	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
+	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return buy, sell
 }
 
