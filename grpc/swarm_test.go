@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
+	"golang.org/x/time/rate"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -42,7 +43,7 @@ var _ = Describe("Swarming", func() {
 
 		swarmer = swarm.NewSwarmer(serviceClient, serviceClientDb, 10, &verifier)
 		Expect(err).ShouldNot(HaveOccurred())
-		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier), time.Microsecond)
+		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier))
 		serviceMultiAddr = serviceClient.MultiAddress()
 		server = NewServer()
 		service.Register(server)
@@ -121,9 +122,11 @@ var _ = Describe("Swarming", func() {
 		It("should error when too many requests are sent to the server", func(done Done) {
 			defer close(done)
 
-			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier), time.Second)
+			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier))
 			serviceMultiAddr = serviceClient.MultiAddress()
-			server = NewServer()
+			unaryLimiter := NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
+			streamLimiter := NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+			server = NewServerwithLimiter(unaryLimiter, streamLimiter)
 			service.Register(server)
 
 			go func() {

@@ -171,7 +171,7 @@ func (conn *Conn) TransferEth(ctx context.Context, from *bind.TransactOpts, to c
 		Signer:   from.Signer,
 		Value:    value,
 		GasPrice: from.GasPrice,
-		GasLimit: 30000,
+		GasLimit: 21000,
 		Context:  from.Context,
 	}
 
@@ -193,7 +193,7 @@ func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to commo
 		Signer:   from.Signer,
 		Value:    value,
 		GasPrice: from.GasPrice,
-		GasLimit: 30000,
+		GasLimit: 21000,
 		Context:  from.Context,
 	}
 

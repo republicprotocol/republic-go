@@ -385,7 +385,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:60b1c888dd67a52d79aa916583154e4c65c3e221db5169e480f630fe91d5cb78"
+  digest = "1:59a73243379bd5412feb268ec3d9ec0c55acb596ce15fdf937ec29ea6dab441f"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  pruneopts = "T"
+  revision = "fbb02b2291d28baffd63558aa44b4b56f178d650"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5d2ba1435a2e4c8a0cc732e265937adeb7974dc38e43fe1b2af930d49e853f5c"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -521,6 +529,7 @@
     "github.com/urfave/cli",
     "golang.org/x/crypto/scrypt",
     "golang.org/x/net/context",
+    "golang.org/x/time/rate",
     "google.golang.org/grpc",
     "google.golang.org/grpc/peer",
   ]
