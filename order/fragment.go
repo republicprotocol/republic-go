@@ -247,7 +247,7 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 
 // IsNil checks if an EncryptedFragment is null.
 func (fragment *EncryptedFragment) IsNil() bool {
-	return fragment == nil || fragment.ID == (FragmentID{}) || fragment.ID != [32]byte{} || fragment.OrderID != [32]byte{}
+	return fragment == nil || fragment.ID == (FragmentID{}) || fragment.ID == [32]byte{} || fragment.OrderID == [32]byte{}
 }
 
 type FragmentCommitment struct {
