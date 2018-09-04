@@ -23,19 +23,21 @@ type Settler interface {
 }
 
 type settler struct {
-	computationStore ComputationStorer
-	smpcer           smpc.Smpcer
-	contract         ContractBinder
+	computationStore    ComputationStorer
+	smpcer              smpc.Smpcer
+	contract            ContractBinder
+	minimumSettleVolume float64
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
+func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder, minimumSettleVolume float64) Settler {
 	return &settler{
-		computationStore: computationStore,
-		smpcer:           smpcer,
-		contract:         contract,
+		computationStore:    computationStore,
+		smpcer:              smpcer,
+		contract:            contract,
+		minimumSettleVolume: minimumSettleVolume,
 	}
 }
 
@@ -125,7 +127,7 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	// Leave the orders if volume is too low and there is no profit for
 	// submitting such orders. Note: minimum volume is set to 1 ETH.
 	settleVolume := volumeInEth(buy, sell)
-	if settleVolume < 1 {
+	if settleVolume < settler.minimumSettleVolume {
 		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %f ETH too low", buy.ID, sell.ID, settleVolume)
 		return
 	}

@@ -64,7 +64,7 @@ var _ = Describe("Ome", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			matcher = NewMatcher(storer, smpcer)
 			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
-			settler = NewSettler(storer, smpcer, contract)
+			settler = NewSettler(storer, smpcer, contract, 0)
 		})
 
 		AfterEach(func() {
