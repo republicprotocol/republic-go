@@ -254,7 +254,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	// Submit both buy and sell if no one submit yet.
 	orders := []order.Order{buy, sell}
 	dispatch.CoForAll(orders, func(i int) {
-		status, err := binder.SettlementStatus(orders[i].ID)
+		status, err := binder.settlementStatus(orders[i].ID)
 		if err != nil {
 			log.Printf("[error] (settle) cannot get settlement status of order [%v]: %v", orders[i], err)
 			return
@@ -274,11 +274,11 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	})
 
 	// Submit the match and wait for it to be mined
-	buyStatus, err := binder.SettlementStatus(buy.ID)
+	buyStatus, err := binder.settlementStatus(buy.ID)
 	if err != nil {
 		return err
 	}
-	sellStatus, err := binder.SettlementStatus(sell.ID)
+	sellStatus, err := binder.settlementStatus(sell.ID)
 	if err != nil {
 		return err
 	}
