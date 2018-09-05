@@ -268,7 +268,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 					log.Printf("[error] (settle) cannot wait to submit order = %v: %v", orders[i].ID, waitErr)
 				}
 			} else {
-				log.Printf("[error] (settle) cannot submit order = %v: %v", buy.ID, sendTxErr)
+				log.Printf("[error] (settle) cannot submit order = %v: %v", orders[i].ID, sendTxErr)
 			}
 		}
 	})
