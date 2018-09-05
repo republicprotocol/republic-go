@@ -289,13 +289,17 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		if sendTxErr != nil {
 			return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
 		}
-		_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+		receipt, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
 		if waitErr != nil {
 			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 		}
+		if receipt.Status == types.ReceiptStatusFailed {
+			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: transaction reverted", buy.ID, sell.ID)
+		}
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("cannot wait to settle buy = %v with status %v, sell = %v with status %v", buy.ID, buyStatus, sell.ID, sellStatus)
 }
 
 // Register a new dark node with the dark node registrar
