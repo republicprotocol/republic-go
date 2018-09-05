@@ -261,11 +261,11 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		}
 		if status == 0 {
 			if sendTx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-				return binder.submitOrder(buy)
+				return binder.submitOrder(orders[i])
 			}); sendTxErr == nil {
 				_, waitErr := binder.conn.PatchedWaitMined(context.Background(), sendTx)
 				if waitErr != nil {
-					log.Printf("[error] (settle) cannot wait to submit order = %v: %v", buy.ID, waitErr)
+					log.Printf("[error] (settle) cannot wait to submit order = %v: %v", orders[i].ID, waitErr)
 				}
 			} else {
 				log.Printf("[error] (settle) cannot submit order = %v: %v", buy.ID, sendTxErr)
