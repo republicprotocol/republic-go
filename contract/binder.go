@@ -184,6 +184,10 @@ func (binder *Binder) SettlementStatus(id order.ID) (uint8, error) {
 	binder.mu.RLock()
 	defer binder.mu.RUnlock()
 
+	return binder.settlementStatus(id)
+}
+
+func (binder *Binder) settlementStatus(id order.ID) (uint8, error) {
 	return binder.renExSettlement.OrderStatus(binder.callOpts, id)
 }
 
