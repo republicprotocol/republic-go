@@ -30,7 +30,7 @@ var _ = Describe("Settler", func() {
 			storers[i] = storer.SomerComputationStore()
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()
 			contracts[i] = newOmeBinder()
-			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i])
+			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i], 0)
 		}
 	})
 
@@ -40,7 +40,7 @@ var _ = Describe("Settler", func() {
 		}
 	})
 
-	/* Context("when a computation has been resolved to a match and been confirmed ", func() {
+	Context("when a computation has been resolved to a match and been confirmed ", func() {
 		It("should be able to reconstruct the order and settle it.", func() {
 			buyFragments, err := testutils.RandomBuyOrderFragments(int64(NumberOfNodes), int64(2*(NumberOfNodes+1)/3))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -59,5 +59,5 @@ var _ = Describe("Settler", func() {
 				Expect(contracts[i].SettleCounts()).Should(Equal(1))
 			}
 		})
-	}) */
+	})
 })
