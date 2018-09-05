@@ -206,7 +206,7 @@ func main() {
 			oldBootstrapAddr, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
 			if err != nil {
 				if err == swarm.ErrMultiAddressNotFound {
-					if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(oldBootstrapAddr); err != nil {
 						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 					}
 				} else {
@@ -225,7 +225,7 @@ func main() {
 					continue
 				}
 				if oldBootstrapIP != newBootstrapIP {
-					if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(oldBootstrapAddr); err != nil {
 						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
 					}
 				}
