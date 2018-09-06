@@ -141,10 +141,13 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 		return nil, nil
 	default:
 		receipt, err := bind.WaitMined(ctx, conn.Client, tx)
+		if err != nil {
+			return nil, err
+		}
 		if receipt.Status != types.ReceiptStatusSuccessful {
 			return receipt, errors.New("transaction reverted")
 		}
-		return receipt, err
+		return receipt, nil
 	}
 }
 

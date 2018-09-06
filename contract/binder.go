@@ -149,10 +149,12 @@ func (binder *Binder) sendTx(f func() (*types.Transaction, error)) (*types.Trans
 		return tx, nil
 	}
 	if err == core.ErrNonceTooLow || err == core.ErrReplaceUnderpriced || strings.Contains(err.Error(), "nonce is too low") {
+		log.Printf("nonce too low, %v", err)
 		binder.transactOpts.Nonce.Add(binder.transactOpts.Nonce, big.NewInt(1))
 		return binder.sendTx(f)
 	}
 	if err == core.ErrNonceTooHigh {
+		log.Printf("nonce too high, %v", err)
 		binder.transactOpts.Nonce.Sub(binder.transactOpts.Nonce, big.NewInt(1))
 		return binder.sendTx(f)
 	}
@@ -211,7 +213,9 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmitOrderGasPriceLimit(binder.callOpts)
 	if err == nil {
 		// Set gas price to the appropriate limit
-		binder.transactOpts.GasPrice = submitOrderGasPriceLimit
+		if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
+			binder.transactOpts.GasPrice = submitOrderGasPriceLimit
+		}
 		// Reset gas price
 		defer func() {
 			binder.transactOpts.GasPrice = lastGasPrice
@@ -252,7 +256,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	defer binder.mu.Unlock()
 
 	// Submit both buy and sell if no one submit yet.
-	orders := []order.Order{buy, sell}
+	orders := [2]order.Order{buy, sell}
 	dispatch.CoForAll(orders, func(i int) {
 		status, err := binder.settlementStatus(orders[i].ID)
 		if err != nil {
@@ -260,9 +264,14 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 			return
 		}
 		if status == 0 {
-			tx, err := binder.submitOrder(orders[i])
+			sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
+				return binder.submitOrder(orders[i])
+			})
 			if err == nil {
-				_, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
 				if waitErr != nil {
 					log.Printf("[error] (settle) cannot wait to submit order = %v: %v", orders[i].ID, waitErr)
 				}
@@ -281,14 +290,16 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if err != nil {
 		return err
 	}
-	if buyStatus == 1 && sellStatus == 1 {
+	if buyStatus == 1 || sellStatus == 1 {
 		tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
 			return binder.submitMatch(buy.ID, sell.ID)
 		})
 		if sendTxErr != nil {
 			return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
 		}
-		receipt, waitErr := binder.conn.PatchedWaitMined(context.Background(), tx)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		receipt, waitErr := binder.conn.PatchedWaitMined(ctx, tx)
 		if waitErr != nil {
 			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
 		}
