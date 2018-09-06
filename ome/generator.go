@@ -242,19 +242,27 @@ func (mat *computationMatrix) generate(done <-chan struct{}, notifications <-cha
 						return
 					case <-mat.sortedComputationsSignal:
 
-						mat.sortedComputationsMu.Lock()
-						if len(mat.sortedComputations) == 0 {
-							mat.sortedComputationsMu.Unlock()
-							continue
-						}
-						computationWeight := mat.sortedComputations[0]
-						mat.sortedComputations = mat.sortedComputations[1:]
-						mat.sortedComputationsMu.Unlock()
+						for {
+							mat.sortedComputationsMu.Lock()
+							if len(mat.sortedComputations) == 0 {
+								mat.sortedComputationsMu.Unlock()
+								break
+							}
 
-						select {
-						case <-done:
-							return
-						case computations <- computationWeight.computation:
+							select {
+							case <-mat.sortedComputationsSignal:
+							default:
+							}
+
+							computationWeight := mat.sortedComputations[0]
+							mat.sortedComputations = mat.sortedComputations[1:]
+							mat.sortedComputationsMu.Unlock()
+
+							select {
+							case <-done:
+								break
+							case computations <- computationWeight.computation:
+							}
 						}
 					}
 				}
@@ -359,20 +367,20 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		adjustment := uint64(len(commonPath) - (index + 1))
 		comWeight := computationWeight{weight: uint64(notification.Priority) + priority + adjustment, computation: computation}
-		func() {
-			// Insert sort into the list of sorted computations
-			didGenerateNewComputation = true
-			if len(mat.sortedComputations) == 0 {
-				mat.sortedComputations = append(mat.sortedComputations, comWeight)
-				return
-			}
-			n := sort.Search(len(mat.sortedComputations), func(i int) bool {
-				return comWeight.weight >= mat.sortedComputations[i].weight
-			})
-			mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
-		}()
+
+		// Insert sort into the list of sorted computations
+		didGenerateNewComputation = true
+		if len(mat.sortedComputations) == 0 {
+			mat.sortedComputations = append(mat.sortedComputations, comWeight)
+			break
+		}
+		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
+			return comWeight.weight >= mat.sortedComputations[i].weight
+		})
+		mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
 	}
 	mat.sortedComputationsMu.Unlock()
+
 	if didGenerateNewComputation {
 		select {
 		case <-done:
