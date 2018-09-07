@@ -270,10 +270,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
 			if waitErr != nil {
-				log.Printf("[error] (settle) cannot wait to submit buy = %v: %v", buy, waitErr)
+				log.Printf("[error] (settle) cannot wait to submit buy = %v: %v", buy.ID, waitErr)
 			}
 		} else {
-			log.Printf("[error] (settle) cannot submit buy = %v: %v", buy, err)
+			log.Printf("[error] (settle) cannot submit buy = %v: %v", buy.ID, err)
 		}
 	}
 
@@ -293,10 +293,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 
 			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
 			if waitErr != nil {
-				log.Printf("[error] (settle) cannot wait to submit sell = %v: %v", sell, waitErr)
+				log.Printf("[error] (settle) cannot wait to submit sell = %v: %v", sell.ID, waitErr)
 			}
 		} else {
-			log.Printf("[error] (settle) cannot submit sell = %v: %v", sell, err)
+			log.Printf("[error] (settle) cannot submit sell = %v: %v", sell.ID, err)
 		}
 	}
 
