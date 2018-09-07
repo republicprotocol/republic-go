@@ -57,7 +57,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRegistryAddress = "0x372b6204263c6867f81e2a9e11057ff43efea14b"
 		case NetworkFalcon:
-			config.DarknodeRegistryAddress = "0xfafd5c83d1e21763b79418c4ecb5d62b4970df8e"
+			config.DarknodeRegistryAddress = "0xdaa8c30af85070506f641e456afdb84d4ba972bd"
 		case NetworkNightly:
 			config.DarknodeRegistryAddress = "0x8a31d477267a5af1bc5142904ef0afa31d326e03"
 		case NetworkLocal:
@@ -83,7 +83,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
 		case NetworkFalcon:
-			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
+			config.DarknodeSlasherAddress = "0x71ec5f4558e87d6afb5c5ff0b4bdd058d62ed3d1"
 		case NetworkNightly:
 			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
 		case NetworkLocal:
@@ -109,7 +109,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkFalcon:
-			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
+			config.SettlementRegistryAddress = "0x6246ff83ddef23d9509ba80aa3ee650ab0321f0b"
 		case NetworkNightly:
 			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkLocal:
