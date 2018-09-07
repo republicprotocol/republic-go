@@ -104,17 +104,24 @@ var _ = Describe("Orders", func() {
 			Expect(TokenBTC.String()).Should(Equal("BTC"))
 			Expect(TokenETH.String()).Should(Equal("ETH"))
 			Expect(TokenDGX.String()).Should(Equal("DGX"))
+			Expect(TokenABC.String()).Should(Equal("ABC"))
 			Expect(TokenREN.String()).Should(Equal("REN"))
+			Expect(TokenPQR.String()).Should(Equal("PQR"))
+			Expect(TokenUVW.String()).Should(Equal("UVW"))
+			Expect(TokenXYZ.String()).Should(Equal("XYZ"))
+
 			Expect(Token(100).String()).Should(Equal("unexpected token"))
 		})
 
 		It("should return token pair as a string", func() {
 			Expect(TokensBTCETH.String()).Should(Equal("BTC-ETH"))
-			Expect(TokensBTCDGX.String()).Should(Equal("BTC-DGX"))
-			Expect(TokensBTCREN.String()).Should(Equal("BTC-REN"))
 			Expect(TokensETHDGX.String()).Should(Equal("ETH-DGX"))
+			Expect(TokensETHABC.String()).Should(Equal("ETH-ABC"))
+			Expect(TokensETHPQR.String()).Should(Equal("ETH-PQR"))
+			Expect(TokensETHUVW.String()).Should(Equal("ETH-UVW"))
+			Expect(TokensETHXYZ.String()).Should(Equal("ETH-XYZ"))
 			Expect(TokensETHREN.String()).Should(Equal("ETH-REN"))
-			Expect(TokensDGXREN.String()).Should(Equal("DGX-REN"))
+
 			Expect(Tokens(100).String()).Should(Equal("unexpected tokens"))
 		})
 
@@ -122,20 +129,23 @@ var _ = Describe("Orders", func() {
 			Expect(TokensBTCETH.PriorityToken()).Should(Equal(TokenETH))
 			Expect(TokensBTCETH.NonPriorityToken()).Should(Equal(TokenBTC))
 
-			Expect(TokensBTCDGX.PriorityToken()).Should(Equal(TokenDGX))
-			Expect(TokensBTCDGX.NonPriorityToken()).Should(Equal(TokenBTC))
-
-			Expect(TokensBTCREN.PriorityToken()).Should(Equal(TokenREN))
-			Expect(TokensBTCREN.NonPriorityToken()).Should(Equal(TokenBTC))
-
 			Expect(TokensETHDGX.PriorityToken()).Should(Equal(TokenDGX))
 			Expect(TokensETHDGX.NonPriorityToken()).Should(Equal(TokenETH))
 
 			Expect(TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
 			Expect(TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensDGXREN.PriorityToken()).Should(Equal(TokenREN))
-			Expect(TokensDGXREN.NonPriorityToken()).Should(Equal(TokenDGX))
+			Expect(TokensETHABC.PriorityToken()).Should(Equal(TokenABC))
+			Expect(TokensETHABC.NonPriorityToken()).Should(Equal(TokenETH))
+
+			Expect(TokensETHPQR.PriorityToken()).Should(Equal(TokenPQR))
+			Expect(TokensETHPQR.NonPriorityToken()).Should(Equal(TokenETH))
+
+			Expect(TokensETHUVW.PriorityToken()).Should(Equal(TokenUVW))
+			Expect(TokensETHUVW.NonPriorityToken()).Should(Equal(TokenETH))
+
+			Expect(TokensETHXYZ.PriorityToken()).Should(Equal(TokenXYZ))
+			Expect(TokensETHXYZ.NonPriorityToken()).Should(Equal(TokenETH))
 		})
 	})
 

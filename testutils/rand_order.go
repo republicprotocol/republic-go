@@ -13,7 +13,6 @@ func RandomOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -25,7 +24,6 @@ func RandomBuyOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -45,7 +43,6 @@ func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -65,7 +62,6 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensDGXREN,
 	}[rand.Intn(4)]
 
 	price := rand.Uint64()
