@@ -39,9 +39,11 @@ const (
 	TokenBTC Token = 0
 	TokenETH Token = 1
 	TokenDGX Token = 256
+	TokenABC Token = 257
 	TokenREN Token = 65536
-	TokenABC Token = 65537
-	TokenXYZ Token = 65538
+	TokenPQR Token = 65537
+	TokenUVW Token = 65538
+	TokenXYZ Token = 65539
 )
 
 // String returns a human-readable representation of a Token.
@@ -53,10 +55,14 @@ func (token Token) String() string {
 		return "ETH"
 	case TokenDGX:
 		return "DGX"
-	case TokenREN:
-		return "REN"
 	case TokenABC:
 		return "ABC"
+	case TokenREN:
+		return "REN"
+	case TokenPQR:
+		return "PQR"
+	case TokenUVW:
+		return "UVW"
 	case TokenXYZ:
 		return "XYZ"
 	default:
@@ -70,16 +76,13 @@ type Tokens uint64
 
 // Tokens values.
 const (
-	TokensBTCETH Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
-	TokensBTCDGX Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenDGX))
-	TokensBTCREN Tokens = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
-	TokensETHDGX Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
-	TokensETHREN Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
-	TokensETHABC Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenABC))
-	TokensETHXYZ Tokens = Tokens((uint64(TokenETH) << 32) | uint64(TokenXYZ))
-	TokensDGXREN Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenREN))
-	TokensDGXABC Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenABC))
-	TokensDGXXYZ Tokens = Tokens((uint64(TokenDGX) << 32) | uint64(TokenXYZ))
+	TokensBTCETH = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
+	TokensETHDGX = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
+	TokensETHABC = Tokens((uint64(TokenETH) << 32) | uint64(TokenABC))
+	TokensETHREN = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
+	TokensETHPQR = Tokens((uint64(TokenETH) << 32) | uint64(TokenPQR))
+	TokensETHUVW = Tokens((uint64(TokenETH) << 32) | uint64(TokenUVW))
+	TokensETHXYZ = Tokens((uint64(TokenETH) << 32) | uint64(TokenXYZ))
 )
 
 // PriorityToken returns the priority token of a token pair.
@@ -97,20 +100,18 @@ func (tokens Tokens) String() string {
 	switch tokens {
 	case TokensBTCETH:
 		return "BTC-ETH"
-	case TokensBTCDGX:
-		return "BTC-DGX"
-	case TokensBTCREN:
-		return "BTC-REN"
 	case TokensETHDGX:
 		return "ETH-DGX"
-	case TokensETHREN:
-		return "ETH-REN"
 	case TokensETHABC:
 		return "ETH-ABC"
+	case TokensETHREN:
+		return "ETH-REN"
+	case TokensETHPQR:
+		return "ETH-PQR"
+	case TokensETHUVW:
+		return "ETH-UVW"
 	case TokensETHXYZ:
 		return "ETH-XYZ"
-	case TokensDGXREN:
-		return "DGX-REN"
 	default:
 		return "unexpected tokens"
 	}

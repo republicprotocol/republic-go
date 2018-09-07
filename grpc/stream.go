@@ -139,7 +139,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	if len(networkID) == 0 || networkID == [32]byte{} || to.IsNil() || receiver == nil {
 		return nil, fmt.Errorf("invalid connect: one or more fields are nil: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
-  
+
 	connCtx, connCancel := context.WithCancel(ctx)
 	secret, stream, err := connector.connect(connCtx, networkID, to)
 	if err != nil {

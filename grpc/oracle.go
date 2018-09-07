@@ -23,7 +23,6 @@ var ErrMidPointPriceIsNil = errors.New("midpoint price data is nil")
 // fields.
 var ErrMidPointRequestIsNil = errors.New("mid-point request is nil")
 
-
 type oracleClient struct {
 	addr  identity.Address
 	store swarm.MultiAddressStorer
