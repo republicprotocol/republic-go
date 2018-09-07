@@ -453,7 +453,6 @@ func VolumeToCoExp(volume uint64) CoExp {
 	return VolumeFloatToCoExp(volumeF)
 }
 
-
 // PriceFloatToCoExp converts a float64 to a CoExp. Price=0.005Co*10^(Exp-26).
 // Co is in the range 1 to 1999. Exp is in the range of 0 to 52. If the price
 // can be represented by multiple pairs Co and Exp, the pair with the lowest
@@ -466,7 +465,7 @@ func PriceFloatToCoExp(price float64) CoExp {
 			Exp: prev.Exp + 1,
 		}
 	} else if price >= 1 {
-		try := math.Round(price / 0.005)
+		try := math.Trunc(price / 0.005)
 		return CoExp{
 			Co:  uint64(try),
 			Exp: 38,
@@ -497,7 +496,7 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 			Exp: prev.Exp + 1,
 		}
 	} else if volume >= 1 {
-		try := math.Round(volume / 0.2)
+		try := math.Trunc(volume / 0.2)
 		return CoExp{
 			Co:  uint64(try),
 			Exp: 12,
