@@ -96,7 +96,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.OrderbookAddress = "0xa7caa4780a39d8b8acd6a0bdfb5b906210bc76cd"
 		case NetworkFalcon:
-			config.OrderbookAddress = "0x044b08eec761c39ac32aee1d6ef0583812f21699"
+			config.OrderbookAddress = "0x592d16f8c5fa8f1e074ab3c2cd1acd087adcdc0b"
 		case NetworkNightly:
 			config.OrderbookAddress = "0x376127adc18260fc238ebfb6626b2f4b59ec9b66"
 		case NetworkLocal:
