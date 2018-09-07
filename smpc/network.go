@@ -145,18 +145,22 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 func (network *network) Disconnect(networkID NetworkID) {
 	log.Printf("[info] disconnecting from network %v", networkID)
 
-	network.networkMu.Lock()
-	defer network.networkMu.Unlock()
+	go func() {
+		time.Sleep(10 * time.Minute)
 
-	cancels, ok := network.networkCancels[networkID]
-	if ok {
-		for _, cancel := range cancels {
-			cancel()
+		network.networkMu.Lock()
+		defer network.networkMu.Unlock()
+
+		cancels, ok := network.networkCancels[networkID]
+		if ok {
+			for _, cancel := range cancels {
+				cancel()
+			}
 		}
-	}
-	delete(network.networkPos, networkID)
-	delete(network.networkSenders, networkID)
-	delete(network.networkCancels, networkID)
+		delete(network.networkPos, networkID)
+		delete(network.networkSenders, networkID)
+		delete(network.networkCancels, networkID)
+	}()
 }
 
 // Send implements the Network interface.

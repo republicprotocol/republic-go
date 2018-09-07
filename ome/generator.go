@@ -278,7 +278,6 @@ func (mat *computationMatrix) handleNotification(notification orderbook.Notifica
 	// into the matrix
 	case orderbook.NotificationOpenOrder:
 		mat.insertOrderFragment(notification, done, computations, errs)
-
 	// Notifications that close an order result in the removal of that order
 	// from storage
 	case orderbook.NotificationConfirmOrder:
@@ -372,7 +371,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		didGenerateNewComputation = true
 		if len(mat.sortedComputations) == 0 {
 			mat.sortedComputations = append(mat.sortedComputations, comWeight)
-			break
+			continue
 		}
 		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
 			return comWeight.weight >= mat.sortedComputations[i].weight
