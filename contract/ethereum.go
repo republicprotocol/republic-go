@@ -59,7 +59,33 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.DarknodeRegistryAddress = "0xfafd5c83d1e21763b79418c4ecb5d62b4970df8e"
 		case NetworkNightly:
-			config.DarknodeRegistryAddress = "0xb3972e45d16b0942ed34943fdde413190cf5b12a"
+			config.DarknodeRegistryAddress = "0x8a31d477267a5af1bc5142904ef0afa31d326e03"
+		case NetworkLocal:
+		default:
+			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
+		}
+	}
+	if config.DarknodeRewardVaultAddress == "" {
+		switch config.Network {
+		case NetworkTestnet:
+			config.DarknodeRewardVaultAddress = "0x5d62ccc1086f38286dc152962a4f3e337eec1ec1"
+		case NetworkFalcon:
+			config.DarknodeRewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
+		case NetworkNightly:
+			config.DarknodeRewardVaultAddress = "0xda43560f5fe6c6b5e062c06fee0f6fbc71bbf18a"
+		case NetworkLocal:
+		default:
+			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
+		}
+	}
+	if config.DarknodeSlasherAddress == "" {
+		switch config.Network {
+		case NetworkTestnet:
+			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
+		case NetworkFalcon:
+			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
+		case NetworkNightly:
+			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -72,46 +98,20 @@ func Connect(config Config) (Conn, error) {
 		case NetworkFalcon:
 			config.OrderbookAddress = "0x044b08eec761c39ac32aee1d6ef0583812f21699"
 		case NetworkNightly:
-			config.OrderbookAddress = "0x8356e57aa32547685149a859293ad83c144b800c"
+			config.OrderbookAddress = "0x376127adc18260fc238ebfb6626b2f4b59ec9b66"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
 		}
 	}
-	if config.RewardVaultAddress == "" {
+	if config.SettlementRegistryAddress == "" {
 		switch config.Network {
 		case NetworkTestnet:
-			config.RewardVaultAddress = "0x5d62ccc1086f38286dc152962a4f3e337eec1ec1"
+			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkFalcon:
-			config.RewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
+			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkNightly:
-			config.RewardVaultAddress = "0x7214c4584ab01e61355244e2325ab3f40aca4d85"
-		case NetworkLocal:
-		default:
-			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
-		}
-	}
-	if config.RenExBalancesAddress == "" {
-		switch config.Network {
-		case NetworkTestnet:
-			config.RenExBalancesAddress = "0xc5b98949AB0dfa0A7d4c07Bb29B002D6d6DA3e25"
-		case NetworkFalcon:
-			config.RenExBalancesAddress = "0x3083e5ba36c6b42ca93c22c803013a4539eedc7f"
-		case NetworkNightly:
-			config.RenExBalancesAddress = "0xc2c126e1eb32e6ad50c611fb92d009b4b4518b00"
-		case NetworkLocal:
-		default:
-			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
-		}
-	}
-	if config.RenExSettlementAddress == "" {
-		switch config.Network {
-		case NetworkTestnet:
-			config.RenExSettlementAddress = "0xfa0938e3c9a5e33b5084dfbffaca9241aef39be8"
-		case NetworkFalcon:
-			config.RenExSettlementAddress = "0x8617dcd709bb8660602ef70ade78626b7408a210"
-		case NetworkNightly:
-			config.RenExSettlementAddress = "0x65712325c41fb39b9205e08483b43142d919cc42"
+			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkLocal:
 		default:
 			return Conn{}, fmt.Errorf("no default contract address on %s", config.Network)
@@ -141,10 +141,13 @@ func (conn *Conn) PatchedWaitMined(ctx context.Context, tx *types.Transaction) (
 		return nil, nil
 	default:
 		receipt, err := bind.WaitMined(ctx, conn.Client, tx)
+		if err != nil {
+			return nil, err
+		}
 		if receipt.Status != types.ReceiptStatusSuccessful {
 			return receipt, errors.New("transaction reverted")
 		}
-		return receipt, err
+		return receipt, nil
 	}
 }
 
@@ -193,7 +196,7 @@ func (conn *Conn) SendEth(ctx context.Context, from *bind.TransactOpts, to commo
 		Signer:   from.Signer,
 		Value:    value,
 		GasPrice: from.GasPrice,
-		GasLimit: 30000,
+		GasLimit: 21000,
 		Context:  from.Context,
 	}
 

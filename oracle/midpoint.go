@@ -54,3 +54,8 @@ func (midpointPrice MidpointPrice) Hash() []byte {
 	data = append(data, nonceBytes[:]...)
 	return crypto.Keccak256(data)
 }
+
+// IsNil returns true if the MidpointPrice is nil.
+func (midpointPrice *MidpointPrice) IsNil() bool {
+	return midpointPrice == nil || len(midpointPrice.Prices) == 0
+}

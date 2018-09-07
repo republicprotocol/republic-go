@@ -245,6 +245,11 @@ func (fragment *EncryptedFragment) Decrypt(privKey *rsa.PrivateKey) (Fragment, e
 	return decryptedFragment, nil
 }
 
+// IsNil checks if an EncryptedFragment is null.
+func (fragment *EncryptedFragment) IsNil() bool {
+	return fragment == nil || fragment.ID == (FragmentID{}) || fragment.ID == [32]byte{} || fragment.OrderID == [32]byte{}
+}
+
 type FragmentCommitment struct {
 	PriceCo          shamir.Commitment `json:"priceCo"`
 	PriceExp         shamir.Commitment `json:"priceExp"`

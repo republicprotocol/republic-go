@@ -12,6 +12,12 @@ import (
 // again with the same server
 var ErrAlreadyRegistered = errors.New("client has already been registered with the server")
 
+// ErrMessageIsNil is returned when the message contains nil fields.
+var ErrMessageIsNil = errors.New("message is nil")
+
+// ErrMultiAddressIsNil is returned when the multi-address contains nil fields.
+var ErrMultiAddressIsNil = errors.New("multi-address is nil")
+
 // channelStream implements a Stream interface using channels. It stores one
 // channel for sending Messages, and another channel for receiving Messages. A
 // channelStream must not be used unless it was returned from a call to
@@ -27,6 +33,9 @@ type channelStream struct {
 // Send implements the Stream interface by marshaling the Message to binary and
 // writing it to the sending channel.
 func (stream channelStream) Send(message Message) error {
+	if message == nil {
+		return ErrMessageIsNil
+	}
 	stream.sendMu.RLock()
 	defer stream.sendMu.RUnlock()
 
@@ -44,6 +53,9 @@ func (stream channelStream) Send(message Message) error {
 // Recv implements the Stream interface by reading from the receiving channel
 // and unmarshaling the data into a Message.
 func (stream channelStream) Recv(message Message) error {
+	if message == nil {
+		return ErrMessageIsNil
+	}
 	stream.recvMu.RLock()
 	defer stream.recvMu.RUnlock()
 
@@ -150,6 +162,9 @@ func NewChannelStreamer(addr identity.Address, hub *ChannelHub) Streamer {
 // Open implements the Streamer interface by using the ChannelHub to register
 // connections between two identity.Addresses.
 func (streamer *channelStreamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if multiAddr.IsNil() {
+		return nil, ErrMultiAddressIsNil
+	}
 	stream := streamer.hub.register(streamer.addr, multiAddr.Address())
 	go func() {
 		<-ctx.Done()

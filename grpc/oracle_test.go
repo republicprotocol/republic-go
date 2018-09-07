@@ -133,6 +133,20 @@ var _ = Describe("Oracle", func() {
 			Expect(prices.Prices).Should(Equal(midpointPrice.Prices))
 			Expect(prices.Nonce).Should(Equal(midpointPrice.Nonce))
 		})
+
+		It("should return an error for nil midpoint data", func() {
+			go func() {
+				defer GinkgoRecover()
+
+				err := server.Start("0.0.0.0:18514")
+				Expect(err).ShouldNot(HaveOccurred())
+			}()
+			time.Sleep(time.Millisecond)
+
+			midpointPrice := &oracle.MidpointPrice{}
+			err := client.UpdateMidpoint(context.Background(), serviceMultiAddr, *midpointPrice)
+			Expect(err).Should(HaveOccurred())
+		})
 	})
 })
 

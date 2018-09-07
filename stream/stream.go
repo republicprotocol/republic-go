@@ -92,6 +92,9 @@ func NewStreamer(addr identity.Address, client Client, server Server) Streamer {
 
 // Open implements the Streamer interface.
 func (streamer streamer) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if multiAddr.IsNil() {
+		return nil, ErrMultiAddressIsNil
+	}
 	addr := multiAddr.Address()
 	if streamer.addr < addr {
 		return streamer.client.Connect(ctx, multiAddr)
@@ -128,6 +131,10 @@ func NewStreamRecycler(streamer Streamer) Streamer {
 
 // Open implements the Streamer interface.
 func (recycler *streamRecycler) Open(ctx context.Context, multiAddr identity.MultiAddress) (Stream, error) {
+	if multiAddr.IsNil() {
+		return nil, ErrMultiAddressIsNil
+	}
+
 	addr := multiAddr.Address()
 
 	mu := func() *sync.Mutex {

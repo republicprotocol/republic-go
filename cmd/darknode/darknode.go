@@ -32,6 +32,7 @@ import (
 	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/status"
 	"github.com/republicprotocol/republic-go/swarm"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -88,35 +89,46 @@ func main() {
 
 	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
-	// Get own nonce from leveldb, if present and store multiaddress.
-	multi, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
-	if err != nil {
-		if err != swarm.ErrMultiAddressNotFound {
-			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own nonce details from store: %v", err))
-		} else {
-			multi.Nonce = 0
+	// New crypter for signing and verification
+	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
+	updateOwnAddress := func() {
+		signature, err := crypter.Sign(multiAddr.Hash())
+		if err != nil {
+			log.Fatalf("cannot sign own multiAddress: %v", err)
+		}
+		multiAddr.Signature = signature
+		if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
+			log.Fatalf("cannot store own multiAddress in leveldb: %v", err)
 		}
 	}
 
-	multiAddr.Nonce = multi.Nonce + 1
-
-	// New crypter for signing and verification
-	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
-	multiAddrSignature, err := crypter.Sign(multiAddr.Hash())
+	// Insert self multiAddress if not in the storer.
+	oldMulti, err := store.SwarmMultiAddressStore().MultiAddress(multiAddr.Address())
 	if err != nil {
-		log.Fatalf("cannot sign own multiaddress: %v", err)
-	}
-	multiAddr.Signature = multiAddrSignature
-	if err := store.SwarmMultiAddressStore().InsertMultiAddress(multiAddr); err != nil {
-		log.Fatalf("cannot store own multiaddress in leveldb: %v", err)
+		if err == swarm.ErrMultiAddressNotFound {
+			updateOwnAddress()
+		} else {
+			logger.Network(logger.LevelError, fmt.Sprintf("error retrieving own multiAddress from store: %v", err))
+		}
+	} else {
+		// Update own multiAddress if the ip address has been changed.
+		oldIP, err := oldMulti.ValueForProtocol(identity.IP4Code)
+		if err != nil {
+			log.Fatalf("cannot read own ip address from storer: %v", err)
+		}
+		if oldIP != ipAddr {
+			updateOwnAddress()
+		}
 	}
 
 	// New gRPC components
-	server := grpc.NewServer()
+	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
+	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
 	swarmer := swarm.NewSwarmer(swarmClient, store.SwarmMultiAddressStore(), config.Alpha, &crypter)
-	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter), time.Millisecond)
+	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter))
 	swarmService.Register(server)
 
 	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
@@ -146,7 +158,7 @@ func main() {
 	statusProvider.WriteEthereumNetwork(ethNetwork)
 	statusProvider.WriteEthereumAddress(auth.From.Hex())
 	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
-	statusProvider.WriteRewardVaultAddress(conn.Config.RewardVaultAddress)
+	statusProvider.WriteRewardVaultAddress(conn.Config.DarknodeRewardVaultAddress)
 	statusProvider.WriteInfuraURL(conn.Config.URI)
 	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
 
@@ -190,25 +202,39 @@ func main() {
 		// Bootstrap into the network
 		fmtStr := "bootstrapping\n"
 		for _, bootstrapMulti := range config.BootstrapMultiAddresses {
-			if bootstrapMulti.Address() == multiAddr.Address() {
-				continue
-			}
-			multi, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
-			if err != nil && err != swarm.ErrMultiAddressNotFound {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
-				continue
-			}
-			if err == nil {
-				bootstrapMulti.Nonce = multi.Nonce
-				bootstrapMulti.Signature = multi.Signature
-			}
-			if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
-				logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
-			}
 			fmtStr += "  " + bootstrapMulti.String() + "\n"
+			oldBootstrapAddr, err := store.SwarmMultiAddressStore().MultiAddress(bootstrapMulti.Address())
+			if err != nil {
+				if err == swarm.ErrMultiAddressNotFound {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
+						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
+					}
+				} else {
+					logger.Network(logger.LevelError, fmt.Sprintf("cannot get bootstrap multi-address from store: %v", err))
+				}
+			} else {
+				// Update bootstrap multiAddress if the ip address has been changed.
+				oldBootstrapIP, err := oldBootstrapAddr.ValueForProtocol(identity.IP4Code)
+				if err != nil {
+					log.Printf("cannot read own ip address from storer: %v", err)
+					continue
+				}
+				newBootstrapIP, err := bootstrapMulti.ValueForProtocol(identity.IP4Code)
+				if err != nil {
+					log.Printf("cannot read own ip address from storer: %v", err)
+					continue
+				}
+				if oldBootstrapIP != newBootstrapIP {
+					if err := store.SwarmMultiAddressStore().InsertMultiAddress(bootstrapMulti); err != nil {
+						logger.Network(logger.LevelError, fmt.Sprintf("cannot store bootstrap multiaddress in store: %v", err))
+					}
+				}
+			}
 		}
 		log.Printf(fmtStr)
-		pingNetwork(swarmer)
+		if err := pingNetwork(swarmer); err != nil {
+			log.Fatalf("[error] (bootstrap) cannot ping network: %v", err)
+		}
 
 		// New secure multi-party computer
 		smpcer := smpc.NewSmpcer(connectorListener, swarmer)
@@ -221,7 +247,7 @@ func main() {
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
 		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 2)
-		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
@@ -234,7 +260,6 @@ func main() {
 			// Periodically sync the next ξ
 			for {
 				time.Sleep(5 * time.Second)
-				rand.Seed(time.Now().UnixNano())
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
@@ -258,8 +283,14 @@ func main() {
 			// darknode address
 			for {
 				time.Sleep(time.Hour)
-				pingNetwork(swarmer)
-				store.Prune()
+				if err := pingNetwork(swarmer); err != nil {
+					log.Printf("[error] (prune) cannot ping network: %v", err)
+					continue
+				}
+				if err := store.Prune(); err != nil {
+					log.Printf("[error] (prune) cannot prune the storer: %v", err)
+					continue
+				}
 			}
 		})
 	}()
@@ -289,16 +320,20 @@ func getIPAddress() (string, error) {
 	return string(out), nil
 }
 
-func pingNetwork(swarmer swarm.Swarmer) {
+// pingNetwork start ping the entire network with a new multiAddress with an
+// updated nonce
+func pingNetwork(swarmer swarm.Swarmer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := swarmer.Ping(ctx); err != nil {
-		log.Printf("[error] (bootstrap) %v", err)
+		return err
 	}
 	peers, err := swarmer.Peers()
 	if err != nil {
-		log.Printf("[error] (bootstrap) cannot get connected peers: %v", err)
+		return err
 	}
 	log.Printf("[info] connected to %v peers", len(peers)-1)
+
+	return nil
 }

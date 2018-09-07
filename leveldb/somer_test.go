@@ -25,9 +25,9 @@ var _ = Describe("Somer storage", func() {
 
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
-			buyOrd := order.NewOrder(order.TypeMidpoint, order.ParityBuy, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
+			buyOrd := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, order.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
 			buyOrdFragments, err := buyOrd.Split(3, 2)
-			sellOrd := order.NewOrder(order.TypeMidpoint, order.ParitySell, order.SettlementRenEx, time.Now(), order.TokensETHREN, order.NewCoExp(200, 26), order.NewCoExp(200, 26), order.NewCoExp(200, 26), uint64(i))
+			sellOrd := order.NewOrder(order.ParitySell, order.TypeMidpoint, time.Now(), order.SettlementRenEx, order.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
 			sellOrdFragments, err := sellOrd.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
 			computations[i] = ome.NewComputation([32]byte{byte(i)}, buyOrdFragments[0], sellOrdFragments[0], ome.ComputationStateMatched, true)

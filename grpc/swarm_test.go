@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
+	"golang.org/x/time/rate"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/dispatch"
@@ -42,7 +43,7 @@ var _ = Describe("Swarming", func() {
 
 		swarmer = swarm.NewSwarmer(serviceClient, serviceClientDb, 10, &verifier)
 		Expect(err).ShouldNot(HaveOccurred())
-		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier), time.Microsecond)
+		service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier))
 		serviceMultiAddr = serviceClient.MultiAddress()
 		server = NewServer()
 		service.Register(server)
@@ -96,6 +97,19 @@ var _ = Describe("Swarming", func() {
 			Expect(multiAddrs).Should(HaveLen(2))
 		})
 
+		It("should return an error if nil multi-address is provided", func(done Done) {
+			defer close(done)
+
+			go func() {
+				defer GinkgoRecover()
+
+				err := server.Start("0.0.0.0:18514")
+				Expect(err).ShouldNot(HaveOccurred())
+			}()
+
+			err := client.Ping(context.Background(), serviceMultiAddr, identity.MultiAddress{})
+			Expect(err).Should(HaveOccurred())
+		})
 	})
 
 	Context("when querying a service", func() {
@@ -118,12 +132,28 @@ var _ = Describe("Swarming", func() {
 			Expect(multiAddrs).Should(HaveLen(1))
 		})
 
+		It("should return an error if nil query address is provided", func(done Done) {
+			defer close(done)
+
+			go func() {
+				defer GinkgoRecover()
+
+				err := server.Start("0.0.0.0:18514")
+				Expect(err).ShouldNot(HaveOccurred())
+			}()
+
+			_, err := client.Query(context.Background(), serviceMultiAddr, "")
+			Expect(err).Should(HaveOccurred())
+		})
+
 		It("should error when too many requests are sent to the server", func(done Done) {
 			defer close(done)
 
-			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier), time.Second)
+			service = NewSwarmService(swarm.NewServer(swarmer, serviceClientDb, 10, &verifier))
 			serviceMultiAddr = serviceClient.MultiAddress()
-			server = NewServer()
+			unaryLimiter := NewRateLimiter(rate.NewLimiter(20, 40), 5, 1)
+			streamLimiter := NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+			server = NewServerwithLimiter(unaryLimiter, streamLimiter)
 			service.Register(server)
 
 			go func() {

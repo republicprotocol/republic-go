@@ -154,6 +154,11 @@ func (multiAddress *MultiAddress) UnmarshalStringJSON(data []byte) error {
 	return nil
 }
 
+// IsNil checks if the multiAddress is nil.
+func (multiAddress *MultiAddress) IsNil() bool {
+	return (multiAddress == nil || multiAddress.baseMultiAddress == nil || multiAddress.address == "")
+}
+
 // ProtocolWithName returns the Protocol description with the given name.
 func ProtocolWithName(s string) multiaddr.Protocol {
 	return multiaddr.ProtocolWithName(s)

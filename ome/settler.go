@@ -3,6 +3,7 @@ package ome
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -22,19 +23,21 @@ type Settler interface {
 }
 
 type settler struct {
-	computationStore ComputationStorer
-	smpcer           smpc.Smpcer
-	contract         ContractBinder
+	computationStore    ComputationStorer
+	smpcer              smpc.Smpcer
+	contract            ContractBinder
+	minimumSettleVolume float64
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder) Settler {
+func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder, minimumSettleVolume float64) Settler {
 	return &settler{
-		computationStore: computationStore,
-		smpcer:           smpcer,
-		contract:         contract,
+		computationStore:    computationStore,
+		smpcer:              smpcer,
+		contract:            contract,
+		minimumSettleVolume: minimumSettleVolume,
 	}
 }
 
@@ -90,9 +93,8 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			logger.Compute(logger.LevelError, fmt.Sprintf("cannot join buy = %v, sell = %v: unexpected number of values: %v", com.Buy.OrderID, com.Sell.OrderID, len(values)))
 			return
 		}
-		buy := order.NewOrder(com.Buy.OrderType, com.Buy.OrderParity, com.Buy.OrderSettlement, com.Buy.OrderExpiry, order.Tokens(values[0]), order.NewCoExp(values[1], values[2]), order.NewCoExp(values[3], values[4]), order.NewCoExp(values[5], values[6]), values[7])
-		sell := order.NewOrder(com.Sell.OrderType, com.Sell.OrderParity, com.Sell.OrderSettlement, com.Sell.OrderExpiry, order.Tokens(values[8]), order.NewCoExp(values[9], values[10]), order.NewCoExp(values[11], values[12]), order.NewCoExp(values[13], values[14]), values[15])
-
+		buy := order.NewOrder(com.Buy.OrderParity, com.Buy.OrderType, com.Buy.OrderExpiry, com.Buy.OrderSettlement, order.Tokens(values[0]), order.PriceFromCoExp(values[1], values[2]), order.VolumeFromCoExp(values[3], values[4]), order.VolumeFromCoExp(values[5], values[6]), values[7])
+		sell := order.NewOrder(com.Sell.OrderParity, com.Sell.OrderType, com.Sell.OrderExpiry, com.Sell.OrderSettlement, order.Tokens(values[8]), order.PriceFromCoExp(values[9], values[10]), order.VolumeFromCoExp(values[11], values[12]), order.VolumeFromCoExp(values[13], values[14]), values[15])
 		settler.settleOrderMatch(com, buy, sell)
 	}, true /* delay message sending to ensure the round-robin */)
 	if err != nil {
@@ -101,6 +103,35 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
+	// Submit a challenge if the orders do not match.
+	if buy.Tokens != sell.Tokens ||
+		buy.Volume < sell.MinimumVolume ||
+		sell.Volume < buy.MinimumVolume ||
+		buy.Price < sell.Price {
+		if err := settler.contract.SubmitChallengeOrder(buy); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for buy order = %v: %v", buy.ID, err)
+			return
+		}
+		if err := settler.contract.SubmitChallengeOrder(sell); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge for sell order = %v: %v", sell.ID, err)
+			return
+		}
+		if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
+			log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+			return
+		}
+		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: invalid match", buy.ID, sell.ID)
+		return
+	}
+
+	// Leave the orders if volume is too low and there is no profit for
+	// submitting such orders. Note: minimum volume is set to 1 ETH.
+	settleVolume := volumeInEth(buy, sell)
+	if settleVolume < settler.minimumSettleVolume {
+		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %f ETH too low", buy.ID, sell.ID, settleVolume)
+		return
+	}
+
 	if err := settler.contract.Settle(buy, sell); err != nil {
 		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
@@ -111,5 +142,26 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	if err := settler.computationStore.PutComputation(com); err != nil {
 		log.Printf("[error] (settle) cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
+	}
+}
+
+func volumeInEth(buy, sell order.Order) float64 {
+	if buy.Tokens.PriorityToken() == order.TokenETH {
+		// BTC-ETH
+		if buy.Volume >= sell.Volume {
+			return float64(sell.Volume)
+		} else {
+			return float64(buy.Volume)
+		}
+	} else {
+		// ETH-ERC20
+		var erc20Volume uint64
+		if buy.Volume >= sell.Volume {
+			erc20Volume = sell.Volume
+		} else {
+			erc20Volume = buy.Volume
+		}
+		price := float64(buy.Price) / math.Pow10(12)
+		return price * float64(erc20Volume) / math.Pow10(12)
 	}
 }

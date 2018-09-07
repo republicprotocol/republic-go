@@ -30,7 +30,7 @@ var _ = Describe("Settler", func() {
 			storers[i] = storer.SomerComputationStore()
 			smpcers[i] = testutils.NewAlwaysMatchSmpc()
 			contracts[i] = newOmeBinder()
-			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i])
+			settles[i] = NewSettler(storers[i], smpcers[i], contracts[i], 0)
 		}
 	})
 
