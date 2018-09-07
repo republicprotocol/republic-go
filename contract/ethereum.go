@@ -221,14 +221,14 @@ func TokenAddresses(network Network) map[string]string {
 		tokens["DGX"] = "0xf4faf1b22cee0a024ad6b12bb29ec0e13f5827c2"
 		tokens["REN"] = "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
 		tokens["PQR"] = "0x295a3894fc98b021735a760dbc7aed265663ca42"
-		tokens["UVW"] = "0x011c45eaa4cf4ad49978887e02f944434a5033b9"
+		tokens["UVW"] = "0x88d63a04410e48c0070465a735f74ada68be1936"
 		tokens["XYZ"] = "0x21c1ba3ea123eb23815c689ee05a944119c7f428"
 	case NetworkNightly:
 		tokens["ABC"] = "0xa86c6a3322efa371faad6a9b04708788e3592615"
 		tokens["DGX"] = "0x092ece29781777604afac04887af30042c3bc5df"
 		tokens["REN"] = "0x15f692d6b9ba8cec643c7d16909e8acdec431bf6"
 		tokens["PQR"] = "0xeb5a7335e850176b44ca1990730d1a2433e195f3"
-		tokens["UVW"] = "0x7dd5f16f2e0a0030e9512e0f888443c4408dffb0"
+		tokens["UVW"] = "0x8cd8d61eb86c2196b922fd4eaf7ed84fb5085f42"
 		tokens["XYZ"] = "0x69440b57b52e323cbd12a162a5f9870f61182918"
 	default:
 		panic("unknown network")
