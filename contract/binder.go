@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contract/bindings"
 	"github.com/republicprotocol/republic-go/crypto"
-	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
@@ -255,38 +254,60 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	binder.mu.Lock()
 	defer binder.mu.Unlock()
 
-	// Submit both buy and sell if no one submit yet.
-	orders := [2]order.Order{buy, sell}
-	dispatch.CoForAll(orders, func(i int) {
-		status, err := binder.settlementStatus(orders[i].ID)
-		if err != nil {
-			log.Printf("[error] (settle) cannot get settlement status of order [%v]: %v", orders[i], err)
-			return
-		}
-		if status == 0 {
-			sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
-				return binder.submitOrder(orders[i])
-			})
-			if err == nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
+	// Submit buy order
+	buyStatus, err := binder.settlementStatus(buy.ID)
+	if err != nil {
+		log.Printf("[error] (settle) cannot get settlement status of buy order [%v]: %v", buyStatus, err)
+		return err
+	}
+	if buyStatus == 0 {
+		sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(buy)
+		})
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 
-				_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
-				if waitErr != nil {
-					log.Printf("[error] (settle) cannot wait to submit order = %v: %v", orders[i].ID, waitErr)
-				}
-			} else {
-				log.Printf("[error] (settle) cannot submit order = %v: %v", orders[i].ID, err)
+			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
+			if waitErr != nil {
+				log.Printf("[error] (settle) cannot wait to submit buy = %v: %v", buy, waitErr)
 			}
+		} else {
+			log.Printf("[error] (settle) cannot submit buy = %v: %v", buy, err)
 		}
-	})
+	}
+
+	// Submit sell order
+	sellStatus, err := binder.settlementStatus(sell.ID)
+	if err != nil {
+		log.Printf("[error] (settle) cannot get settlement status of sell [%v]: %v", sellStatus, err)
+		return err
+	}
+	if sellStatus == 0 {
+		sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitOrder(sell)
+		})
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
+			if waitErr != nil {
+				log.Printf("[error] (settle) cannot wait to submit sell = %v: %v", sell, waitErr)
+			}
+		} else {
+			log.Printf("[error] (settle) cannot submit sell = %v: %v", sell, err)
+		}
+	}
+
+	time.Sleep(10 * time.Second)
 
 	// Submit the match and wait for it to be mined
-	buyStatus, err := binder.settlementStatus(buy.ID)
+	buyStatus, err = binder.settlementStatus(buy.ID)
 	if err != nil {
 		return err
 	}
-	sellStatus, err := binder.settlementStatus(sell.ID)
+	sellStatus, err = binder.settlementStatus(sell.ID)
 	if err != nil {
 		return err
 	}
