@@ -82,13 +82,13 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					return
 				}
 
-				// Check that these orders have not already been confirmed
-				if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-					continue
-				}
-				if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-					continue
-				}
+				// // Check that these orders have not already been confirmed
+				// if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+				// 	continue
+				// }
+				// if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+				// 	continue
+				// }
 
 				go func() {
 					// Wait for the confirmation of these orders to pass the depth
