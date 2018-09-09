@@ -70,7 +70,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRewardVaultAddress = "0x5d62ccc1086f38286dc152962a4f3e337eec1ec1"
 		case NetworkFalcon:
-			config.DarknodeRewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
+			config.DarknodeRewardVaultAddress = "0x401e7d7ce6f51ea1a8d4f582413e2fabda68daa8"
 		case NetworkNightly:
 			config.DarknodeRewardVaultAddress = "0xda43560f5fe6c6b5e062c06fee0f6fbc71bbf18a"
 		case NetworkLocal:
