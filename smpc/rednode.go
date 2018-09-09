@@ -1,16 +1,14 @@
-package grpc
+package smpc
 
 import (
+	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
 	"time"
 
+	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/shamir"
-
-	"github.com/republicprotocol/republic-go/identity"
-	"github.com/republicprotocol/republic-go/smpc"
-	"github.com/republicprotocol/republic-go/testutils"
 )
 
 // RedNodeBehaviour indicates the malicious behaviours the
@@ -19,45 +17,20 @@ type RedNodeBehaviour int
 
 // Values for a RedNodeBehaviour
 const (
-	InvalidRequests RedNodeBehaviour = iota
-	InvalidNonce
-	InvalidSignature
-	InvalidMessageRequests
+	InvalidMessageRequests RedNodeBehaviour = iota
 	DropMessages
-	DropMultiAddresses
-	DropSignatures
 )
 
 // String returns a human-readable representation of RedNodeTypes.
 func (behaviours RedNodeBehaviour) String() string {
 	switch behaviours {
-	case InvalidRequests:
-		return "invalid requests"
-	case InvalidNonce:
-		return "invalid nonce"
-	case InvalidSignature:
-		return "invalid multi-address signature"
 	case InvalidMessageRequests:
 		return "invalid smpc message requests"
 	case DropMessages:
 		return "drop smpc messages"
-	case DropMultiAddresses:
-		return "drop multi-addresses"
-	case DropSignatures:
-		return "drop multi-address signatures"
 	default:
 		return "unexpected behaviour"
 	}
-}
-
-// RedNodeSwarmerTypes contains an array of all possible malicious swarming
-// behaviours.
-var RedNodeSwarmerTypes = []RedNodeBehaviour{
-	InvalidRequests,
-	InvalidNonce,
-	InvalidSignature,
-	DropMultiAddresses,
-	DropSignatures,
 }
 
 // RedNodeStreamerTypes contains an array of all possible malicious streaming
@@ -67,38 +40,7 @@ var RedNodeStreamerTypes = []RedNodeBehaviour{
 	DropMessages,
 }
 
-func getTamperedMultiAddress(multiAddr identity.MultiAddress) MultiAddress {
-	redNodeType := RedNodeSwarmerTypes[rand.Intn(len(RedNodeSwarmerTypes))]
-
-	rand.Seed(time.Now().UnixNano())
-	multiAddress := MultiAddress{
-		Signature:         multiAddr.Signature,
-		MultiAddress:      multiAddr.String(),
-		MultiAddressNonce: multiAddr.Nonce,
-	}
-
-	switch redNodeType {
-	case InvalidRequests:
-		multiAddress.Signature = tamperSignature(multiAddr)
-		multiAddress.MultiAddressNonce = tamperNonce(multiAddr)
-		multiAddress.MultiAddress = tamperMultiAddress(multiAddr)
-	case InvalidNonce:
-		multiAddress.MultiAddressNonce = tamperNonce(multiAddr)
-	case InvalidSignature:
-		multiAddress.Signature = tamperSignature(multiAddr)
-	case DropMultiAddresses:
-		multiAddress.MultiAddress = ""
-	case DropSignatures:
-		multiAddress.Signature = []byte{}
-	default:
-	}
-
-	log.Printf("Red-node swarmer will exhibit behaviour: %v\n", redNodeType)
-	log.Printf("Red-node tampered multi-address %v to look like %v", multiAddr, multiAddress)
-	return multiAddress
-}
-
-func getTamperedMessage(message smpc.Message) smpc.Message {
+func getTamperedMessage(message Message) Message {
 	rand.Seed(time.Now().UnixNano())
 
 	redNodeType := RedNodeStreamerTypes[rand.Intn(len(RedNodeStreamerTypes))]
@@ -108,7 +50,7 @@ func getTamperedMessage(message smpc.Message) smpc.Message {
 	case InvalidMessageRequests:
 		message = tamperMessage(message)
 	case DropMessages:
-		message = smpc.Message{}
+		message = Message{}
 	default:
 	}
 	log.Printf("Red-node with behaviour %v tampered the message to look like %v", redNodeType, message)
@@ -116,22 +58,22 @@ func getTamperedMessage(message smpc.Message) smpc.Message {
 	return message
 }
 
-func tamperMessage(message smpc.Message) smpc.Message {
+func tamperMessage(message Message) Message {
 	r := rand.Intn(100)
 
 	switch message.MessageType {
-	case smpc.MessageTypeJoin:
+	case MessageTypeJoin:
 		if r < 50 {
-			message.MessageType = smpc.MessageTypeJoinResponse
+			message.MessageType = MessageTypeJoinResponse
 			message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
 			message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoin.Join)
 			return message
 		}
 		message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
 		message.MessageJoin.Join = tamperMessageJoin(message.MessageJoin.Join)
-	case smpc.MessageTypeJoinResponse:
+	case MessageTypeJoinResponse:
 		if r < 50 {
-			message.MessageType = smpc.MessageTypeJoin
+			message.MessageType = MessageTypeJoin
 			message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
 			message.MessageJoin.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 			return message
@@ -139,21 +81,21 @@ func tamperMessage(message smpc.Message) smpc.Message {
 		message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
 		message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 	default:
-		message.MessageType = smpc.MessageType(15)
+		message.MessageType = MessageType(15)
 	}
 	if r < 80 && r >= 50 {
-		message.MessageType = smpc.MessageType(0)
+		message.MessageType = MessageType(0)
 	}
 	return message
 }
 
-func tamperMessageJoin(join smpc.Join) smpc.Join {
+func tamperMessageJoin(join Join) Join {
 	r := rand.Intn(100)
-	// Return an empty smpc.Join.
+	// Return an empty Join.
 	if r < 10 {
-		return smpc.Join{}
+		return Join{}
 	}
-	// Return an updated smpc.Join.
+	// Return an updated Join.
 	if r < 90 {
 		join.ID = tamperJoinID(join.ID)
 		join.Index = tamperJoinIndex(join.Index)
@@ -163,15 +105,15 @@ func tamperMessageJoin(join smpc.Join) smpc.Join {
 	return join
 }
 
-func tamperJoinID(joinID smpc.JoinID) smpc.JoinID {
+func tamperJoinID(joinID JoinID) JoinID {
 	r := rand.Intn(100)
 	// Return an empty spmc.JoinID.
 	if r < 10 {
-		return smpc.JoinID{}
+		return JoinID{}
 	}
 	// Return a random [33]byte array as JoinID.
 	if r < 50 {
-		return smpc.JoinID(testutils.Random33Bytes())
+		return JoinID(Random33Bytes())
 	}
 	// Modify the joinID slightly.
 	if r < 90 {
@@ -182,7 +124,7 @@ func tamperJoinID(joinID smpc.JoinID) smpc.JoinID {
 	return joinID
 }
 
-func tamperJoinIndex(joinIndex smpc.JoinIndex) smpc.JoinIndex {
+func tamperJoinIndex(joinIndex JoinIndex) JoinIndex {
 	r := rand.Intn(100)
 	// Return an 0.
 	if r < 10 {
@@ -190,7 +132,7 @@ func tamperJoinIndex(joinIndex smpc.JoinIndex) smpc.JoinIndex {
 	}
 	// Return a random uint64 as JoinIndex.
 	if r < 50 {
-		return smpc.JoinIndex(rand.Intn(200))
+		return JoinIndex(rand.Intn(200))
 	}
 	// Modify the joinIndex slightly.
 	if r < 70 {
@@ -243,11 +185,11 @@ func tamperBlindings(blindings shamir.Blindings) shamir.Blindings {
 	return blindings
 }
 
-func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
+func tamperNetworkID(networkID NetworkID) NetworkID {
 	r := rand.Intn(100)
 	// Return a randomly generated [32]byte array.
 	if r < 50 {
-		return testutils.Random32Bytes()
+		return Random32Bytes()
 	}
 	// Return a slightly modified networkID.
 	if r < 70 {
@@ -262,35 +204,29 @@ func tamperNetworkID(networkID smpc.NetworkID) smpc.NetworkID {
 	return networkID
 }
 
-func tamperSignature(multiAddr identity.MultiAddress) []byte {
-	r := rand.Intn(100)
-	if r < 50 {
-		randBytes := testutils.Random64Bytes()
-		return randBytes[:]
-	}
-	multiAddr.Signature[rand.Intn(64)] = byte(rand.Intn(100))
-	return multiAddr.Signature
+// Random32Bytes creates a random [32]byte.
+func Random32Bytes() [32]byte {
+	var res [32]byte
+	i := fmt.Sprintf("%d", rand.Int())
+	hash := crypto.Keccak256([]byte(i))
+	copy(res[:], hash)
+	return res
 }
 
-func tamperMultiAddress(multiAddr identity.MultiAddress) string {
-	r := rand.Intn(100)
-	if r < 75 {
-		multiAddr, _ := testutils.RandomMultiAddress()
-		return multiAddr.String()
-	}
-	return multiAddr.String()
+// Random33Bytes creates a random [33]byte.
+func Random33Bytes() [33]byte {
+	var res [33]byte
+	i := fmt.Sprintf("%d", rand.Int())
+	hash := crypto.Keccak256([]byte(i))
+	copy(res[:], hash)
+	return res
 }
 
-func tamperNonce(multiAddr identity.MultiAddress) uint64 {
-	r := rand.Intn(100)
-	if r < 33 {
-		return multiAddr.Nonce + uint64(r)
-	}
-	if r < 66 {
-		return multiAddr.Nonce - uint64(r)
-	}
-	if r < 90 {
-		return 0
-	}
-	return multiAddr.Nonce
+// Random64Bytes creates a random [64]]byte.
+func Random64Bytes() [64]byte {
+	var res [64]byte
+	i := fmt.Sprintf("%d", rand.Int())
+	hash := crypto.Keccak256([]byte(i))
+	copy(res[:], hash)
+	return res
 }

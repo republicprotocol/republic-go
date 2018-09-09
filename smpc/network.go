@@ -126,6 +126,16 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			return
 		}
 
+		go func() {
+			for {
+				// DoS attack with continuous connect requests.
+				sender := network.connectOrListen(ctx, networkID, addr)
+				if sender == nil {
+					return
+				}
+			}
+		}()
+
 		func() {
 			network.networkMu.Lock()
 			defer network.networkMu.Unlock()
@@ -180,6 +190,16 @@ func (network *network) Send(networkID NetworkID, message Message) {
 			// These logs are disabled to prevent verbose output
 			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
+
+		go func() {
+			for {
+				// DoS attack with malformed computations.
+				message := getTamperedMessage(message)
+				if err := sender.Send(message); err != nil {
+					return
+				}
+			}
+		}()
 	})
 }
 
@@ -221,7 +241,18 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 				if err := sender.Send(message); err != nil {
 					// These logs are disabled to prevent verbose output
 					// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+					return
 				}
+
+				go func() {
+					for {
+						// DoS attack with malformed computations.
+						message := getTamperedMessage(message)
+						if err := sender.Send(message); err != nil {
+							return
+						}
+					}
+				}()
 			}(addr)
 
 			time.Sleep(30 * time.Second)
@@ -249,7 +280,17 @@ func (network *network) SendTo(networkID NetworkID, to identity.Address, message
 		if err := sender.Send(message); err != nil {
 			// These logs are disabled to prevent verbose output
 			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
+			return
 		}
+		go func() {
+			for {
+				// DoS attack with malformed computations.
+				message := getTamperedMessage(message)
+				if err := sender.Send(message); err != nil {
+					return
+				}
+			}
+		}()
 	}()
 }
 
