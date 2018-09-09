@@ -1194,7 +1194,7 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 	defer cancel()
 
 	_, err := binder.conn.PatchedWaitMined(ctx, tx)
-	if err == nil {
+	if err != nil {
 		return err
 	}
 
