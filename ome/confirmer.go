@@ -90,22 +90,24 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					continue
 				}
 
-				// Confirm Computations on the blockchain and register them for
-				// observation (we need to wait for finality)
-				if err := confirmer.beginConfirmation(com); err != nil {
-					// An error in confirmation should not stop the
-					// Confirmer from monitoring the Computation for
-					// confirmation (another node might have succeeded), so
-					// we pass through
-					logger.Error(err.Error())
-				}
+				go func() {
+					// Confirm Computations on the blockchain and register them for
+					// observation (we need to wait for finality)
+					if err := confirmer.beginConfirmation(com); err != nil {
+						// An error in confirmation should not stop the
+						// Confirmer from monitoring the Computation for
+						// confirmation (another node might have succeeded), so
+						// we pass through
+						logger.Error(err.Error())
+					}
 
-				// Wait for the confirmation of these orders to pass the depth
-				// limit
-				confirmer.confirmingMu.Lock()
-				confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
-				confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
-				confirmer.confirmingMu.Unlock()
+					// Wait for the confirmation of these orders to pass the depth
+					// limit
+					confirmer.confirmingMu.Lock()
+					confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
+					confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
+					confirmer.confirmingMu.Unlock()
+				}()
 			}
 		}
 	}()

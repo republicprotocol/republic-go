@@ -1189,21 +1189,29 @@ func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transactio
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
-	_, err := binder.conn.PatchedWaitMined(context.Background(), tx)
-	if err != nil {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err := binder.conn.PatchedWaitMined(ctx, tx)
+	if err == nil {
 		return err
 	}
 
 	for {
+		binder.mu.RLock()
 		depth, err := binder.orderbook.OrderDepth(binder.callOpts, id)
 		if err != nil {
+			binder.mu.RUnlock()
 			return err
 		}
 
 		if depth.Uint64()-before >= BlocksForConfirmation {
+			binder.mu.RUnlock()
 			return nil
 		}
-		time.Sleep(time.Second * 14)
+		time.Sleep(30 * time.Second)
+		binder.mu.RUnlock()
 	}
 }
 
