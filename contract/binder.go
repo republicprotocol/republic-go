@@ -42,7 +42,7 @@ var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 // be confirmed. The functions `OpenBuyOrder`, `OpenSellOrder`, `CancelOrder`
 // and `ConfirmOrder` return only after the required number of confirmations has
 // been reached.
-const BlocksForConfirmation = 1
+const BlocksForConfirmation = 4
 
 // Binder implements all methods that will communicate with the smart contracts
 type Binder struct {
