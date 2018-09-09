@@ -307,17 +307,11 @@ func main() {
 }
 
 func getIPAddress() (string, error) {
-
-	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	out, err := exec.Command("dig", "+short", "myip.opendns.com", "@resolver1.opendns.com").Output()
 	if err != nil {
 		return "", err
 	}
-	out = []byte(strings.Trim(string(out), "\n "))
-	if err != nil {
-		return "", err
-	}
-
-	return string(out), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 // pingNetwork start ping the entire network with a new multiAddress with an
