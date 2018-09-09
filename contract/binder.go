@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/republicprotocol/republic-go/contract/bindings"
 	"github.com/republicprotocol/republic-go/crypto"
+	"github.com/republicprotocol/republic-go/dispatch"
 	"github.com/republicprotocol/republic-go/identity"
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/registry"
@@ -251,86 +252,122 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 
 // Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
-	binder.mu.Lock()
-	defer binder.mu.Unlock()
+	var buyErr, sellErr, matchErr error
 
-	// Submit buy order
-	buyStatus, err := binder.settlementStatus(buy.ID)
-	if err != nil {
-		log.Printf("[error] (settle) cannot get settlement status of buy order [%v]: %v", buyStatus, err)
-		return err
+	// Get order submission status
+	var buyStatus, sellStatus uint8
+	func() {
+		binder.mu.RLock()
+		defer binder.mu.RUnlock()
+
+		dispatch.CoBegin(
+			func() {
+				buyStatus, buyErr = binder.settlementStatus(buy.ID)
+			},
+			func() {
+				sellStatus, sellErr = binder.settlementStatus(sell.ID)
+			})
+	}()
+	if buyErr != nil {
+		log.Printf("[error] (settle) cannot get settlement status of buy order [%v]: %v", buy.ID, buyErr)
 	}
-	if buyStatus == 0 {
-		sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
-			return binder.submitOrder(buy)
-		})
-		if err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
+	if sellErr != nil {
+		log.Printf("[error] (settle) cannot get settlement status of sell order [%v]: %v", sell.ID, sellErr)
+	}
 
-			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
-			if waitErr != nil {
-				log.Printf("[error] (settle) cannot wait to submit buy = %v: %v", buy.ID, waitErr)
-			}
-		} else {
-			log.Printf("[error] (settle) cannot submit buy = %v: %v", buy.ID, err)
+	// Submit orders
+	var buyTx, sellTx *types.Transaction
+	func() {
+		binder.mu.Lock()
+		defer binder.mu.Unlock()
+
+		if buyStatus == 0 {
+			buyTx, buyErr = binder.sendTx(func() (*types.Transaction, error) {
+				return binder.submitOrder(buy)
+			})
 		}
-	}
-
-	// Submit sell order
-	sellStatus, err := binder.settlementStatus(sell.ID)
-	if err != nil {
-		log.Printf("[error] (settle) cannot get settlement status of sell [%v]: %v", sellStatus, err)
-		return err
-	}
-	if sellStatus == 0 {
-		sendTx, err := binder.sendTx(func() (*types.Transaction, error) {
-			return binder.submitOrder(sell)
-		})
-		if err == nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-
-			_, waitErr := binder.conn.PatchedWaitMined(ctx, sendTx)
-			if waitErr != nil {
-				log.Printf("[error] (settle) cannot wait to submit sell = %v: %v", sell.ID, waitErr)
-			}
-		} else {
-			log.Printf("[error] (settle) cannot submit sell = %v: %v", sell.ID, err)
+		if sellStatus == 0 {
+			sellTx, sellErr = binder.sendTx(func() (*types.Transaction, error) {
+				return binder.submitOrder(buy)
+			})
 		}
+	}()
+	if buyErr != nil {
+		log.Printf("[error] (settle) cannot submit buy = %v: %v", buy.ID, buyErr)
+	}
+	if sellErr != nil {
+		log.Printf("[error] (settle) cannot submit sell = %v: %v", sell.ID, sellErr)
+	}
+
+	// Wait for mining
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	dispatch.CoBegin(
+		func() {
+			if buyTx != nil && buyErr == nil {
+				_, buyErr = binder.conn.PatchedWaitMined(ctx, buyTx)
+			}
+		},
+		func() {
+			if sellTx != nil && sellErr == nil {
+				_, sellErr = binder.conn.PatchedWaitMined(ctx, sellTx)
+			}
+		})
+	if buyErr != nil {
+		log.Printf("[error] (settle) cannot wait for submit buy = %v: %v", buy.ID, buyErr)
+	}
+	if sellErr != nil {
+		log.Printf("[error] (settle) cannot wait for submit sell = %v: %v", sell.ID, sellErr)
 	}
 
 	time.Sleep(10 * time.Second)
 
-	// Submit the match and wait for it to be mined
-	buyStatus, err = binder.settlementStatus(buy.ID)
-	if err != nil {
-		return err
+	// Get order submission status
+	func() {
+		binder.mu.RLock()
+		defer binder.mu.RUnlock()
+
+		dispatch.CoBegin(
+			func() {
+				buyStatus, buyErr = binder.settlementStatus(buy.ID)
+			},
+			func() {
+				sellStatus, sellErr = binder.settlementStatus(sell.ID)
+			})
+	}()
+	if buyErr != nil {
+		log.Printf("[error] (settle) cannot get settlement status of buy order [%v]: %v", buy.ID, buyErr)
 	}
-	sellStatus, err = binder.settlementStatus(sell.ID)
-	if err != nil {
-		return err
+	if sellErr != nil {
+		log.Printf("[error] (settle) cannot get settlement status of sell order [%v]: %v", sell.ID, sellErr)
 	}
-	if buyStatus == 1 || sellStatus == 1 {
-		tx, sendTxErr := binder.sendTx(func() (*types.Transaction, error) {
-			return binder.submitMatch(buy.ID, sell.ID)
-		})
-		if sendTxErr != nil {
-			return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, sendTxErr)
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		receipt, waitErr := binder.conn.PatchedWaitMined(ctx, tx)
-		if waitErr != nil {
-			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, waitErr)
-		}
-		if receipt.Status == types.ReceiptStatusFailed {
-			return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: transaction reverted", buy.ID, sell.ID)
-		}
+	if buyStatus == 2 || sellStatus == 2 {
+		log.Printf("[info] (settle) already settled buy = %v, sell = %v", buy.ID, sell.ID)
 		return nil
 	}
 
-	return fmt.Errorf("cannot wait to settle buy = %v with status %v, sell = %v with status %v", buy.ID, buyStatus, sell.ID, sellStatus)
+	// Submit match
+	var matchTx *types.Transaction
+	func() {
+		binder.mu.Lock()
+		defer binder.mu.Unlock()
+
+		matchTx, matchErr = binder.sendTx(func() (*types.Transaction, error) {
+			return binder.submitMatch(buy.ID, sell.ID)
+		})
+	}()
+	if matchErr != nil {
+		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, matchErr)
+	}
+
+	// Wait for mining
+	matchCtx, matchCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer matchCancel()
+	_, matchErr = binder.conn.PatchedWaitMined(matchCtx, matchTx)
+	if matchErr != nil {
+		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, matchErr)
+	}
+	return nil
 }
 
 // Register a new dark node with the dark node registrar
