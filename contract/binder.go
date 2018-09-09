@@ -905,7 +905,7 @@ func (binder *Binder) pod(addr identity.Address) (registry.Pod, error) {
 // that verifies the order. The order must be in an undefined state to be
 // opened.
 func (binder *Binder) OpenOrder(settlement order.Settlement, signature [65]byte, id order.ID) error {
-	tx, err := binder.SendTx(func() (*types.Transaction, error) {
+	_, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.openOrder(settlement, signature, id)
 	})
 	if err != nil {
