@@ -139,7 +139,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 	if len(networkID) == 0 || networkID == [32]byte{} || to.IsNil() || receiver == nil {
 		return nil, fmt.Errorf("invalid connect: one or more fields are nil: networkID: %v, to: %v, receiver: %v", networkID, to, receiver)
 	}
-  
+
 	connCtx, connCancel := context.WithCancel(ctx)
 	secret, stream, err := connector.connect(connCtx, networkID, to)
 	if err != nil {
@@ -276,7 +276,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 	}
 	encryptedSecret, err := connector.encrypter.Encrypt(to.Address().String(), secret[:])
 	if err != nil {
-		return secret, nil, ErrCannotEncryptSecret
+		return secret, nil, fmt.Errorf("%v = %v", ErrCannotEncryptSecret, err)
 	}
 
 	// Sign an authentication message so that the StreamService can verify the
