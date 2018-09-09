@@ -133,7 +133,6 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
 	}
-	log.Printf("[info] (settle) 💰💰💰 buy = %v, sell = %v 💰💰💰", buy.ID, sell.ID)
 
 	com.State = ComputationStateSettled
 	if err := settler.computationStore.PutComputation(com); err != nil {

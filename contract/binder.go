@@ -274,6 +274,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if sellErr != nil {
 		log.Printf("[error] (settle) cannot get settlement status of sell order [%v]: %v", sell.ID, sellErr)
 	}
+	if buyStatus == 2 || sellStatus == 2 {
+		log.Printf("[info] (settle) already settled buy = %v, sell = %v", buy.ID, sell.ID)
+		return nil
+	}
 
 	// Submit orders
 	var buyTx, sellTx *types.Transaction
@@ -372,6 +376,8 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if matchErr != nil {
 		return fmt.Errorf("cannot wait to settle buy = %v, sell = %v: %v", buy.ID, sell.ID, matchErr)
 	}
+
+	log.Printf("[info] (settle) 💰💰💰 buy = %v, sell = %v 💰💰💰", buy.ID, sell.ID)
 	return nil
 }
 
