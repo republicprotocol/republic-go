@@ -289,7 +289,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 			buyTx, buyErr = binder.sendTx(func() (*types.Transaction, error) {
 				return binder.submitOrder(buy)
 			})
-			time.Sleep(5 * time.Second)
 		} else {
 			log.Printf("[info] (settle) skipping submission of buy = %v", buy.ID)
 		}
@@ -303,9 +302,21 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	}()
 	if buyErr != nil {
 		log.Printf("[error] (settle) cannot submit buy = %v: %v", buy.ID, buyErr)
+		buyState, err := binder.orderbook.OrderState(binder.callOpts, buy.ID)
+		if err != nil {
+			log.Printf("[error] (settle) cannot get state of buy = %v", buy.ID)
+		} else {
+			log.Printf("[debug] (settle) buy = %v state = %v", buy.ID, buyState)
+		}
 	}
 	if sellErr != nil {
 		log.Printf("[error] (settle) cannot submit sell = %v: %v", sell.ID, sellErr)
+		sellState, err := binder.orderbook.OrderState(binder.callOpts, sell.ID)
+		if err != nil {
+			log.Printf("[error] (settle) cannot get state of sell = %v", sell.ID)
+		} else {
+			log.Printf("[debug] (settle) sell = %v state = %v", sell.ID, sellState)
+		}
 	}
 
 	// Wait for mining
@@ -366,6 +377,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		})
 	}()
 	if matchErr != nil {
+
 		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, matchErr)
 	}
 
