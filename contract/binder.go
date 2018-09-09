@@ -911,8 +911,7 @@ func (binder *Binder) OpenOrder(settlement order.Settlement, signature [65]byte,
 	if err != nil {
 		return err
 	}
-
-	return binder.waitForOrderDepth(tx, id, 0)
+	return nil
 }
 
 func (binder *Binder) openOrder(settlement order.Settlement, signature [65]byte, id order.ID) (*types.Transaction, error) {
