@@ -285,6 +285,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 			buyTx, buyErr = binder.sendTx(func() (*types.Transaction, error) {
 				return binder.submitOrder(buy)
 			})
+			time.Sleep(5 * time.Second)
 		} else {
 			log.Printf("[info] (settle) skipping submission of buy = %v", buy.ID)
 		}
@@ -324,7 +325,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		log.Printf("[error] (settle) cannot wait for submit sell = %v: %v", sell.ID, sellErr)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// Get order submission status
 	func() {
