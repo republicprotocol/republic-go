@@ -389,12 +389,12 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 }
 
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
-	// if err := mat.orderFragmentStore.DeleteBuyOrderFragment(mat.epoch, orderID); err != nil {
-	// 	log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
-	// }
-	// if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
-	// 	log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
-	// }
+	if err := mat.orderFragmentStore.DeleteBuyOrderFragment(mat.epoch, orderID); err != nil {
+		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
+	}
+	if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
+		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
+	}
 }
 
 // isCompatible checks if the notification's order is compatible with another order based
