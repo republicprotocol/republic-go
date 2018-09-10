@@ -176,9 +176,14 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			deleteOrder(orderID, orderStatus)
 			continue
 		}
+
+		orderStatus, err = syncer.contractBinder.Status(orderID)
+		if err != nil {
+			log.Printf("[error] (resync) cannot load order status: %v", err)
+			continue
+		}
 		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
-			continue
 		}
 	}
 	return nil
