@@ -232,7 +232,7 @@ var _ = Describe("Orders", func() {
 			Expect(vol3).Should(Equal(uint64(5)))
 		})
 
-		FIt("should be able to retrieve original price from coexp", func() {
+		It("should be able to retrieve original price from coexp", func() {
 			tup1 := PriceToCoExp(1000000000000)
 			price1 := PriceFromCoExp(tup1.Co, tup1.Exp)
 			Expect(price1).Should(Equal(uint64(1000000000000)))
@@ -248,9 +248,9 @@ var _ = Describe("Orders", func() {
 			log.Println(PriceToCoExp(1240000000000000000))
 			log.Println(PriceFromCoExp(PriceToCoExp(1240000000000000000).Co, PriceToCoExp(1240000000000000000).Exp))
 
-			// tup1 := PriceToCoExp(1240000000000000000)
-			// price1 := PriceFromCoExp(tup1.Co, tup1.Exp)
-			// Expect(price1).Should(Equal(uint64(1240000000000000000)))
+			tup4 := PriceToCoExp(1240000000000000000)
+			price4 := PriceFromCoExp(tup4.Co, tup4.Exp)
+			Expect(price4).Should(Equal(uint64(1240000000000000000)))
 		})
 	})
 })

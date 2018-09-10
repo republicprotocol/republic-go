@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
-	"math"
+	"math/big"
 	"os"
 	"time"
 
@@ -508,9 +508,33 @@ func VolumeToCoExp(volume uint64) CoExp {
 }
 
 func PriceFromCoExp(co uint64, exp uint64) uint64 {
-	return co * uint64(math.Pow10(int(exp-26))) / 200
+	x := big.NewInt(10)
+	y := big.NewInt(0)
+
+	y.SetUint64(exp - 26)
+	x.Exp(x, y, nil)
+
+	y.SetUint64(co)
+	x.Mul(x, y)
+
+	y.SetUint64(200)
+	x.Div(x, y)
+
+	return x.Uint64()
 }
 
 func VolumeFromCoExp(co uint64, exp uint64) uint64 {
-	return co * uint64(math.Pow10(int(exp))) / 5
+	x := big.NewInt(10)
+	y := big.NewInt(0)
+
+	y.SetUint64(exp)
+	x.Exp(x, y, nil)
+
+	y.SetUint64(co)
+	x.Mul(x, y)
+
+	y.SetUint64(5)
+	x.Div(x, y)
+
+	return x.Uint64()
 }
