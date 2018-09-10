@@ -115,7 +115,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 	defer orderIter.Release()
 
-	orders, orderStatuses, _, _, err := orderIter.Collect()
+	orders, _, _, _, err := orderIter.Collect()
 	if err != nil {
 		log.Printf("[error] (resync) cannot collect orders: %v", err)
 	}
