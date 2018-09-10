@@ -3,7 +3,6 @@ package order_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"os"
 	"time"
 
@@ -167,7 +166,35 @@ var _ = Describe("Orders", func() {
 		})
 	})
 
-	Context("when converting volume to CoExp", func() {
+	Context("when converting uint64 to CoExp", func() {
+		It("should convert price to the expected CoExp value", func() {
+			testData := []uint64{
+				0,
+				5, 6, 10,
+				26, 35, 88, 100,
+				1123, 4365, 9878, 10000,
+				243579, 2387439875, 12847328957,
+			}
+
+			expected := []CoExp{
+				{0, 26},
+				{1000, 26}, {1200, 26}, {200, 27},
+				{520, 27}, {700, 27}, {1760, 27}, {200, 28},
+				{224, 29}, {873, 29}, {1975, 29}, {200, 30},
+				{487, 31}, {477, 35}, {256, 36},
+			}
+
+			for i := range testData {
+				res := PriceToCoExp(testData[i])
+				Expect(res.Co).Should(Equal(expected[i].Co))
+				Expect(res.Exp).Should(Equal(expected[i].Exp))
+
+				Expect(PriceFromCoExp(res.Co, res.Exp)).Should(BeNumerically("<=", testData[i]))
+			}
+		})
+	})
+
+	Context("when converting uint64 to CoExp", func() {
 		It("should not convert volume into values out of the expected range", func() {
 			vol := VolumeToCoExp(100000000000000000)
 			Expect(vol.Co).Should(BeNumerically("<=", 49))
@@ -244,9 +271,6 @@ var _ = Describe("Orders", func() {
 			tup3 := PriceToCoExp(5)
 			price3 := PriceFromCoExp(tup3.Co, tup3.Exp)
 			Expect(price3).Should(Equal(uint64(5)))
-
-			log.Println(PriceToCoExp(1240000000000000000))
-			log.Println(PriceFromCoExp(PriceToCoExp(1240000000000000000).Co, PriceToCoExp(1240000000000000000).Exp))
 
 			tup4 := PriceToCoExp(1240000000000000000)
 			price4 := PriceFromCoExp(tup4.Co, tup4.Exp)

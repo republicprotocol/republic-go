@@ -443,6 +443,7 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// PriceToCoExp converts a price from uint64 to CoExp format.
 func PriceToCoExp(price uint64) CoExp {
 	if price == 0 {
 		return CoExp{
