@@ -107,9 +107,6 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 }
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
-	log.Printf("[debug] (settle) buy tokens = %v, price = %v, vol = %v, minVol = %v", buy.Tokens, buy.Price, buy.Volume, buy.MinimumVolume)
-	log.Printf("[debug] (settle) sell tokens = %v, price = %v, vol = %v, minVol = %v", sell.Tokens, sell.Price, sell.Volume, sell.MinimumVolume)
-
 	// Submit a challenge if the orders do not match.
 	if buy.Tokens != sell.Tokens ||
 		buy.Volume < sell.MinimumVolume ||
