@@ -94,7 +94,11 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 			return
 		}
 		buy := order.NewOrder(com.Buy.OrderParity, com.Buy.OrderType, com.Buy.OrderExpiry, com.Buy.OrderSettlement, order.Tokens(values[0]), order.PriceFromCoExp(values[1], values[2]), order.VolumeFromCoExp(values[3], values[4]), order.VolumeFromCoExp(values[5], values[6]), values[7])
+		buy.MinimumVolume = order.VolumeFromCoExp(values[5], values[6])
+
 		sell := order.NewOrder(com.Sell.OrderParity, com.Sell.OrderType, com.Sell.OrderExpiry, com.Sell.OrderSettlement, order.Tokens(values[8]), order.PriceFromCoExp(values[9], values[10]), order.VolumeFromCoExp(values[11], values[12]), order.VolumeFromCoExp(values[13], values[14]), values[15])
+		sell.MinimumVolume = order.VolumeFromCoExp(values[13], values[14])
+
 		settler.settleOrderMatch(com, buy, sell)
 	}, true /* delay message sending to ensure the round-robin */)
 	if err != nil {
