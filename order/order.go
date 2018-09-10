@@ -468,6 +468,12 @@ func PriceToCoExp(price uint64) CoExp {
 			Exp: 28,
 		}
 	}
+	if price < 10000 {
+		return CoExp{
+			Co:  price / 5,
+			Exp: 29,
+		}
+	}
 	coExp := PriceToCoExp(price / 10)
 	return CoExp{
 		Co:  coExp.Co,
