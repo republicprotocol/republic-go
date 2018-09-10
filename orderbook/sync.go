@@ -159,11 +159,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	for i := 0; i < limit; i++ {
 		syncer.resyncPointer = (offset + i) % len(orders)
 
-		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
-		if orderStatus == order.Open {
-			continue
-		}
-
+		orderID := orders[syncer.resyncPointer]
 		orderDepth, err := syncer.contractBinder.Depth(orderID)
 		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
