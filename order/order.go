@@ -444,89 +444,67 @@ func (order *Order) MarshalBinary() ([]byte, error) {
 }
 
 func PriceToCoExp(price uint64) CoExp {
-	priceF := float64(price) * float64(1e-12)
-	return PriceFloatToCoExp(priceF)
+	if price == 0 {
+		return CoExp{
+			Co:  0,
+			Exp: 26,
+		}
+	}
+	if price < 10 {
+		return CoExp{
+			Co:  price * 200,
+			Exp: 26,
+		}
+	}
+	if price < 100 {
+		return CoExp{
+			Co:  price * 20,
+			Exp: 27,
+		}
+	}
+	if price < 1000 {
+		return CoExp{
+			Co:  price * 2,
+			Exp: 28,
+		}
+	}
+	coExp := PriceToCoExp(price / 10)
+	return CoExp{
+		Co:  coExp.Co,
+		Exp: coExp.Exp + 1,
+	}
 }
 
 func VolumeToCoExp(volume uint64) CoExp {
-	volumeF := float64(volume) * float64(1e-12)
-	return VolumeFloatToCoExp(volumeF)
-}
-
-// PriceFloatToCoExp converts a float64 to a CoExp. Price=0.005Co*10^(Exp-26).
-// Co is in the range 1 to 1999. Exp is in the range of 0 to 52. If the price
-// can be represented by multiple pairs Co and Exp, the pair with the lowest
-// Exp is used. If the price is invalid, it returns {Co:0, Exp:0}.
-func PriceFloatToCoExp(price float64) CoExp {
-	if price >= 10.0 {
-		prev := PriceFloatToCoExp(price / 10)
-		return CoExp{
-			Co:  prev.Co,
-			Exp: prev.Exp + 1,
-		}
-	} else if price >= 1 {
-		try := math.Trunc(price * 200.0)
-		return CoExp{
-			Co:  uint64(try),
-			Exp: 38,
-		}
-	} else if price > 0 {
-		prev := PriceFloatToCoExp(price * 10.0)
-		return CoExp{
-			Co:  prev.Co,
-			Exp: prev.Exp - 1,
-		}
-	} else {
+	if volume == 0 {
 		return CoExp{
 			Co:  0,
 			Exp: 0,
 		}
 	}
-}
-
-// VolumeFloatToCoExp converts a float64 to a CoExp. Price = 0.2Co * 10^Exp.
-// Co is in the range 1 to 49. Exp is in the range of 0 to 52. If the price
-// can be represented by multiple pairs Co and Exp, the pair with the lowest
-// Exp is used. If the volume is invalid, it returns {Co:0, Exp:0}.
-func VolumeFloatToCoExp(volume float64) CoExp {
-	if volume >= 10.0 {
-		prev := VolumeFloatToCoExp(volume / 10)
+	if volume < 10 {
 		return CoExp{
-			Co:  prev.Co,
-			Exp: prev.Exp + 1,
-		}
-	} else if volume >= 1 {
-		try := math.Trunc(volume * 5.0)
-		return CoExp{
-			Co:  uint64(try),
-			Exp: 12,
-		}
-	} else if volume > 0 {
-		prev := VolumeFloatToCoExp(volume * 10.0)
-		return CoExp{
-			Co:  prev.Co,
-			Exp: prev.Exp - 1,
-		}
-	} else {
-		return CoExp{
-			Co:  0,
+			Co:  volume * 5,
 			Exp: 0,
 		}
+	}
+	if volume < 100 {
+		return CoExp{
+			Co:  volume / 2,
+			Exp: 1,
+		}
+	}
+	coExp := VolumeToCoExp(volume / 10)
+	return CoExp{
+		Co:  coExp.Co,
+		Exp: coExp.Exp,
 	}
 }
 
 func PriceFromCoExp(co uint64, exp uint64) uint64 {
-	return uint64(PriceFloatFromCoExp(co, exp))
+	return co * uint64(math.Pow10(int(exp-26))) / 200
 }
 
 func VolumeFromCoExp(co uint64, exp uint64) uint64 {
-	return uint64(VolumeFloatFromCoExp(co, exp))
-}
-
-func PriceFloatFromCoExp(co uint64, exp uint64) float64 {
-	return 0.005 * float64(co) * math.Pow(10, float64(exp)-26)
-}
-
-func VolumeFloatFromCoExp(co uint64, exp uint64) float64 {
-	return 0.2 * float64(co) * math.Pow(10, float64(exp))
+	return co * uint64(math.Pow10(int(exp))) / 5
 }
