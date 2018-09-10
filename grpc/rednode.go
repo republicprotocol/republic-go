@@ -123,20 +123,28 @@ func tamperMessage(message smpc.Message) smpc.Message {
 	case smpc.MessageTypeJoin:
 		if r < 50 {
 			message.MessageType = smpc.MessageTypeJoinResponse
-			message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
+			if message.MessageJoin.NetworkID != [32]byte{} {
+				message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
+			}
 			message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoin.Join)
 			return message
 		}
-		message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
+		if message.MessageJoin.NetworkID != [32]byte{} {
+			message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
+		}
 		message.MessageJoin.Join = tamperMessageJoin(message.MessageJoin.Join)
 	case smpc.MessageTypeJoinResponse:
 		if r < 50 {
 			message.MessageType = smpc.MessageTypeJoin
-			message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
+			if message.MessageJoinResponse.NetworkID != [32]byte{} {
+				message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
+			}
 			message.MessageJoin.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 			return message
 		}
-		message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
+		if message.MessageJoinResponse.NetworkID != [32]byte{} {
+			message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
+		}
 		message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 	default:
 		message.MessageType = smpc.MessageType(15)
