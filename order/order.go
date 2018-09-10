@@ -496,7 +496,7 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 			Exp: prev.Exp + 1,
 		}
 	} else if volume >= 1 {
-		try := math.Round(volume / 0.2)
+		try := math.Trunc(volume / 0.2)
 		return CoExp{
 			Co:  uint64(try),
 			Exp: 12,
