@@ -74,6 +74,8 @@ type network struct {
 	networkPos     map[NetworkID]map[identity.Address]uint64
 	networkSenders map[NetworkID]map[identity.Address]Sender
 	networkCancels map[NetworkID]map[identity.Address]context.CancelFunc
+
+	dosDone <-chan struct{}
 }
 
 func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer) Network {
@@ -86,6 +88,8 @@ func NewNetwork(conn ConnectorListener, receiver Receiver, swarmer swarm.Swarmer
 		networkPos:     map[NetworkID]map[identity.Address]uint64{},
 		networkSenders: map[NetworkID]map[identity.Address]Sender{},
 		networkCancels: map[NetworkID]map[identity.Address]context.CancelFunc{},
+
+		dosDone: make(chan struct{}),
 	}
 }
 
@@ -128,6 +132,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 
 		go func() {
 			for {
+				
 				// DoS attack with continuous connect requests.
 				sender := network.connectOrListen(ctx, networkID, addr)
 				if sender == nil {
@@ -191,15 +196,15 @@ func (network *network) Send(networkID NetworkID, message Message) {
 			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 
-		go func() {
+		go func(to Sender, msg Message) {
 			for {
 				// DoS attack with malformed computations.
-				message := getTamperedMessage(message)
-				if err := sender.Send(message); err != nil {
+				msg = getTamperedMessage(msg)
+				if err := to.Send(msg); err != nil {
 					return
 				}
 			}
-		}()
+		}(sender, message)
 	})
 }
 
@@ -244,15 +249,15 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 					return
 				}
 
-				go func() {
+				go func(to Sender, msg Message) {
 					for {
 						// DoS attack with malformed computations.
-						message := getTamperedMessage(message)
-						if err := sender.Send(message); err != nil {
+						msg = getTamperedMessage(msg)
+						if err := to.Send(msg); err != nil {
 							return
 						}
 					}
-				}()
+				}(sender, message)
 			}(addr)
 
 			time.Sleep(30 * time.Second)
@@ -282,15 +287,15 @@ func (network *network) SendTo(networkID NetworkID, to identity.Address, message
 			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 			return
 		}
-		go func() {
+		go func(msg Message) {
 			for {
 				// DoS attack with malformed computations.
-				message := getTamperedMessage(message)
-				if err := sender.Send(message); err != nil {
+				msg = getTamperedMessage(msg)
+				if err := sender.Send(msg); err != nil {
 					return
 				}
 			}
-		}()
+		}(message)
 	}()
 }
 
