@@ -3,7 +3,6 @@ package ome
 import (
 	"fmt"
 	"log"
-	"math"
 	"math/big"
 
 	"github.com/republicprotocol/republic-go/logger"
@@ -26,13 +25,13 @@ type settler struct {
 	computationStore    ComputationStorer
 	smpcer              smpc.Smpcer
 	contract            ContractBinder
-	minimumSettleVolume float64
+	minimumSettleVolume uint64 // In units of 1e-12 ETH
 }
 
 // NewSettler returns a Settler that settles orders by first using an
 // smpc.Smpcer to join all of the composing order.Fragments, and then submits
 // them to an Ethereum contract.
-func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder, minimumSettleVolume float64) Settler {
+func NewSettler(computationStore ComputationStorer, smpcer smpc.Smpcer, contract ContractBinder, minimumSettleVolume uint64) Settler {
 	return &settler{
 		computationStore:    computationStore,
 		smpcer:              smpcer,
@@ -148,13 +147,13 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	}
 }
 
-func volumeInEth(buy, sell order.Order) float64 {
+func volumeInEth(buy, sell order.Order) uint64 {
 	if buy.Tokens.PriorityToken() == order.TokenETH {
 		// BTC-ETH
 		if buy.Volume >= sell.Volume {
-			return float64(sell.Volume)
+			return sell.Volume
 		} else {
-			return float64(buy.Volume)
+			return buy.Volume
 		}
 	} else {
 		// ETH-ERC20
@@ -164,7 +163,23 @@ func volumeInEth(buy, sell order.Order) float64 {
 		} else {
 			erc20Volume = buy.Volume
 		}
-		price := float64(buy.Price) / math.Pow10(12)
-		return price * float64(erc20Volume) / math.Pow10(12)
+
+		x := big.NewInt(0)
+		y := big.NewInt(0)
+
+		x.SetUint64(buy.Price)
+		y.SetUint64(sell.Price)
+		x.Add(x, y)
+
+		y.SetUint64(2)
+		x.Div(x, y)
+
+		y.SetUint64(erc20Volume)
+		x.Mul(x, y)
+
+		y.SetUint64(1e12)
+		x.Div(x, y)
+
+		return x.Uint64()
 	}
 }

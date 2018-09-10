@@ -247,7 +247,7 @@ func main() {
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
 		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 4)
-		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1e12)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
