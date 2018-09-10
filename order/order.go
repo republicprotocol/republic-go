@@ -465,13 +465,13 @@ func PriceFloatToCoExp(price float64) CoExp {
 			Exp: prev.Exp + 1,
 		}
 	} else if price >= 1 {
-		try := math.Trunc(price / 0.005)
+		try := math.Trunc(price * 200.0)
 		return CoExp{
 			Co:  uint64(try),
 			Exp: 38,
 		}
 	} else if price > 0 {
-		prev := PriceFloatToCoExp(price * 10)
+		prev := PriceFloatToCoExp(price * 10.0)
 		return CoExp{
 			Co:  prev.Co,
 			Exp: prev.Exp - 1,
@@ -496,13 +496,13 @@ func VolumeFloatToCoExp(volume float64) CoExp {
 			Exp: prev.Exp + 1,
 		}
 	} else if volume >= 1 {
-		try := math.Trunc(volume / 0.2)
+		try := math.Trunc(volume * 5.0)
 		return CoExp{
 			Co:  uint64(try),
 			Exp: 12,
 		}
 	} else if volume > 0 {
-		prev := VolumeFloatToCoExp(volume * 10)
+		prev := VolumeFloatToCoExp(volume * 10.0)
 		return CoExp{
 			Co:  prev.Co,
 			Exp: prev.Exp - 1,
