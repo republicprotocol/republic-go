@@ -222,7 +222,17 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		}()
 	}
 
-	log.Printf("[info] (submit order) order = %v, tokens = %v", ord.ID, ord.Tokens)
+	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
+		ord.ID,
+		ord.Parity,
+		ord.Type,
+		ord.Expiry,
+		ord.Nonce,
+		ord.Settlement,
+		ord.Tokens,
+		ord.Price,
+		ord.Volume,
+		ord.MinimumVolume)
 
 	tokens := uint64(ord.Tokens)
 	if ord.Parity == order.ParitySell {
