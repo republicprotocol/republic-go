@@ -160,28 +160,26 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		syncer.resyncPointer = (offset + i) % len(orders)
 
 		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
+		if orderStatus == order.Open {
+			continue
+		}
+
 		orderDepth, err := syncer.contractBinder.Depth(orderID)
-		if err != nil || orderDepth < 4 {
+		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
+			continue
+		}
+		if orderDepth < 4 {
 			continue
 		}
 		if orderDepth > 10000 {
 			deleteOrder(orderID, orderStatus)
+			continue
 		}
-
 		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
 			continue
 		}
-
-		orderStatus, err = syncer.contractBinder.Status(orderID)
-		if err != nil {
-			log.Printf("[error] (resync) cannot load order status: %v", err)
-			continue
-		} else if orderStatus != order.Open {
-			deleteOrder(orderID, orderStatus)
-		}
-
 	}
 	return nil
 }
