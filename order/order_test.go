@@ -3,6 +3,7 @@ package order_test
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"os"
 	"time"
 
@@ -173,7 +174,7 @@ var _ = Describe("Orders", func() {
 			Expect(vol.Exp).Should(BeNumerically("<=", 52))
 		})
 
-		It("should return the correct coexp values", func() {
+		It("should convert volume to the expected coexp values", func() {
 			tup1 := VolumeToCoExp(1000000000000)
 			Expect(tup1.Co).Should(Equal(uint64(5)))
 			Expect(tup1.Exp).Should(Equal(uint64(12)))
@@ -195,6 +196,28 @@ var _ = Describe("Orders", func() {
 			Expect(tup5.Exp).Should(Equal(uint64(12)))
 		})
 
+		It("should convert price to the expected coexp values", func() {
+			tup1 := PriceToCoExp(1000000000000)
+			Expect(tup1.Co).Should(Equal(uint64(200)))
+			Expect(tup1.Exp).Should(Equal(uint64(38)))
+
+			tup2 := PriceToCoExp(100000000000)
+			Expect(tup2.Co).Should(Equal(uint64(200)))
+			Expect(tup2.Exp).Should(Equal(uint64(37)))
+
+			tup3 := PriceToCoExp(500000000000)
+			Expect(tup3.Co).Should(Equal(uint64(1000)))
+			Expect(tup3.Exp).Should(Equal(uint64(37)))
+
+			tup4 := PriceToCoExp(5)
+			Expect(tup4.Co).Should(Equal(uint64(1000)))
+			Expect(tup4.Exp).Should(Equal(uint64(26)))
+
+			tup5 := PriceToCoExp(4999999999999)
+			Expect(tup5.Co).Should(Equal(uint64(999)))
+			Expect(tup5.Exp).Should(Equal(uint64(38)))
+		})
+
 		It("should be able to retrieve original volume from coexp", func() {
 			tup1 := VolumeToCoExp(1000000000000)
 			vol1 := VolumeFromCoExp(tup1.Co, tup1.Exp)
@@ -207,6 +230,27 @@ var _ = Describe("Orders", func() {
 			tup3 := VolumeToCoExp(5)
 			vol3 := VolumeFromCoExp(tup3.Co, tup3.Exp)
 			Expect(vol3).Should(Equal(uint64(5)))
+		})
+
+		FIt("should be able to retrieve original price from coexp", func() {
+			tup1 := PriceToCoExp(1000000000000)
+			price1 := PriceFromCoExp(tup1.Co, tup1.Exp)
+			Expect(price1).Should(Equal(uint64(1000000000000)))
+
+			tup2 := PriceToCoExp(100000000000)
+			price2 := PriceFromCoExp(tup2.Co, tup2.Exp)
+			Expect(price2).Should(Equal(uint64(100000000000)))
+
+			tup3 := PriceToCoExp(5)
+			price3 := PriceFromCoExp(tup3.Co, tup3.Exp)
+			Expect(price3).Should(Equal(uint64(5)))
+
+			log.Println(PriceToCoExp(1240000000000000000))
+			log.Println(PriceFromCoExp(PriceToCoExp(1240000000000000000).Co, PriceToCoExp(1240000000000000000).Exp))
+
+			// tup1 := PriceToCoExp(1240000000000000000)
+			// price1 := PriceFromCoExp(tup1.Co, tup1.Exp)
+			// Expect(price1).Should(Equal(uint64(1240000000000000000)))
 		})
 	})
 })
