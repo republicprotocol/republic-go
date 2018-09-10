@@ -503,7 +503,7 @@ func VolumeToCoExp(volume uint64) CoExp {
 	coExp := VolumeToCoExp(volume / 10)
 	return CoExp{
 		Co:  coExp.Co,
-		Exp: coExp.Exp,
+		Exp: coExp.Exp + 1,
 	}
 }
 
