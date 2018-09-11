@@ -123,6 +123,7 @@ func tamperMessage(message smpc.Message) smpc.Message {
 	case smpc.MessageTypeJoin:
 		if r < 50 {
 			message.MessageType = smpc.MessageTypeJoinResponse
+			message.MessageJoinResponse = &smpc.MessageJoinResponse{}
 			if message.MessageJoin.NetworkID != [32]byte{} {
 				message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
 			}
@@ -136,6 +137,7 @@ func tamperMessage(message smpc.Message) smpc.Message {
 	case smpc.MessageTypeJoinResponse:
 		if r < 50 {
 			message.MessageType = smpc.MessageTypeJoin
+			message.MessageJoin = &smpc.MessageJoin{}
 			if message.MessageJoinResponse.NetworkID != [32]byte{} {
 				message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
 			}
