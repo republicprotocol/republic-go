@@ -13,6 +13,9 @@ func RandomOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -24,6 +27,9 @@ func RandomBuyOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -43,6 +49,9 @@ func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}[rand.Intn(4)]
 
 	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
@@ -62,6 +71,9 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}[rand.Intn(4)]
 
 	price := rand.Uint64()
@@ -74,17 +86,7 @@ func RandomOrderMatch() (order.Order, order.Order) {
 // RandomCoExp will generate a random number represented in CoExp format.
 func RandomCoExp() order.CoExp {
 	co := uint64(rand.Intn(1999) + 1)
-	exp := uint64(rand.Intn(25))
-	return order.CoExp{
-		Co:  co,
-		Exp: exp,
-	}
-}
-
-// LessRandomCoExp will generate a random CoExp that is no more than the given CoExp.
-func LessRandomCoExp(coExp order.CoExp) order.CoExp {
-	co := uint64(rand.Intn(int(coExp.Co)) + 1)
-	exp := uint64(rand.Intn(int(coExp.Exp + 1)))
+	exp := uint64(rand.Intn(27))
 	return order.CoExp{
 		Co:  co,
 		Exp: exp,
