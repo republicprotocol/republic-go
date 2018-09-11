@@ -157,7 +157,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 		// Block until a message is received or an error occurs
 		rawMessage, err := stream.Recv()
 		if err != nil {
-			log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
+			// log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, err)
 			return err
 		}
 		// Decrypt the message
@@ -236,7 +236,7 @@ func (connector *Connector) Connect(ctx context.Context, networkID smpc.NetworkI
 func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkID, to identity.MultiAddress) ([]byte, StreamService_ConnectClient, error) {
 	// Establish a connection to the identity.MultiAddress and clean the
 	// connection once the context.Context is done
-	log.Printf("[debug] (stream) dialing...")
+	// log.Printf("[debug] (stream) dialing...")
 	conn, err := Dial(ctx, to)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot dial %v: %v", to, err)
@@ -269,7 +269,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 	}
 
 	// Generate a secret
-	log.Printf("[debug] (stream) authorising...")
+	// log.Printf("[debug] (stream) authorising...")
 	secret := make([]byte, 16)
 	if _, err := rand.Read(secret); err != nil {
 		return secret, nil, ErrCannotGenerateSecret
@@ -472,7 +472,7 @@ func (service *StreamerService) Connect(stream StreamService_ConnectServer) erro
 							return nil
 						}
 					}
-					log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, recvErr)
+					// log.Printf("[error] cannot receive message from %v on network %v: %v", addr, networkID, recvErr)
 					return recvErr
 				}
 				// Decrypt the message
