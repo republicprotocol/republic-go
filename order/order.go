@@ -36,13 +36,13 @@ type Token uint32
 
 // Token values.
 const (
-	TokenBTC  Token = 0
-	TokenETH  Token = 1
-	TokenDGX  Token = 256
-	TokenTUSD Token = 257
-	TokenREN  Token = 65536
-	TokenZRX  Token = 65537
-	TokenOMG  Token = 65538
+	TokenBTC Token = 0
+	TokenETH Token = 1
+	TokenDGX Token = 256
+	TokenABC Token = 257
+	TokenREN Token = 65536
+	TokenPQR Token = 65537
+	TokenXYZ Token = 65538
 )
 
 // String returns a human-readable representation of a Token.
@@ -54,14 +54,14 @@ func (token Token) String() string {
 		return "ETH"
 	case TokenDGX:
 		return "DGX"
-	case TokenTUSD:
-		return "TUSD"
+	case TokenABC:
+		return "ABC"
 	case TokenREN:
 		return "REN"
-	case TokenZRX:
-		return "ZRX"
-	case TokenOMG:
-		return "OMG"
+	case TokenPQR:
+		return "PQR"
+	case TokenXYZ:
+		return "XYZ"
 	default:
 		return "unexpected token"
 	}
@@ -73,12 +73,12 @@ type Tokens uint64
 
 // Tokens values.
 const (
-	TokensBTCETH  = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
-	TokensETHDGX  = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
-	TokensETHTUSD = Tokens((uint64(TokenETH) << 32) | uint64(TokenTUSD))
-	TokensETHREN  = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
-	TokensETHZRX  = Tokens((uint64(TokenETH) << 32) | uint64(TokenZRX))
-	TokensETHOMG  = Tokens((uint64(TokenETH) << 32) | uint64(TokenOMG))
+	TokensBTCETH = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
+	TokensETHDGX = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
+	TokensETHABC = Tokens((uint64(TokenETH) << 32) | uint64(TokenABC))
+	TokensETHREN = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
+	TokensETHPQR = Tokens((uint64(TokenETH) << 32) | uint64(TokenPQR))
+	TokensETHXYZ = Tokens((uint64(TokenETH) << 32) | uint64(TokenXYZ))
 )
 
 // PriorityToken returns the priority token of a token pair.
