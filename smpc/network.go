@@ -314,7 +314,7 @@ func (network *network) connectOrListen(ctx context.Context, networkID NetworkID
 	if addr < network.swarmer.MultiAddress().Address() {
 
 		// Query for the multi-address
-		log.Printf("[debug] querying peer %v on network %v", addr, networkID)
+		// log.Printf("[debug] querying peer %v on network %v", addr, networkID)
 		multiAddr, err := network.query(addr)
 		if err != nil {
 			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
@@ -324,13 +324,13 @@ func (network *network) connectOrListen(ctx context.Context, networkID NetworkID
 		}
 
 		// Connect to the remote server
-		log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
+		// log.Printf("[debug] connecting to peer %v on network %v", addr, networkID)
 		sender, err := network.conn.Connect(ctx, networkID, multiAddr, network.receiver)
 		if err != nil {
 			log.Printf("[error] cannot connect to peer %v on network %v: %v", addr, networkID, err)
 			return nil
 		}
-		log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
+		// log.Printf("[debug] 🔗 connected to peer %v on network %v", addr, networkID)
 		return sender
 	}
 
