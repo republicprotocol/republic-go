@@ -210,11 +210,11 @@ func TokenAddresses(network Network) map[string]string {
 	tokens := map[string]string{}
 	switch network {
 	case NetworkTestnet:
-		tokens["TUSD"] = "0x289f785d9137ecf38a46a678cf4e9e98d32a06d4"
+		tokens["TUSD"] = "0xfc42491547f1837e2d0f9a0e6b12b1d883fb8bd0"
 		tokens["DGX"] = "0x0798297a11cefef7479e40e67839fee3c025691e"
 		tokens["REN"] = "0x6f429121a3bd3e6c1c17edbc676eec44cf117faf"
 		tokens["ZRX"] = "0x099ea44e49e34250e247a150c66c89b314216e34"
-		tokens["OMG"] = "0x0f48986df7b79fbb085753dc2fefe10dde7dd232"
+		tokens["OMG"] = "0xc9382f7b2c683e08aade773eb97bce4a0d6461a0"
 	case NetworkFalcon:
 		tokens["TUSD"] = "0x1c428ab82c06dbe9af414e6c923862d4c3ae0579"
 		tokens["DGX"] = "0xf4faf1b22cee0a024ad6b12bb29ec0e13f5827c2"
