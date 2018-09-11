@@ -210,26 +210,23 @@ func TokenAddresses(network Network) map[string]string {
 	tokens := map[string]string{}
 	switch network {
 	case NetworkTestnet:
-		tokens["ABC"] = "0x289f785d9137ecf38a46a678cf4e9e98d32a06d4"
+		tokens["TUSD"] = "0x289f785d9137ecf38a46a678cf4e9e98d32a06d4"
 		tokens["DGX"] = "0x0798297a11cefef7479e40e67839fee3c025691e"
 		tokens["REN"] = "0x6f429121a3bd3e6c1c17edbc676eec44cf117faf"
-		tokens["PQR"] = "0x099ea44e49e34250e247a150c66c89b314216e34"
-		tokens["UVW"] = "0x58bc110f70291e5c731af8bf99cd8d209c0dfd3e"
-		tokens["XYZ"] = "0x0f48986df7b79fbb085753dc2fefe10dde7dd232"
+		tokens["ZRX"] = "0x099ea44e49e34250e247a150c66c89b314216e34"
+		tokens["OMG"] = "0x0f48986df7b79fbb085753dc2fefe10dde7dd232"
 	case NetworkFalcon:
-		tokens["ABC"] = "0x1c428ab82c06dbe9af414e6c923862d4c3ae0579"
+		tokens["TUSD"] = "0x1c428ab82c06dbe9af414e6c923862d4c3ae0579"
 		tokens["DGX"] = "0xf4faf1b22cee0a024ad6b12bb29ec0e13f5827c2"
 		tokens["REN"] = "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
-		tokens["PQR"] = "0x295a3894fc98b021735a760dbc7aed265663ca42"
-		tokens["UVW"] = "0x88d63a04410e48c0070465a735f74ada68be1936"
-		tokens["XYZ"] = "0x21c1ba3ea123eb23815c689ee05a944119c7f428"
+		tokens["ZRX"] = "0x295a3894fc98b021735a760dbc7aed265663ca42"
+		tokens["OMG"] = "0x21c1ba3ea123eb23815c689ee05a944119c7f428"
 	case NetworkNightly:
-		tokens["ABC"] = "0xa86c6a3322efa371faad6a9b04708788e3592615"
+		tokens["TUSD"] = "0xa86c6a3322efa371faad6a9b04708788e3592615"
 		tokens["DGX"] = "0x092ece29781777604afac04887af30042c3bc5df"
 		tokens["REN"] = "0x15f692d6b9ba8cec643c7d16909e8acdec431bf6"
-		tokens["PQR"] = "0xeb5a7335e850176b44ca1990730d1a2433e195f3"
-		tokens["UVW"] = "0x8cd8d61eb86c2196b922fd4eaf7ed84fb5085f42"
-		tokens["XYZ"] = "0x69440b57b52e323cbd12a162a5f9870f61182918"
+		tokens["ZRX"] = "0xeb5a7335e850176b44ca1990730d1a2433e195f3"
+		tokens["OMG"] = "0x69440b57b52e323cbd12a162a5f9870f61182918"
 	default:
 		panic("unknown network")
 	}
