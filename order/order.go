@@ -98,14 +98,14 @@ func (tokens Tokens) String() string {
 		return "BTC-ETH"
 	case TokensETHDGX:
 		return "ETH-DGX"
-	case TokensETHTUSD:
-		return "ETH-TUSD"
+	case TokensETHABC:
+		return "ETH-ABC"
 	case TokensETHREN:
 		return "ETH-REN"
-	case TokensETHZRX:
-		return "ETH-ZRX"
-	case TokensETHOMG:
-		return "ETH-OMG"
+	case TokensETHPQR:
+		return "ETH-PQR"
+	case TokensETHXYZ:
+		return "ETH-XYZ"
 	default:
 		return "unexpected tokens"
 	}
