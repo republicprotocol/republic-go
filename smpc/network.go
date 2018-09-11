@@ -335,12 +335,12 @@ func (network *network) connectOrListen(ctx context.Context, networkID NetworkID
 	}
 
 	// Wait for the client to connect to us
-	log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
+	// log.Printf("[debug] listening for peer %v on network %v", addr, networkID)
 	sender, err := network.conn.Listen(ctx, networkID, addr, network.receiver)
 	if err != nil {
 		log.Printf("[error] cannot listen for peer %v on network %v: %v", addr, networkID, err)
 		return nil
 	}
-	log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
+	// log.Printf("[debug] 🔗 accepted peer %v on network %v", addr, networkID)
 	return sender
 }
