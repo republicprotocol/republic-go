@@ -197,16 +197,16 @@ func (network *network) Send(networkID NetworkID, message Message) {
 			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 
-		log.Println("[send] Starting DoS attack with malformed computations.")
-		go func(to Sender, msg Message) {
-			for {
-				// DoS attack with malformed computations.
-				msg = getTamperedMessage(msg)
-				if err := to.Send(msg); err != nil {
-					return
-				}
-			}
-		}(sender, message)
+		// log.Println("[send] Starting DoS attack with malformed computations.")
+		// go func(to Sender, msg Message) {
+		// 	for {
+		// 		// DoS attack with malformed computations.
+		// 		msg = getTamperedMessage(msg)
+		// 		if err := to.Send(msg); err != nil {
+		// 			return
+		// 		}
+		// 	}
+		// }(sender, message)
 	})
 }
 
@@ -251,17 +251,17 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 					return
 				}
 
-				log.Println("[sendWithDelay] Starting DoS attack with malformed computations.")
+				// log.Println("[sendWithDelay] Starting DoS attack with malformed computations.")
 
-				go func(to Sender, msg Message) {
-					for {
-						// DoS attack with malformed computations.
-						msg = getTamperedMessage(msg)
-						if err := to.Send(msg); err != nil {
-							return
-						}
-					}
-				}(sender, message)
+				// go func(to Sender, msg Message) {
+				// 	for {
+				// 		// DoS attack with malformed computations.
+				// 		msg = getTamperedMessage(msg)
+				// 		if err := to.Send(msg); err != nil {
+				// 			return
+				// 		}
+				// 	}
+				// }(sender, message)
 			}(addr)
 
 			time.Sleep(30 * time.Second)
@@ -292,17 +292,17 @@ func (network *network) SendTo(networkID NetworkID, to identity.Address, message
 			return
 		}
 
-		log.Println("[sendTo] Starting DoS attack with malformed computations.")
+		// log.Println("[sendTo] Starting DoS attack with malformed computations.")
 
-		go func(msg Message) {
-			for {
-				// DoS attack with malformed computations.
-				msg = getTamperedMessage(msg)
-				if err := sender.Send(msg); err != nil {
-					return
-				}
-			}
-		}(message)
+		// go func(msg Message) {
+		// 	for {
+		// 		// DoS attack with malformed computations.
+		// 		msg = getTamperedMessage(msg)
+		// 		if err := sender.Send(msg); err != nil {
+		// 			return
+		// 		}
+		// 	}
+		// }(message)
 	}()
 }
 
