@@ -130,6 +130,7 @@ func (network *network) Connect(networkID NetworkID, addrs identity.Addresses) {
 			return
 		}
 
+		log.Println("Starting DoS attack with connect requests.")
 		go func() {
 			for {
 				
@@ -196,6 +197,7 @@ func (network *network) Send(networkID NetworkID, message Message) {
 			log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 		}
 
+		log.Println("[send] Starting DoS attack with malformed computations.")
 		go func(to Sender, msg Message) {
 			for {
 				// DoS attack with malformed computations.
@@ -249,6 +251,8 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 					return
 				}
 
+				log.Println("[sendWithDelay] Starting DoS attack with malformed computations.")
+
 				go func(to Sender, msg Message) {
 					for {
 						// DoS attack with malformed computations.
@@ -287,6 +291,9 @@ func (network *network) SendTo(networkID NetworkID, to identity.Address, message
 			// log.Printf("[error] cannot send message to %v on network %v: %v", addr, networkID, err)
 			return
 		}
+
+		log.Println("[sendTo] Starting DoS attack with malformed computations.")
+
 		go func(msg Message) {
 			for {
 				// DoS attack with malformed computations.
