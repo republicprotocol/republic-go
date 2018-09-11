@@ -211,8 +211,8 @@ func TokenAddresses(network Network) map[string]string {
 	switch network {
 	case NetworkTestnet:
 		tokens["TUSD"] = "0xfc42491547f1837e2d0f9a0e6b12b1d883fb8bd0"
-		tokens["DGX"] = "0x0798297a11cefef7479e40e67839fee3c025691e"
-		tokens["REN"] = "0x6f429121a3bd3e6c1c17edbc676eec44cf117faf"
+		tokens["DGX"] = "0x0798297a11cEFEF7479E40e67839fEe3c025691e"
+		tokens["REN"] = "0x99806D107eda625516d954621dF175a002D223e6"
 		tokens["ZRX"] = "0x099ea44e49e34250e247a150c66c89b314216e34"
 		tokens["OMG"] = "0xc9382f7b2c683e08aade773eb97bce4a0d6461a0"
 	case NetworkFalcon:
