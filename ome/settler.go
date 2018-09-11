@@ -128,28 +128,6 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	// submitting such orders. Note: minimum volume is set to 1 ETH.
 	settleVolume := volumeInEth(buy, sell)
 	if settleVolume < settler.minimumSettleVolume {
-		log.Printf("[info] (settle) buy order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
-			buy.ID,
-			buy.Parity,
-			buy.Type,
-			buy.Expiry,
-			buy.Nonce,
-			buy.Settlement,
-			buy.Tokens,
-			buy.Price,
-			buy.Volume,
-			buy.MinimumVolume)
-		log.Printf("[info] (settle) sell order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
-			sell.ID,
-			sell.Parity,
-			sell.Type,
-			sell.Expiry,
-			sell.Nonce,
-			sell.Settlement,
-			sell.Tokens,
-			sell.Price,
-			sell.Volume,
-			sell.MinimumVolume)
 		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %v ETH too low", buy.ID, sell.ID, settleVolume)
 		return
 	}
