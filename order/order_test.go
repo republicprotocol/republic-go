@@ -171,11 +171,115 @@ var _ = Describe("Orders", func() {
 		})
 	})
 
-	Context("when converting volume to CoExp", func() {
+	Context("when converting uint64 to CoExp", func() {
+		It("should convert price to the expected CoExp value", func() {
+			testData := []uint64{
+				0,
+				5, 6, 10,
+				26, 35, 88, 100,
+				1123, 4365, 9878, 10000,
+				243579, 2387439875, 12847328957,
+			}
+
+			expected := []CoExp{
+				{0, 26},
+				{1000, 26}, {1200, 26}, {200, 27},
+				{520, 27}, {700, 27}, {1760, 27}, {200, 28},
+				{224, 29}, {873, 29}, {1975, 29}, {200, 30},
+				{487, 31}, {477, 35}, {256, 36},
+			}
+
+			for i := range testData {
+				res := PriceToCoExp(testData[i])
+				Expect(res.Co).Should(Equal(expected[i].Co))
+				Expect(res.Exp).Should(Equal(expected[i].Exp))
+
+				Expect(PriceFromCoExp(res.Co, res.Exp)).Should(BeNumerically("<=", testData[i]))
+			}
+		})
+	})
+
+	Context("when converting uint64 to CoExp", func() {
 		It("should not convert volume into values out of the expected range", func() {
-			vol := VolumeFloatToCoExp(100000)
+			vol := VolumeToCoExp(100000000000000000)
 			Expect(vol.Co).Should(BeNumerically("<=", 49))
 			Expect(vol.Exp).Should(BeNumerically("<=", 52))
+		})
+
+		It("should convert volume to the expected coexp values", func() {
+			tup1 := VolumeToCoExp(1000000000000)
+			Expect(tup1.Co).Should(Equal(uint64(5)))
+			Expect(tup1.Exp).Should(Equal(uint64(12)))
+
+			tup2 := VolumeToCoExp(100000000000)
+			Expect(tup2.Co).Should(Equal(uint64(5)))
+			Expect(tup2.Exp).Should(Equal(uint64(11)))
+
+			tup3 := VolumeToCoExp(500000000000)
+			Expect(tup3.Co).Should(Equal(uint64(25)))
+			Expect(tup3.Exp).Should(Equal(uint64(11)))
+
+			tup4 := VolumeToCoExp(5)
+			Expect(tup4.Co).Should(Equal(uint64(25)))
+			Expect(tup4.Exp).Should(Equal(uint64(0)))
+
+			tup5 := VolumeToCoExp(4999999999999)
+			Expect(tup5.Co).Should(Equal(uint64(24)))
+			Expect(tup5.Exp).Should(Equal(uint64(12)))
+		})
+
+		It("should convert price to the expected coexp values", func() {
+			tup1 := PriceToCoExp(1000000000000)
+			Expect(tup1.Co).Should(Equal(uint64(200)))
+			Expect(tup1.Exp).Should(Equal(uint64(38)))
+
+			tup2 := PriceToCoExp(100000000000)
+			Expect(tup2.Co).Should(Equal(uint64(200)))
+			Expect(tup2.Exp).Should(Equal(uint64(37)))
+
+			tup3 := PriceToCoExp(500000000000)
+			Expect(tup3.Co).Should(Equal(uint64(1000)))
+			Expect(tup3.Exp).Should(Equal(uint64(37)))
+
+			tup4 := PriceToCoExp(5)
+			Expect(tup4.Co).Should(Equal(uint64(1000)))
+			Expect(tup4.Exp).Should(Equal(uint64(26)))
+
+			tup5 := PriceToCoExp(4999999999999)
+			Expect(tup5.Co).Should(Equal(uint64(999)))
+			Expect(tup5.Exp).Should(Equal(uint64(38)))
+		})
+
+		It("should be able to retrieve original volume from coexp", func() {
+			tup1 := VolumeToCoExp(1000000000000)
+			vol1 := VolumeFromCoExp(tup1.Co, tup1.Exp)
+			Expect(vol1).Should(Equal(uint64(1000000000000)))
+
+			tup2 := VolumeToCoExp(100000000000)
+			vol2 := VolumeFromCoExp(tup2.Co, tup2.Exp)
+			Expect(vol2).Should(Equal(uint64(100000000000)))
+
+			tup3 := VolumeToCoExp(5)
+			vol3 := VolumeFromCoExp(tup3.Co, tup3.Exp)
+			Expect(vol3).Should(Equal(uint64(5)))
+		})
+
+		It("should be able to retrieve original price from coexp", func() {
+			tup1 := PriceToCoExp(1000000000000)
+			price1 := PriceFromCoExp(tup1.Co, tup1.Exp)
+			Expect(price1).Should(Equal(uint64(1000000000000)))
+
+			tup2 := PriceToCoExp(100000000000)
+			price2 := PriceFromCoExp(tup2.Co, tup2.Exp)
+			Expect(price2).Should(Equal(uint64(100000000000)))
+
+			tup3 := PriceToCoExp(5)
+			price3 := PriceFromCoExp(tup3.Co, tup3.Exp)
+			Expect(price3).Should(Equal(uint64(5)))
+
+			tup4 := PriceToCoExp(1240000000000000000)
+			price4 := PriceFromCoExp(tup4.Co, tup4.Exp)
+			Expect(price4).Should(Equal(uint64(1240000000000000000)))
 		})
 	})
 })

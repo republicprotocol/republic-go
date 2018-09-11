@@ -213,8 +213,10 @@ func (ome *ome) sendComputationToConfirmer(com Computation, done <-chan struct{}
 }
 
 func (ome *ome) sendComputationToSettler(com Computation) {
-	logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
-	if err := ome.settler.Settle(com); err != nil {
-		logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
-	}
+	go func() {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("settling buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
+		if err := ome.settler.Settle(com); err != nil {
+			logger.Network(logger.LevelError, fmt.Sprintf("cannot settle: %v", err))
+		}
+	}()
 }

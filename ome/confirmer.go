@@ -82,30 +82,32 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					return
 				}
 
-				// Check that these orders have not already been confirmed
-				if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-					continue
-				}
-				if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-					continue
-				}
+				// // Check that these orders have not already been confirmed
+				// if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+				// 	continue
+				// }
+				// if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+				// 	continue
+				// }
 
-				// Confirm Computations on the blockchain and register them for
-				// observation (we need to wait for finality)
-				if err := confirmer.beginConfirmation(com); err != nil {
-					// An error in confirmation should not stop the
-					// Confirmer from monitoring the Computation for
-					// confirmation (another node might have succeeded), so
-					// we pass through
-					logger.Error(err.Error())
-				}
+				go func() {
+					// Wait for the confirmation of these orders to pass the depth
+					// limit
+					confirmer.confirmingMu.Lock()
+					confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
+					confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
+					confirmer.confirmingMu.Unlock()
 
-				// Wait for the confirmation of these orders to pass the depth
-				// limit
-				confirmer.confirmingMu.Lock()
-				confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
-				confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
-				confirmer.confirmingMu.Unlock()
+					// Confirm Computations on the blockchain and register them for
+					// observation (we need to wait for finality)
+					if err := confirmer.beginConfirmation(com); err != nil {
+						// An error in confirmation should not stop the
+						// Confirmer from monitoring the Computation for
+						// confirmation (another node might have succeeded), so
+						// we pass through
+						logger.Error(err.Error())
+					}
+				}()
 			}
 		}
 	}()

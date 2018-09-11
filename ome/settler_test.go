@@ -41,7 +41,7 @@ var _ = Describe("Settler", func() {
 	})
 
 	Context("when a computation has been resolved to a match and been confirmed ", func() {
-		It("should be able to reconstruct the order and settle it.", func() {
+		XIt("should be able to reconstruct the order and settle it.", func() {
 			buyFragments, err := testutils.RandomBuyOrderFragments(int64(NumberOfNodes), int64(2*(NumberOfNodes+1)/3))
 			Expect(err).ShouldNot(HaveOccurred())
 			sellFragments, err := testutils.RandomSellOrderFragments(int64(NumberOfNodes), int64(2*(NumberOfNodes+1)/3))

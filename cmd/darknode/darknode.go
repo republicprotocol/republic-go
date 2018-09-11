@@ -246,8 +246,8 @@ func main() {
 		}
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
 		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
-		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 2)
-		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 4)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1e12)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
@@ -307,17 +307,11 @@ func main() {
 }
 
 func getIPAddress() (string, error) {
-
-	out, err := exec.Command("curl", "https://ipinfo.io/ip").Output()
+	out, err := exec.Command("dig", "+short", "myip.opendns.com", "@resolver1.opendns.com").Output()
 	if err != nil {
 		return "", err
 	}
-	out = []byte(strings.Trim(string(out), "\n "))
-	if err != nil {
-		return "", err
-	}
-
-	return string(out), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 // pingNetwork start ping the entire network with a new multiAddress with an

@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -45,10 +46,13 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "network",
-			Value: "kovan",
-			Usage: "Ethereum testnet name",
+			Usage: "testnet name",
 		},
 	}
+	// networkFlag := cli.StringFlag{
+	// 	Name:  "network",
+	// 	Usage: "testnet name",
+	// }
 
 	// Define subcommands
 	app.Commands = []cli.Command{
@@ -84,11 +88,15 @@ func main() {
 			Aliases: []string{"r"},
 			Usage:   "register nodes in the dark node contract",
 			Action: func(c *cli.Context) error {
+				network := c.GlobalString("network")
+				if network == "" {
+					return errors.New("unknown network")
+				}
 				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return RegisterAll(contract)
+				return RegisterAll(network, contract)
 			},
 		},
 		{
@@ -108,11 +116,15 @@ func main() {
 			Aliases: []string{"d"},
 			Usage:   "deregister nodes in the dark node contract",
 			Action: func(c *cli.Context) error {
+				network := c.GlobalString("network")
+				if network == "" {
+					return errors.New("unknown network")
+				}
 				contract, err := NewRegistry(c, key)
 				if err != nil {
 					return err
 				}
-				return DeregisterAll(c.Args(), contract)
+				return DeregisterAll(network, contract)
 			},
 		},
 		{
@@ -161,17 +173,14 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
 	case string(contract.NetworkTestnet):
 		config = contract.Config{
 			Network: contract.NetworkTestnet,
-			URI:     "https://kovan.infura.io",
 		}
 	case string(contract.NetworkFalcon):
 		config = contract.Config{
 			Network: contract.NetworkFalcon,
-			URI:     "https://kovan.infura.io",
 		}
 	case string(contract.NetworkNightly):
 		config = contract.Config{
 			Network: contract.NetworkNightly,
-			URI:     "https://kovan.infura.io",
 		}
 	default:
 		log.Fatal("unrecognized network name")
@@ -188,16 +197,19 @@ func NewRegistry(c *cli.Context, key *keystore.Key) (contract.Binder, error) {
 	return contract.NewBinder(auth, client)
 }
 
-func RegisterAll(contract contract.Binder) error {
-
-	conf, err := loadConfig("./deployment.json")
-	if err != nil {
-		return errors.New("could not read file deployment.json")
-	}
-
-	for i := range conf.Configs {
-		address := conf.Configs[i].Config.Address
-		pk, err := crypto.BytesFromRsaPublicKey(&conf.Configs[i].Config.Keystore.RsaKey.PublicKey)
+func RegisterAll(network string, contract contract.Binder) error {
+	for i := 1; ; i++ {
+		configFile := path.Join(os.Getenv("HOME"), fmt.Sprintf(".darknode/darknodes/%v_%d/config.json", network, i))
+		_, err := os.Stat(configFile)
+		if err != nil {
+			break
+		}
+		conf, err := loadConfig(configFile)
+		if err != nil {
+			return err
+		}
+		address := conf.Address
+		pk, err := crypto.BytesFromRsaPublicKey(&conf.Keystore.RsaKey.PublicKey)
 		if err != nil {
 			log.Fatal("cannot get rsa public key ", err)
 		}
@@ -205,40 +217,44 @@ func RegisterAll(contract contract.Binder) error {
 		// Check if node has already been registered
 		isRegistered, err := contract.IsRegistered(address)
 		if err != nil {
-			return fmt.Errorf("[%v] %sCouldn't check node's registration%s: %v\n", address, red, reset, err)
+			log.Printf("node[%v] has already been registerd", address)
+			continue
 		}
 
 		// Register the node if not registered
 		if !isRegistered {
 			minimumBond, err := contract.MinimumBond()
 			if err != nil {
-				return err
+				log.Fatal(err)
 			}
 
 			err = contract.Register(address.ID(), pk, &minimumBond)
 			if err != nil {
-				return fmt.Errorf("[%v] %sCouldn't register node%s: %v\n", address, red, reset, err)
-			} else {
-				log.Printf("[%v] %sNode will be registered next epoch%s\n", address, green, reset)
+				log.Fatal(fmt.Sprintf("cannot register node[%v]: %v", address, err))
 			}
-		} else if isRegistered {
-			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
+
+			log.Printf("[%v] Node will be registered next epoch\n", address)
+		} else {
+			log.Println("Node already been registered")
 		}
 	}
 
 	return nil
-
 }
 
 // DeregisterAll takes a slice of republic private keys and registers them
-func DeregisterAll(addresses []string, contract contract.Binder) error {
-	conf, err := loadConfig("./deployment.json")
-	if err != nil {
-		return errors.New("could not read file deployment.json")
-	}
-
-	for i := range conf.Configs {
-		address := conf.Configs[i].Config.Address
+func DeregisterAll(network string, contract contract.Binder) error {
+	for i := 1; ; i++ {
+		configFile := path.Join(os.Getenv("HOME"), fmt.Sprintf(".darknode/darknodes/%v_%d/config.json", network, i))
+		_, err := os.Stat(configFile)
+		if err != nil {
+			break
+		}
+		conf, err := loadConfig(configFile)
+		if err != nil {
+			return err
+		}
+		address := conf.Address
 
 		// Check if node has already been registered
 		isRegistered, err := contract.IsRegistered(address)
@@ -253,6 +269,14 @@ func DeregisterAll(addresses []string, contract contract.Binder) error {
 			} else {
 				log.Printf("[%v] %sNode will be deregistered next epoch%s\n", address, green, reset)
 			}
+			ethAddress, err := republicAddressToEthAddress(address.String())
+			if err != nil {
+				return err
+			}
+			err = contract.Refund(ethAddress.Bytes())
+			if err != nil {
+				log.Println(err)
+			}
 		} else {
 			log.Printf("[%v] %sNode already registered%s\n", address, yellow, reset)
 		}
@@ -262,7 +286,6 @@ func DeregisterAll(addresses []string, contract contract.Binder) error {
 }
 
 func Approve(contract contract.Binder) error {
-
 	bond, err := stackint.FromString("100000000000000000000000")
 	if err != nil {
 		return err
@@ -334,33 +357,19 @@ func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	return address, nil
 }
 
-func loadConfig(filename string) (FalconryConfigs, error) {
+func loadConfig(filename string) (config.Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return FalconryConfigs{}, err
+		return config.Config{}, err
 	}
 	defer file.Close()
 
 	data, err := ioutil.ReadAll(file)
 
-	conf := FalconryConfigs{}
+	conf := config.Config{}
 	if err := json.Unmarshal(data, &conf); err != nil {
-		return FalconryConfigs{}, err
+		return config.Config{}, err
 	}
 
 	return conf, nil
-}
-
-type FalconryConfigs struct {
-	Configs    []FalconryConfig `json:"configs"`
-	Blockchain interface{}      `json:"blockchain"`
-}
-
-type FalconryConfig struct {
-	Config      config.Config `json:"config"`
-	Ami         string        `json:"ami"`
-	Avz         string        `json:"avz"`
-	Instance    string        `json:"instance"`
-	Ip          string        `json:"ip"`
-	IsBootstrap bool          `json:"is_bootstrap"`
 }

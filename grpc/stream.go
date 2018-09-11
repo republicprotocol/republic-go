@@ -276,7 +276,7 @@ func (connector *Connector) connect(ctx context.Context, networkID smpc.NetworkI
 	}
 	encryptedSecret, err := connector.encrypter.Encrypt(to.Address().String(), secret[:])
 	if err != nil {
-		return secret, nil, ErrCannotEncryptSecret
+		return secret, nil, fmt.Errorf("%v = %v", ErrCannotEncryptSecret, err)
 	}
 
 	// Sign an authentication message so that the StreamService can verify the

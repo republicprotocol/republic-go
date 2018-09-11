@@ -57,7 +57,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRegistryAddress = "0x372b6204263c6867f81e2a9e11057ff43efea14b"
 		case NetworkFalcon:
-			config.DarknodeRegistryAddress = "0xfafd5c83d1e21763b79418c4ecb5d62b4970df8e"
+			config.DarknodeRegistryAddress = "0xdaa8c30af85070506f641e456afdb84d4ba972bd"
 		case NetworkNightly:
 			config.DarknodeRegistryAddress = "0x8a31d477267a5af1bc5142904ef0afa31d326e03"
 		case NetworkLocal:
@@ -70,7 +70,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeRewardVaultAddress = "0x5d62ccc1086f38286dc152962a4f3e337eec1ec1"
 		case NetworkFalcon:
-			config.DarknodeRewardVaultAddress = "0x0e6bbbb35835cc3624a000e1698b7b68e9eec7df"
+			config.DarknodeRewardVaultAddress = "0x401e7d7ce6f51ea1a8d4f582413e2fabda68daa8"
 		case NetworkNightly:
 			config.DarknodeRewardVaultAddress = "0xda43560f5fe6c6b5e062c06fee0f6fbc71bbf18a"
 		case NetworkLocal:
@@ -83,7 +83,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
 		case NetworkFalcon:
-			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
+			config.DarknodeSlasherAddress = "0x71ec5f4558e87d6afb5c5ff0b4bdd058d62ed3d1"
 		case NetworkNightly:
 			config.DarknodeSlasherAddress = "0x38458ef4a185455cba57a7594b0143c53ad057c1"
 		case NetworkLocal:
@@ -96,7 +96,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.OrderbookAddress = "0xa7caa4780a39d8b8acd6a0bdfb5b906210bc76cd"
 		case NetworkFalcon:
-			config.OrderbookAddress = "0x044b08eec761c39ac32aee1d6ef0583812f21699"
+			config.OrderbookAddress = "0x592d16f8c5fa8f1e074ab3c2cd1acd087adcdc0b"
 		case NetworkNightly:
 			config.OrderbookAddress = "0x376127adc18260fc238ebfb6626b2f4b59ec9b66"
 		case NetworkLocal:
@@ -109,7 +109,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkTestnet:
 			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkFalcon:
-			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
+			config.SettlementRegistryAddress = "0x6246ff83ddef23d9509ba80aa3ee650ab0321f0b"
 		case NetworkNightly:
 			config.SettlementRegistryAddress = "0x399a70ed71897836468fd74ea19138df90a78d79"
 		case NetworkLocal:

@@ -115,7 +115,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 	defer orderIter.Release()
 
-	orders, orderStatuses, _, _, err := orderIter.Collect()
+	orders, _, _, _, err := orderIter.Collect()
 	if err != nil {
 		log.Printf("[error] (resync) cannot collect orders: %v", err)
 	}
@@ -159,26 +159,26 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	for i := 0; i < limit; i++ {
 		syncer.resyncPointer = (offset + i) % len(orders)
 
-		orderID, orderStatus := orders[syncer.resyncPointer], orderStatuses[syncer.resyncPointer]
-		if orderStatus != order.Open {
-			deleteOrder(orderID, orderStatus)
-			continue
-		}
-
-		orderStatus, err = syncer.contractBinder.Status(orderID)
-		if err != nil {
-			log.Printf("[error] (resync) cannot load order status: %v", err)
-			continue
-		} else if orderStatus != order.Open {
-			deleteOrder(orderID, orderStatus)
-		}
-
+		orderID := orders[syncer.resyncPointer]
 		orderDepth, err := syncer.contractBinder.Depth(orderID)
 		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
 			continue
 		}
+		if orderDepth < 4 {
+			continue
+		}
 		if orderDepth > 10000 {
+			deleteOrder(orderID, order.Canceled)
+			continue
+		}
+
+		orderStatus, err := syncer.contractBinder.Status(orderID)
+		if err != nil {
+			log.Printf("[error] (resync) cannot load order status: %v", err)
+			continue
+		}
+		if orderStatus != order.Open {
 			deleteOrder(orderID, orderStatus)
 		}
 	}
