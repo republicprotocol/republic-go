@@ -223,7 +223,7 @@ func tamperShares(shares shamir.Shares) shamir.Shares {
 		return shares
 	}
 	// Modify the shares slightly.
-	if r < 90 {
+	if r < 90 && len(shares) > 0 {
 		index := rand.Intn(len(shares))
 		shares[index] = shamir.Share{Index: uint64(index), Value: uint64(index)}
 	}
@@ -244,7 +244,7 @@ func tamperBlindings(blindings shamir.Blindings) shamir.Blindings {
 		return blindings
 	}
 	// Modify the blindings slightly.
-	if r < 90 {
+	if r < 90 && len(blindings) > 0 {
 		index := rand.Intn(len(blindings))
 		blindings[index] = shamir.Blinding{Int: big.NewInt(int64(index))}
 	}
