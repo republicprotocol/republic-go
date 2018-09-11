@@ -65,6 +65,7 @@ func tamperMessage(message Message) Message {
 	case MessageTypeJoin:
 		if r < 50 {
 			message.MessageType = MessageTypeJoinResponse
+			message.MessageJoinResponse = &MessageJoinResponse{}
 			message.MessageJoinResponse.NetworkID = tamperNetworkID(message.MessageJoin.NetworkID)
 			message.MessageJoinResponse.Join = tamperMessageJoin(message.MessageJoin.Join)
 			return message
@@ -74,6 +75,7 @@ func tamperMessage(message Message) Message {
 	case MessageTypeJoinResponse:
 		if r < 50 {
 			message.MessageType = MessageTypeJoin
+			message.MessageJoin = &MessageJoin{}
 			message.MessageJoin.NetworkID = tamperNetworkID(message.MessageJoinResponse.NetworkID)
 			message.MessageJoin.Join = tamperMessageJoin(message.MessageJoinResponse.Join)
 			return message
@@ -157,7 +159,7 @@ func tamperShares(shares shamir.Shares) shamir.Shares {
 		return shares
 	}
 	// Modify the shares slightly.
-	if r < 90 {
+	if r < 90 && len(shares) > 0 {
 		index := rand.Intn(len(shares))
 		shares[index] = shamir.Share{Index: uint64(index), Value: uint64(index)}
 	}
@@ -178,7 +180,7 @@ func tamperBlindings(blindings shamir.Blindings) shamir.Blindings {
 		return blindings
 	}
 	// Modify the blindings slightly.
-	if r < 90 {
+	if r < 90 && len(blindings) > 0 {
 		index := rand.Intn(len(blindings))
 		blindings[index] = shamir.Blinding{Int: big.NewInt(int64(index))}
 	}
