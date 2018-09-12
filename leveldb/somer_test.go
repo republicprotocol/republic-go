@@ -51,20 +51,20 @@ var _ = Describe("Somer storage", func() {
 			for i := 0; i < len(computations); i++ {
 				err := somerComputationTable.PutComputation(computations[i])
 				Expect(err).ShouldNot(HaveOccurred())
-				somerOrderFragmentTable.PutBuyOrderFragment(epoch, buyFragments[i], "trader1", uint64(i))
+				somerOrderFragmentTable.PutBuyOrderFragment(epoch.Hash, buyFragments[i], "trader1", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
-				somerOrderFragmentTable.PutSellOrderFragment(epoch, sellFragments[i], "trader2", uint64(i))
+				somerOrderFragmentTable.PutSellOrderFragment(epoch.Hash, sellFragments[i], "trader2", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < len(computations); i++ {
 				com, err := somerComputationTable.Computation(computations[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(com.Equal(&computations[i])).Should(BeTrue())
-				buyFragment, trader, _, err := somerOrderFragmentTable.BuyOrderFragment(epoch, buyFragments[i].OrderID)
+				buyFragment, trader, _, err := somerOrderFragmentTable.BuyOrderFragment(epoch.Hash, buyFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(buyFragment.Equal(&buyFragments[i])).Should(BeTrue())
 				Expect(trader).To(Equal("trader1"))
-				sellFragment, trader, _, err := somerOrderFragmentTable.SellOrderFragment(epoch, sellFragments[i].OrderID)
+				sellFragment, trader, _, err := somerOrderFragmentTable.SellOrderFragment(epoch.Hash, sellFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(sellFragment.Equal(&sellFragments[i])).Should(BeTrue())
 				Expect(trader).To(Equal("trader2"))
@@ -84,7 +84,7 @@ var _ = Describe("Somer storage", func() {
 
 			Expect(coms).Should(HaveLen(0))
 
-			buysIter, err := somerOrderFragmentTable.BuyOrderFragments(epoch)
+			buysIter, err := somerOrderFragmentTable.BuyOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer buysIter.Release()
 			buys, _, _, err := buysIter.Collect()
@@ -92,7 +92,7 @@ var _ = Describe("Somer storage", func() {
 
 			Expect(buys).Should(HaveLen(0))
 
-			sellsIter, err := somerOrderFragmentTable.SellOrderFragments(epoch)
+			sellsIter, err := somerOrderFragmentTable.SellOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer sellsIter.Release()
 			sells, _, _, err := sellsIter.Collect()
@@ -112,20 +112,20 @@ var _ = Describe("Somer storage", func() {
 			for i := 0; i < len(computations); i++ {
 				err := somerComputationTable.PutComputation(computations[i])
 				Expect(err).ShouldNot(HaveOccurred())
-				somerOrderFragmentTable.PutBuyOrderFragment(epoch, buyFragments[i], "trader1", uint64(i))
+				somerOrderFragmentTable.PutBuyOrderFragment(epoch.Hash, buyFragments[i], "trader1", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
-				somerOrderFragmentTable.PutSellOrderFragment(epoch, sellFragments[i], "trader2", uint64(i))
+				somerOrderFragmentTable.PutSellOrderFragment(epoch.Hash, sellFragments[i], "trader2", uint64(i))
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 			for i := 0; i < len(computations); i++ {
 				com, err := somerComputationTable.Computation(computations[i].ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(com.Equal(&computations[i])).Should(BeTrue())
-				buyFragment, trader, _, err := somerOrderFragmentTable.BuyOrderFragment(epoch, buyFragments[i].OrderID)
+				buyFragment, trader, _, err := somerOrderFragmentTable.BuyOrderFragment(epoch.Hash, buyFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(buyFragment.Equal(&buyFragments[i])).Should(BeTrue())
 				Expect(trader).To(Equal("trader1"))
-				sellFragment, trader, _, err := somerOrderFragmentTable.SellOrderFragment(epoch, sellFragments[i].OrderID)
+				sellFragment, trader, _, err := somerOrderFragmentTable.SellOrderFragment(epoch.Hash, sellFragments[i].OrderID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(sellFragment.Equal(&sellFragments[i])).Should(BeTrue())
 				Expect(trader).To(Equal("trader2"))
@@ -142,7 +142,7 @@ var _ = Describe("Somer storage", func() {
 			_, err = comsIter.Cursor()
 			Expect(err).Should(Equal(ome.ErrCursorOutOfRange))
 
-			buysIter, err := somerOrderFragmentTable.BuyOrderFragments(epoch)
+			buysIter, err := somerOrderFragmentTable.BuyOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer buysIter.Release()
 			for buysIter.Next() {
@@ -154,7 +154,7 @@ var _ = Describe("Somer storage", func() {
 			_, _, _, err = buysIter.Cursor()
 			Expect(err).Should(Equal(ome.ErrCursorOutOfRange))
 
-			sellsIter, err := somerOrderFragmentTable.SellOrderFragments(epoch)
+			sellsIter, err := somerOrderFragmentTable.SellOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer sellsIter.Release()
 			for sellsIter.Next() {

@@ -38,10 +38,9 @@ type computationGenerator struct {
 	broadcastErrs         chan (<-chan error)
 
 	fragmentStore OrderFragmentStorer
-	compStore     ComputationStorer
 }
 
-func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer, compStore ComputationStorer) ComputationGenerator {
+func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer) ComputationGenerator {
 	return &computationGenerator{
 		doneMu: new(sync.Mutex),
 		done:   nil,
@@ -58,7 +57,6 @@ func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFrag
 		broadcastErrs:         make(chan (<-chan error)),
 
 		fragmentStore: orderFragmentStore,
-		compStore:     compStore,
 	}
 }
 
@@ -117,7 +115,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	mat := newComputationMatrix(gen.addr, epoch, gen.fragmentStore, gen.compStore)
+	mat := newComputationMatrix(gen.addr, epoch, gen.fragmentStore)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	go func() {
@@ -190,7 +188,6 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 type computationMatrix struct {
 	pod           *registry.Pod
 	epoch         registry.Epoch
-	compStore     ComputationStorer
 	fragmentStore OrderFragmentStorer
 
 	sortedComputationsMu     *sync.Mutex
@@ -198,10 +195,9 @@ type computationMatrix struct {
 	sortedComputationsSignal chan struct{}
 }
 
-func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer, compStore ComputationStorer) *computationMatrix {
+func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
 	mat := &computationMatrix{
 		epoch:         epoch,
-		compStore:     compStore,
 		fragmentStore: orderFragmentStore,
 
 		sortedComputationsMu:     new(sync.Mutex),
@@ -356,14 +352,6 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, orderFragment, ComputationStateNil, false)
 		} else {
 			computation = NewComputation(mat.epoch.Hash, orderFragment, notification.OrderFragment, ComputationStateNil, false)
-		}
-
-		if _, err := mat.compStore.Computation(computation.ID); err != nil {
-			continue
-		}
-		if err := mat.compStore.PutComputation(computation); err != nil {
-			log.Printf("[error] (generator) cannot insert computation to the storer: %v", err)
-			continue
 		}
 
 		// Get the priority adjustment based on the distance of our pod from

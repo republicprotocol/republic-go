@@ -29,7 +29,8 @@ type Ome interface {
 }
 
 type ome struct {
-	addr      identity.Address
+	addr identity.Address
+
 	orderbook orderbook.Orderbook
 	gen       ComputationGenerator
 	matcher   Matcher

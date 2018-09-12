@@ -15,9 +15,15 @@ type ComputationID [32]byte
 
 // NewComputationID returns the crypto.Keccak256 of a buy order.ID concatenated
 // with a sell order.ID.
-func NewComputationID(buy, sell order.ID) ComputationID {
+func NewComputationID(buy, sell order.ID, depth order.FragmentEpochDepth) ComputationID {
+	depthBytes := [4]byte{
+		byte(depth >> 24),
+		byte(depth >> 16),
+		byte(depth >> 8),
+		byte(depth),
+	}
 	comID := ComputationID{}
-	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
+	copy(comID[:], crypto.Keccak256(buy[:], sell[:], depthBytes[:]))
 	return comID
 }
 
@@ -90,7 +96,7 @@ func NewComputation(epoch [32]byte, buy, sell order.Fragment, state ComputationS
 		Match:      match,
 	}
 	com.Timestamp = time.Now()
-	com.ID = NewComputationID(buy.OrderID, sell.OrderID)
+	com.ID = NewComputationID(buy.OrderID, sell.OrderID, com.EpochDepth)
 	return com
 }
 

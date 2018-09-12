@@ -76,7 +76,7 @@ var _ = Describe("Ome", func() {
 		It("should be able to sync with the order book ", func() {
 			done := make(chan struct{})
 
-			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, comStorer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
@@ -91,7 +91,7 @@ var _ = Describe("Ome", func() {
 
 		It("should be able to listen for epoch change event", func() {
 			done := make(chan struct{})
-			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, comStorer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, book, smpcer, epoch)
 			errs := ome.Run(done)
 
 			go func() {
