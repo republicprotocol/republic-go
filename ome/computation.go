@@ -15,15 +15,9 @@ type ComputationID [32]byte
 
 // NewComputationID returns the crypto.Keccak256 of a buy order.ID concatenated
 // with a sell order.ID.
-func NewComputationID(buy, sell order.ID, depth order.FragmentEpochDepth) ComputationID {
-	depthBytes := [4]byte{
-		byte(depth >> 24),
-		byte(depth >> 16),
-		byte(depth >> 8),
-		byte(depth),
-	}
+func NewComputationID(buy, sell order.ID) ComputationID {
 	comID := ComputationID{}
-	copy(comID[:], crypto.Keccak256(buy[:], sell[:], depthBytes[:]))
+	copy(comID[:], crypto.Keccak256(buy[:], sell[:]))
 	return comID
 }
 
@@ -96,7 +90,7 @@ func NewComputation(epoch [32]byte, buy, sell order.Fragment, state ComputationS
 		Match:      match,
 	}
 	com.Timestamp = time.Now()
-	com.ID = NewComputationID(buy.OrderID, sell.OrderID, com.EpochDepth)
+	com.ID = NewComputationID(buy.OrderID, sell.OrderID)
 	return com
 }
 
@@ -109,4 +103,5 @@ func (com *Computation) Equal(arg *Computation) bool {
 		com.Sell.Equal(&arg.Sell) &&
 		com.State == arg.State &&
 		com.Match == arg.Match
+	// todo : why do we want to compare state and match
 }

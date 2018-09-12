@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrComputationNotFound is returned when the Storer cannot find a Computation
@@ -23,6 +22,7 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 type ComputationStorer interface {
 	PutComputation(computation Computation) error
 	DeleteComputation(id ComputationID) error
+	UpdateComputationState(id ComputationID, state ComputationState) error
 	Computation(id ComputationID) (Computation, error)
 	Computations() (ComputationIterator, error)
 }
@@ -47,15 +47,15 @@ type ComputationIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutBuyOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error
-	DeleteBuyOrderFragment(epoch registry.Epoch, id order.ID) error
-	BuyOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error)
-	BuyOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
+	PutBuyOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64) error
+	DeleteBuyOrderFragment(epochHash [32]byte, id order.ID) error
+	BuyOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, error)
+	BuyOrderFragments(epochHash [32]byte) (OrderFragmentIterator, error)
 
-	PutSellOrderFragment(epoch registry.Epoch, orderFragment order.Fragment, trader string, priority uint64) error
-	DeleteSellOrderFragment(epoch registry.Epoch, id order.ID) error
-	SellOrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, string, uint64, error)
-	SellOrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
+	PutSellOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64) error
+	DeleteSellOrderFragment(epochHash [32]byte, id order.ID) error
+	SellOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, error)
+	SellOrderFragments(epochHash [32]byte) (OrderFragmentIterator, error)
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.

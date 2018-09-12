@@ -116,7 +116,7 @@ func (orderbook *orderbook) OpenOrder(ctx context.Context, encryptedOrderFragmen
 
 // Sync implements the Orderbook interface.
 func (orderbook *orderbook) Sync(done <-chan struct{}) (<-chan Notification, <-chan error) {
-	notifications := make(chan Notification)
+	notifications := make(chan Notification, 128)
 	errs := make(chan error)
 
 	go func() {

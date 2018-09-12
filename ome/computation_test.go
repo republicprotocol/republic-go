@@ -27,7 +27,7 @@ var _ = Describe("Computations", func() {
 
 	Context("when checking for equality", func() {
 		It("should return true for equal computation IDs", func() {
-			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID, order.FragmentEpochDepth(0))
+			computationID := NewComputationID(buyFragment.OrderID, sellFragment.OrderID)
 			expectedID := ComputationID{}
 			copy(expectedID[:], crypto.Keccak256(buyFragment.OrderID[:], sellFragment.OrderID[:]))
 			Expect(bytes.Equal(computationID[:], expectedID[:]))
@@ -55,7 +55,7 @@ var _ = Describe("Computations", func() {
 		})
 	})
 
-	Context("computations state ", func() {
+	Context("computations state", func() {
 		It("should implement the Stringer interface ", func() {
 			Expect(fmt.Sprintf("%v", ComputationStateNil)).Should(Equal("nil"))
 			Expect(fmt.Sprintf("%v", ComputationStateMatched)).Should(Equal("matched"))

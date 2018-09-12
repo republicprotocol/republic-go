@@ -28,13 +28,14 @@ const (
 
 var _ = Describe("Ome", func() {
 	var (
-		addr     identity.Address
-		err      error
-		epoch    registry.Epoch
-		storer   ComputationStorer
-		book     orderbook.Orderbook
-		smpcer   smpc.Smpcer
-		contract ContractBinder
+		addr           identity.Address
+		err            error
+		epoch          registry.Epoch
+		comStorer      ComputationStorer
+		fragmentStorer OrderFragmentStorer
+		book           orderbook.Orderbook
+		smpcer         smpc.Smpcer
+		contract       ContractBinder
 
 		// Ome components
 		computationsGenerator ComputationGenerator
@@ -51,7 +52,8 @@ var _ = Describe("Ome", func() {
 
 			store, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
-			storer = store.SomerComputationStore()
+			comStorer = store.SomerComputationStore()
+			fragmentStorer = store.SomerOrderFragmentStore()
 
 			computationsGenerator = NewComputationGenerator(addr, store.SomerOrderFragmentStore())
 			rsaKey, err := crypto.RandomRsaKey()
@@ -62,9 +64,9 @@ var _ = Describe("Ome", func() {
 			contract = newOmeBinder()
 
 			Expect(err).ShouldNot(HaveOccurred())
-			matcher = NewMatcher(storer, smpcer)
-			confirmer = NewConfirmer(storer, contract, PollInterval, Depth)
-			settler = NewSettler(storer, smpcer, contract, 0)
+			matcher = NewMatcher(comStorer, smpcer)
+			confirmer = NewConfirmer(comStorer, fragmentStorer, contract, PollInterval, Depth)
+			settler = NewSettler(comStorer, smpcer, contract, 0)
 		})
 
 		AfterEach(func() {
@@ -74,7 +76,7 @@ var _ = Describe("Ome", func() {
 		It("should be able to sync with the order book ", func() {
 			done := make(chan struct{})
 
-			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, comStorer, book, smpcer, epoch)
 			errs := ome.Run(done)
 			go func() {
 				defer GinkgoRecover()
@@ -89,7 +91,7 @@ var _ = Describe("Ome", func() {
 
 		It("should be able to listen for epoch change event", func() {
 			done := make(chan struct{})
-			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, storer, book, smpcer, epoch)
+			ome := NewOme(addr, computationsGenerator, matcher, confirmer, settler, comStorer, book, smpcer, epoch)
 			errs := ome.Run(done)
 
 			go func() {

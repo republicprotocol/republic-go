@@ -29,11 +29,13 @@ type Confirmer interface {
 
 type confirmer struct {
 	computationStore ComputationStorer
+	fragmentStore    OrderFragmentStorer
 
 	contract              ContractBinder
 	orderbookPollInterval time.Duration
 	orderbookBlockDepth   uint
 
+	Computation
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
 	confirmingSellOrders map[order.ID]struct{}
@@ -45,9 +47,10 @@ type confirmer struct {
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
+func NewConfirmer(computationStore ComputationStorer, fragmentStore OrderFragmentStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
 		computationStore: computationStore,
+		fragmentStore:    fragmentStore,
 
 		contract:              contract,
 		orderbookPollInterval: orderbookPollInterval,
@@ -131,6 +134,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				confirmer.confirmingMu.Lock()
 				confirmer.checkOrdersForConfirmationFinality(order.ParityBuy, done, confirmations, errs)
 				confirmer.checkOrdersForConfirmationFinality(order.ParitySell, done, confirmations, errs)
+
 				// Clean up confirmed orders that are old enough to forget about
 				for key, t := range confirmer.confirmed {
 					if time.Since(t) > time.Hour {
@@ -238,7 +242,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	if err != nil {
 		return order.ID{}, err
 	}
-	if status != StatusConfirmed {
+	if status != order.Confirmed {
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {
@@ -251,6 +255,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	if err != nil {
 		return order.ID{}, err
 	}
+
 	return match, nil
 }
 
@@ -270,6 +275,7 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 		com, err = confirmer.computationStore.Computation(comIDDepth1)
 	}
 	if err != nil {
+		// todo :  if err ==  ErrComputationNotFound
 		return com, err
 	}
 

@@ -37,10 +37,11 @@ type computationGenerator struct {
 	broadcastComputations chan (<-chan Computation)
 	broadcastErrs         chan (<-chan error)
 
-	orderFragmentStore OrderFragmentStorer
+	fragmentStore OrderFragmentStorer
+	compStore     ComputationStorer
 }
 
-func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer) ComputationGenerator {
+func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer, compStore ComputationStorer) ComputationGenerator {
 	return &computationGenerator{
 		doneMu: new(sync.Mutex),
 		done:   nil,
@@ -56,12 +57,13 @@ func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFrag
 		broadcastComputations: make(chan (<-chan Computation)),
 		broadcastErrs:         make(chan (<-chan error)),
 
-		orderFragmentStore: orderFragmentStore,
+		fragmentStore: orderFragmentStore,
+		compStore:     compStore,
 	}
 }
 
 func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
-	computations := make(chan Computation)
+	computations := make(chan Computation, 128)
 	errs := make(chan error)
 
 	// Handle all incoming notifications by mapping them to the appropriate
@@ -115,7 +117,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	mat := newComputationMatrix(gen.addr, epoch, gen.orderFragmentStore)
+	mat := newComputationMatrix(gen.addr, epoch, gen.fragmentStore, gen.compStore)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	go func() {
@@ -186,19 +188,21 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 }
 
 type computationMatrix struct {
-	pod                *registry.Pod
-	epoch              registry.Epoch
-	orderFragmentStore OrderFragmentStorer
+	pod           *registry.Pod
+	epoch         registry.Epoch
+	compStore     ComputationStorer
+	fragmentStore OrderFragmentStorer
 
 	sortedComputationsMu     *sync.Mutex
 	sortedComputations       []computationWeight
 	sortedComputationsSignal chan struct{}
 }
 
-func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
+func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer, compStore ComputationStorer) *computationMatrix {
 	mat := &computationMatrix{
-		epoch:              epoch,
-		orderFragmentStore: orderFragmentStore,
+		epoch:         epoch,
+		compStore:     compStore,
+		fragmentStore: orderFragmentStore,
 
 		sortedComputationsMu:     new(sync.Mutex),
 		sortedComputations:       []computationWeight{},
@@ -305,22 +309,22 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	var err error
 
 	if notification.OrderFragment.OrderParity == order.ParityBuy {
-		if err := mat.orderFragmentStore.PutBuyOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutBuyOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
 			log.Printf("[error] (generator) cannot store buy order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
-		oppositeOrderFragmentIter, err = mat.orderFragmentStore.SellOrderFragments(mat.epoch)
+		oppositeOrderFragmentIter, err = mat.fragmentStore.SellOrderFragments(mat.epoch.Hash)
 		if err != nil {
 			log.Printf("[error] (generator) cannot load buy order fragment iterator: %v", err)
 			return
 		}
 		defer oppositeOrderFragmentIter.Release()
 	} else {
-		if err := mat.orderFragmentStore.PutSellOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutSellOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
 			log.Printf("[error] (generator) cannot store sell order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
-		oppositeOrderFragmentIter, err = mat.orderFragmentStore.BuyOrderFragments(mat.epoch)
+		oppositeOrderFragmentIter, err = mat.fragmentStore.BuyOrderFragments(mat.epoch.Hash)
 		if err != nil {
 			log.Printf("[error] (generator) cannot load sell order fragment iterator: %v", err)
 			return
@@ -352,6 +356,14 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 			computation = NewComputation(mat.epoch.Hash, notification.OrderFragment, orderFragment, ComputationStateNil, false)
 		} else {
 			computation = NewComputation(mat.epoch.Hash, orderFragment, notification.OrderFragment, ComputationStateNil, false)
+		}
+
+		if _, err := mat.compStore.Computation(computation.ID); err != nil {
+			continue
+		}
+		if err := mat.compStore.PutComputation(computation); err != nil {
+			log.Printf("[error] (generator) cannot insert computation to the storer: %v", err)
+			continue
 		}
 
 		// Get the priority adjustment based on the distance of our pod from
@@ -389,10 +401,10 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 }
 
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
-	if err := mat.orderFragmentStore.DeleteBuyOrderFragment(mat.epoch, orderID); err != nil {
+	if err := mat.fragmentStore.DeleteBuyOrderFragment(mat.epoch.Hash, orderID); err != nil {
 		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
-	if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
+	if err := mat.fragmentStore.DeleteSellOrderFragment(mat.epoch.Hash, orderID); err != nil {
 		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
 }
