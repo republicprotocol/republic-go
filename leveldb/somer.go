@@ -93,24 +93,6 @@ func (table *SomerComputationTable) PutComputation(computation ome.Computation) 
 	return table.db.Put(table.key(computation.ID[:]), data, nil)
 }
 
-// UpdateComputationState implements the ome.ComputationStorer interface.
-func (table *SomerComputationTable) UpdateComputationState(id ome.ComputationID, state ome.ComputationState) error {
-	data, err := table.db.Get(table.key(id[:]), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			err = ome.ErrComputationNotFound
-		}
-		return err
-	}
-	value := SomerComputationValue{}
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
-	}
-	value.Computation.State = state
-
-	return table.PutComputation(value.Computation)
-}
-
 // DeleteComputation implements the ome.ComputationStorer interface.
 func (table *SomerComputationTable) DeleteComputation(id ome.ComputationID) error {
 	return table.db.Delete(table.key(id[:]), nil)

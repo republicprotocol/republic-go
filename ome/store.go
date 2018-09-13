@@ -22,7 +22,6 @@ var ErrCursorOutOfRange = errors.New("cursor out of range")
 type ComputationStorer interface {
 	PutComputation(computation Computation) error
 	DeleteComputation(id ComputationID) error
-	UpdateComputationState(id ComputationID, state ComputationState) error
 	Computation(id ComputationID) (Computation, error)
 	Computations() (ComputationIterator, error)
 }
