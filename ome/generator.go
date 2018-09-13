@@ -305,7 +305,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	var err error
 
 	if notification.OrderFragment.OrderParity == order.ParityBuy {
-		if err := mat.fragmentStore.PutBuyOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutBuyOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority), order.Open); err != nil {
 			log.Printf("[error] (generator) cannot store buy order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
@@ -316,7 +316,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 		defer oppositeOrderFragmentIter.Release()
 	} else {
-		if err := mat.fragmentStore.PutSellOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutSellOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority), order.Open); err != nil {
 			log.Printf("[error] (generator) cannot store sell order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
@@ -332,13 +332,16 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
-		orderFragment, trader, priority, err := oppositeOrderFragmentIter.Cursor()
+		orderFragment, trader, priority, status, err := oppositeOrderFragmentIter.Cursor()
 		if err != nil {
 			log.Printf("[error] (generator) cannot load cursor: %v", err)
 			continue
 		}
 
 		if !isCompatible(notification, orderFragment, trader, priority) {
+			continue
+		}
+		if status != order.Open {
 			continue
 		}
 

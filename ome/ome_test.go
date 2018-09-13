@@ -64,7 +64,7 @@ var _ = Describe("Ome", func() {
 			contract = newOmeBinder()
 
 			Expect(err).ShouldNot(HaveOccurred())
-			matcher = NewMatcher(comStorer, smpcer)
+			matcher = NewMatcher(comStorer, fragmentStorer, smpcer)
 			confirmer = NewConfirmer(comStorer, fragmentStorer, contract, PollInterval, Depth)
 			settler = NewSettler(comStorer, smpcer, contract, 0)
 		})

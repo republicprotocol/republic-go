@@ -47,15 +47,17 @@ type ComputationIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutBuyOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64) error
+	PutBuyOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64, status order.Status) error
 	DeleteBuyOrderFragment(epochHash [32]byte, id order.ID) error
-	BuyOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, error)
+	BuyOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, order.Status, error)
 	BuyOrderFragments(epochHash [32]byte) (OrderFragmentIterator, error)
+	UpdateBuyOrderFragmentStatus(epochHash [32]byte, id order.ID, status order.Status) error
 
-	PutSellOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64) error
+	PutSellOrderFragment(epochHash [32]byte, orderFragment order.Fragment, trader string, priority uint64, status order.Status) error
 	DeleteSellOrderFragment(epochHash [32]byte, id order.ID) error
-	SellOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, error)
+	SellOrderFragment(epochHash [32]byte, id order.ID) (order.Fragment, string, uint64, order.Status, error)
 	SellOrderFragments(epochHash [32]byte) (OrderFragmentIterator, error)
+	UpdateSellOrderFragmentStatus(epochHash [32]byte, id order.ID, status order.Status) error
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.
@@ -67,10 +69,10 @@ type OrderFragmentIterator interface {
 
 	// Cursor returns the order.Fragment at the current cursor location.
 	// Returns an error if the cursor is out of range.
-	Cursor() (order.Fragment, string, uint64, error)
+	Cursor() (order.Fragment, string, uint64, order.Status, error)
 
 	// Collect all order.Fragments in the iterator into a slice.
-	Collect() ([]order.Fragment, []string, []uint64, error)
+	Collect() ([]order.Fragment, []string, []uint64, []order.Status, error)
 
 	// Release the resources allocated by the iterator.
 	Release()

@@ -3,6 +3,7 @@ package ome
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -35,7 +36,6 @@ type confirmer struct {
 	orderbookPollInterval time.Duration
 	orderbookBlockDepth   uint
 
-	Computation
 	confirmingMu         *sync.Mutex
 	confirmingBuyOrders  map[order.ID]struct{}
 	confirmingSellOrders map[order.ID]struct{}
@@ -85,13 +85,13 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					return
 				}
 
-				// // Check that these orders have not already been confirmed
-				// if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-				// 	continue
-				// }
-				// if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-				// 	continue
-				// }
+				// Check that these orders have not already been confirmed
+				if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+					continue
+				}
+				if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+					continue
+				}
 
 				go func() {
 					// Wait for the confirmation of these orders to pass the depth
@@ -186,6 +186,11 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
+			if err == ErrComputationNotFound {
+				log.Printf("[%v] confirmed with [%v] which I don't have the fragment", ord, ordMatch)
+				continue
+			}
+
 			select {
 			case <-done:
 				return
@@ -198,6 +203,13 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				delete(confirmer.confirmingBuyOrders, ordMatch)
 				delete(confirmer.confirmingSellOrders, ord)
 				continue
+			}
+		}
+		if err := confirmer.updateFragmentStatus(com); err != nil {
+			select {
+			case <-done:
+				return
+			case errs <- err:
 			}
 		}
 		if err := confirmer.computationStore.PutComputation(com); err != nil {
@@ -273,13 +285,20 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 	com, err := confirmer.computationStore.Computation(comIDDepth0)
 	if err != nil {
 		com, err = confirmer.computationStore.Computation(comIDDepth1)
-	}
-	if err != nil {
-		// todo :  if err ==  ErrComputationNotFound
-		return com, err
+		if err != nil {
+			return com, err
+		}
 	}
 
 	com.State = ComputationStateAccepted
 	com.Timestamp = time.Now()
 	return com, nil
+}
+
+func (confirmer *confirmer) updateFragmentStatus(comp Computation) error {
+	if err := confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(comp.Epoch, comp.Buy.OrderID, order.Confirmed); err != nil {
+		return err
+	}
+
+	return confirmer.fragmentStore.UpdateSellOrderFragmentStatus(comp.Epoch, comp.Sell.OrderID, order.Confirmed)
 }

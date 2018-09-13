@@ -245,7 +245,7 @@ func main() {
 			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
-		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
+		matcher := ome.NewMatcher(store.SomerComputationStore(), store.SomerOrderFragmentStore(), smpcer)
 		confirmer := ome.NewConfirmer(store.SomerComputationStore(), store.SomerOrderFragmentStore(), &contractBinder, 5*time.Second, 4)
 		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1e12)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, orderbook, smpcer, epoch)

@@ -15,13 +15,15 @@ import (
 
 var _ = Describe("Matcher", func() {
 
-	var store ComputationStorer
+	var compStore ComputationStorer
+	var fragmentStore OrderFragmentStorer
 	var buyFragment, sellFragment order.Fragment
 
 	BeforeEach(func() {
 		storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
-		store = storer.SomerComputationStore()
+		compStore = storer.SomerComputationStore()
+		fragmentStore = storer.SomerOrderFragmentStore()
 
 		buyFragments, err := testutils.RandomBuyOrderFragments(6, 4)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -38,7 +40,7 @@ var _ = Describe("Matcher", func() {
 	Context("when using an smpc that matches all values", func() {
 		It("should trigger the callback with matched results", func() {
 			smpcer := testutils.NewAlwaysMatchSmpc()
-			matcher := NewMatcher(store, smpcer)
+			matcher := NewMatcher(compStore, fragmentStore, smpcer)
 
 			numTrials := 100
 			numMatches := 0
@@ -57,7 +59,7 @@ var _ = Describe("Matcher", func() {
 	Context("when using an smpc that mismatches all values", func() {
 		It("should never trigger the callback with matched results", func() {
 			smpcer := testutils.NewAlwaysMismatchSmpc()
-			matcher := NewMatcher(store, smpcer)
+			matcher := NewMatcher(compStore, fragmentStore, smpcer)
 
 			numTrials := 100
 			numMatches := 0
@@ -76,7 +78,7 @@ var _ = Describe("Matcher", func() {
 	Context("when using an smpc that randomly matches values", func() {
 		It("should randomly trigger the callback with matched results", func() {
 			smpcer := testutils.NewSmpc()
-			matcher := NewMatcher(store, smpcer)
+			matcher := NewMatcher(compStore, fragmentStore, smpcer)
 
 			numTrials := 1024
 			numMatches := 0
