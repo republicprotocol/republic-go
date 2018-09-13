@@ -26,7 +26,6 @@ import (
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/oracle"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -87,7 +86,7 @@ func main() {
 	defer store.Release()
 	store.Prune()
 
-	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
+	// midpointPriceStorer := leveldb.NewMidpointPriceStorer()
 
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
@@ -131,10 +130,10 @@ func main() {
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter))
 	swarmService.Register(server)
 
-	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
-	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
-	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
-	oracleService.Register(server)
+	// oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
+	// oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
+	// oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
+	// oracleService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Address, config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
