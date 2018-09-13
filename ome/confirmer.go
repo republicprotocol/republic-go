@@ -206,6 +206,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 		}
 		if err := confirmer.updateFragmentStatus(com); err != nil {
 			if err == ErrOrderFragmentNotFound {
+				logger.Debug(fmt.Sprintf("cannot update order fragment status, %v", err))
 				continue
 			}
 			select {
@@ -215,6 +216,8 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 		}
 		if err := confirmer.computationStore.PutComputation(com); err != nil {
+			logger.Debug(fmt.Sprintf("cannot put computation into storer, %v", err))
+
 			select {
 			case <-done:
 				return
