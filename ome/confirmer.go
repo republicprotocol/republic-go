@@ -173,7 +173,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 	for ord := range confirmingOrders {
 		ordMatch, err := confirmer.checkOrderForConfirmationFinality(ord, orderParity)
 		if err != nil {
-			if err == ErrOrderNotConfirmed {
+			if err != ErrOrderNotConfirmed {
 				continue
 			}
 			select {
@@ -186,23 +186,22 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
-			if err == ErrComputationNotFound {
-				log.Printf("[%v] confirmed with [%v] which I don't have the fragment", ord, ordMatch)
-				continue
+			if orderParity == order.ParityBuy {
+				delete(confirmer.confirmingBuyOrders, ord)
+				delete(confirmer.confirmingSellOrders, ordMatch)
+			} else {
+				delete(confirmer.confirmingBuyOrders, ordMatch)
+				delete(confirmer.confirmingSellOrders, ord)
 			}
 
+			if err == ErrComputationNotFound {
+				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
+				continue
+			}
 			select {
 			case <-done:
 				return
 			case errs <- err:
-				if orderParity == order.ParityBuy {
-					delete(confirmer.confirmingBuyOrders, ord)
-					delete(confirmer.confirmingSellOrders, ordMatch)
-					continue
-				}
-				delete(confirmer.confirmingBuyOrders, ordMatch)
-				delete(confirmer.confirmingSellOrders, ord)
-				continue
 			}
 		}
 		if err := confirmer.updateFragmentStatus(com); err != nil {
@@ -220,13 +219,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 		}
 
-		// Check that these orders have not already been output
-		if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-			continue
-		}
-		if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-			continue
-		}
 		select {
 		case <-done:
 			return
