@@ -173,7 +173,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 	for ord := range confirmingOrders {
 		ordMatch, err := confirmer.checkOrderForConfirmationFinality(ord, orderParity)
 		if err != nil {
-			if err != ErrOrderNotConfirmed {
+			if err == ErrOrderNotConfirmed {
 				continue
 			}
 			select {
@@ -205,6 +205,9 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 		}
 		if err := confirmer.updateFragmentStatus(com); err != nil {
+			if err == ErrOrderFragmentNotFound {
+				continue
+			}
 			select {
 			case <-done:
 				return
