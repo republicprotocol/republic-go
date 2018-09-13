@@ -7,32 +7,28 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
+var tokens = []order.Tokens{order.TokensBTCETH,
+	order.TokensETHDGX,
+	order.TokensETHREN,
+	order.TokensETHABC,
+	order.TokensETHPQR,
+	order.TokensETHXYZ,
+}
+
 // RandomOrder will generate a random order.
 func RandomOrder() order.Order {
 	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
-	}[rand.Intn(4)]
+	token := tokens[rand.Intn(4)]
 
-	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
+	ord := order.NewOrder(parity, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, token, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
 // RandomBuyOrder will generate a random buy order.
 func RandomBuyOrder() order.Order {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
-	}[rand.Intn(4)]
+	token := tokens[rand.Intn(4)]
 
-	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
+	ord := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, token, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
@@ -46,15 +42,9 @@ func RandomBuyOrderFragments(n, k int64) ([]order.Fragment, error) {
 
 // RandomSellOrder will generate a random sell order.
 func RandomSellOrder() order.Order {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
-	}[rand.Intn(4)]
+	token := tokens[rand.Intn(4)]
 
-	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
+	ord := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, token, rand.Uint64(), rand.Uint64(), 0, uint64(rand.Int63()))
 	return ord
 }
 
@@ -68,18 +58,12 @@ func RandomSellOrderFragments(n, k int64) ([]order.Fragment, error) {
 
 // RandomOrderMatch will generate a random order and its match.
 func RandomOrderMatch() (order.Order, order.Order) {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
-	}[rand.Intn(4)]
+	token := tokens[rand.Intn(4)]
 
 	price := rand.Uint64()
 	volume := rand.Uint64()
-	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, price, volume, 0, uint64(rand.Int63()))
-	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, tokens, price, volume, 0, uint64(rand.Int63()))
+	buy := order.NewOrder(order.ParityBuy, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, token, price, volume, 0, uint64(rand.Int63()))
+	sell := order.NewOrder(order.ParitySell, order.TypeLimit, time.Now().Add(1*time.Hour), order.SettlementRenEx, token, price, volume, 0, uint64(rand.Int63()))
 	return buy, sell
 }
 
