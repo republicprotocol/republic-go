@@ -341,7 +341,7 @@ func (table *SomerOrderFragmentTable) SellOrderFragments(hash [32]byte) (ome.Ord
 }
 
 func (table *SomerOrderFragmentTable) UpdateSellOrderFragmentStatus(hash [32]byte, id order.ID, status order.Status) error {
-	data, err := table.db.Get(table.buyKey(hash[:], id[:]), nil)
+	data, err := table.db.Get(table.sellKey(hash[:], id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = ome.ErrOrderFragmentNotFound
@@ -359,7 +359,7 @@ func (table *SomerOrderFragmentTable) UpdateSellOrderFragmentStatus(hash [32]byt
 	if err != nil {
 		return err
 	}
-	return table.db.Put(table.buyKey(hash[:], id[:]), data, nil)
+	return table.db.Put(table.sellKey(hash[:], id[:]), data, nil)
 }
 
 // Prune iterates over all order fragments and deletes those that have expired.
