@@ -207,9 +207,6 @@ func (smpc *smpcer) handleMessageJoinResponse(message *MessageJoinResponse) erro
 }
 
 func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
-	// FIXME: Pedersen commitment verification has been disabled. This needs
-	// to be re-enabled.
-	return true
 
 	// Always require that each share has a blinding
 	if len(join.Shares) != len(join.Blindings) {
@@ -239,29 +236,29 @@ func (smpc *smpcer) verifyJoin(networkID NetworkID, join Join) bool {
 	}
 
 	for i := range join.Shares {
+		if join.Blindings[i].Int == nil {
+			continue
+		}
 
 		// Get the relevant commitments for the LHS and RHS of the computation
 		// in the join
 		lhs, ok := joinCommitments.LHS[join.Shares[i].Index]
-		if !ok {
+		if !ok || lhs.Int == nil {
 			// We accept the join if we do not have the JoinCommitments to
 			// check for incorrectness
 			continue
 		}
 		rhs, ok := joinCommitments.RHS[join.Shares[i].Index]
-		if !ok {
+		if !ok || rhs.Int == nil {
 			// We accept the join if we do not have the JoinCommitments to
 			// check for incorrectness
 			continue
 		}
-		if rhs.Int == nil {
-			continue
-		}
-		rhs.Int.ModInverse(rhs.Int, shamir.CommitP)
 
 		// Check the expected commitment against the commitment we actually
 		// received
-		expected := big.NewInt(0).Mul(lhs.Int, rhs.Int)
+		expected := big.NewInt(0).ModInverse(rhs.Int, shamir.CommitP)
+		expected = expected.Mul(lhs.Int, expected)
 		expected.Mod(expected, shamir.CommitP)
 		got := shamir.NewCommitment(join.Shares[i], join.Blindings[i])
 
