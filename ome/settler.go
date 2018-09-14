@@ -104,47 +104,47 @@ func (settler *settler) joinOrderMatch(networkID smpc.NetworkID, com Computation
 
 func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order) {
 	// Submit a challenge if the orders do not match.
-	if buy.Tokens != sell.Tokens ||
-		buy.Volume < sell.MinimumVolume ||
-		sell.Volume < buy.MinimumVolume ||
-		buy.Price < sell.Price {
-		log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
-			buy.ID,
-			buy.Parity,
-			buy.Type,
-			buy.Expiry,
-			buy.Nonce,
-			buy.Settlement,
-			buy.Tokens,
-			buy.Price,
-			buy.Volume,
-			buy.MinimumVolume)
-		log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
-			sell.ID,
-			sell.Parity,
-			sell.Type,
-			sell.Expiry,
-			sell.Nonce,
-			sell.Settlement,
-			sell.Tokens,
-			sell.Price,
-			sell.Volume,
-			sell.MinimumVolume)
-		// if err := settler.contract.SubmitChallengeOrder(buy); err != nil {
-		// 	log.Printf("[error] (settle) cannot submit challenge for buy order = %v: %v", buy.ID, err)
-		// 	return
-		// }
-		// if err := settler.contract.SubmitChallengeOrder(sell); err != nil {
-		// 	log.Printf("[error] (settle) cannot submit challenge for sell order = %v: %v", sell.ID, err)
-		// 	return
-		// }
-		// if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
-		// 	log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
-		// 	return
-		// }
-		log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: invalid match", buy.ID, sell.ID)
-		return
-	}
+	// if buy.Tokens != sell.Tokens ||
+	// 	buy.Volume < sell.MinimumVolume ||
+	// 	sell.Volume < buy.MinimumVolume ||
+	// 	buy.Price < sell.Price {
+	// 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
+	// 		buy.ID,
+	// 		buy.Parity,
+	// 		buy.Type,
+	// 		buy.Expiry,
+	// 		buy.Nonce,
+	// 		buy.Settlement,
+	// 		buy.Tokens,
+	// 		buy.Price,
+	// 		buy.Volume,
+	// 		buy.MinimumVolume)
+	// 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
+	// 		sell.ID,
+	// 		sell.Parity,
+	// 		sell.Type,
+	// 		sell.Expiry,
+	// 		sell.Nonce,
+	// 		sell.Settlement,
+	// 		sell.Tokens,
+	// 		sell.Price,
+	// 		sell.Volume,
+	// 		sell.MinimumVolume)
+	// 	// if err := settler.contract.SubmitChallengeOrder(buy); err != nil {
+	// 	// 	log.Printf("[error] (settle) cannot submit challenge for buy order = %v: %v", buy.ID, err)
+	// 	// 	return
+	// 	// }
+	// 	// if err := settler.contract.SubmitChallengeOrder(sell); err != nil {
+	// 	// 	log.Printf("[error] (settle) cannot submit challenge for sell order = %v: %v", sell.ID, err)
+	// 	// 	return
+	// 	// }
+	// 	// if err := settler.contract.SubmitChallenge(buy.ID, sell.ID); err != nil {
+	// 	// 	log.Printf("[error] (settle) cannot submit challenge buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
+	// 	// 	return
+	// 	// }
+	// 	log.Printf("[error] (settle) cannot execute settlement buy = %v, sell = %v: invalid match", buy.ID, sell.ID)
+	// 	return
+	// }
 
 	// Leave the orders if volume is too low and there is no profit for
 	// submitting such orders. Note: minimum volume is set to 1 ETH.
