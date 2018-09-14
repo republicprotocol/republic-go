@@ -288,6 +288,9 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 }
 
 func (confirmer *confirmer) updateFragmentStatus(comp Computation) error {
+	// TODO: As the fragment storer interface needs the trader and priority,
+	// so we cannot just insert the new fragment. we should fix this to
+	// reduce the time of I/O
 	if err := confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(comp.Epoch, comp.Buy.OrderID, order.Confirmed); err != nil {
 		return err
 	}
