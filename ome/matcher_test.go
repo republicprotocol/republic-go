@@ -46,19 +46,16 @@ var _ = Describe("Matcher", func() {
 			smpcer := testutils.NewAlwaysMatchSmpc()
 			matcher := NewMatcher(compStore, fragmentStore, smpcer)
 
-			numTrials := 100
 			numMatches := 0
-			for i := 0; i < numTrials; i++ {
-				com := NewComputation([32]byte{byte(i)}, buyFragment, sellFragment, ComputationStateNil, true)
-				log.Println(i, com.ID.String())
-				matcher.Resolve(com, func(com Computation) {
-					if com.Match {
-						log.Println(com.ID.String(), "match")
-						numMatches++
-					}
-				})
-			}
-			Expect(numMatches).Should(Equal(numTrials))
+			com := NewComputation([32]byte{byte(0)}, buyFragment, sellFragment, ComputationStateNil, true)
+			matcher.Resolve(com, func(com Computation) {
+				if com.Match {
+					log.Println(com.ID.String(), "match")
+					numMatches++
+				}
+			})
+
+			Expect(numMatches).Should(Equal(1))
 		})
 	})
 
