@@ -17,7 +17,8 @@ var numberOfComputationsToTest = 100
 var _ = Describe("Confirmer", func() {
 	var confirmer Confirmer
 	var contract *omeBinder
-	var storer ComputationStorer
+	var comStorer ComputationStorer
+	var fragmentStorer OrderFragmentStorer
 
 	BeforeEach(func() {
 		var err error
@@ -25,8 +26,9 @@ var _ = Describe("Confirmer", func() {
 		contract = newOmeBinder()
 		db, err := leveldb.NewStore("./data.out", time.Hour, time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
-		storer = db.SomerComputationStore()
-		confirmer = NewConfirmer(storer, contract, pollInterval, depth)
+		comStorer = db.SomerComputationStore()
+		fragmentStorer = db.SomerOrderFragmentStore()
+		confirmer = NewConfirmer(comStorer, fragmentStorer, contract, pollInterval, depth)
 	})
 
 	AfterEach(func() {
@@ -47,7 +49,7 @@ var _ = Describe("Confirmer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			orderIDs[computations[i].Buy.OrderID] = struct{}{}
 			orderIDs[computations[i].Sell.OrderID] = struct{}{}
-			storer.PutComputation(computations[i])
+			comStorer.PutComputation(computations[i])
 		}
 
 		// Open all the orders
@@ -104,7 +106,7 @@ var _ = Describe("Confirmer", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			orderIDs[computations[i].Buy.OrderID] = struct{}{}
 			orderIDs[computations[i].Sell.OrderID] = struct{}{}
-			storer.PutComputation(computations[i])
+			comStorer.PutComputation(computations[i])
 		}
 
 		go func() {
