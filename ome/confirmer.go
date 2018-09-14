@@ -176,12 +176,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			if err == ErrOrderNotConfirmed {
 				continue
 			}
-			select {
-			case <-done:
-				return
-			case errs <- err:
-				continue
-			}
+			writeError(done, errs, err)
 		}
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
@@ -195,33 +190,21 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 
 			if err == ErrComputationNotFound {
+				_ = confirmer.updateFragmentStatus(com) // ignore the error
 				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
 				continue
 			}
-			select {
-			case <-done:
-				return
-			case errs <- err:
-			}
+			writeError(done, errs, err)
 		}
 		if err := confirmer.updateFragmentStatus(com); err != nil {
 			if err != ErrOrderFragmentNotFound {
-				select {
-				case <-done:
-					return
-				case errs <- err:
-				}
+				writeError(done, errs, err)
+				logger.Debug(fmt.Sprintf("cannot update order fragment status, %v", err))
 			}
-			logger.Debug(fmt.Sprintf("cannot update order fragment status, %v", err))
 		}
 		if err := confirmer.computationStore.PutComputation(com); err != nil {
 			logger.Debug(fmt.Sprintf("cannot put computation into storer, %v", err))
-
-			select {
-			case <-done:
-				return
-			case errs <- err:
-			}
+			writeError(done, errs, err)
 		}
 
 		select {
@@ -298,4 +281,12 @@ func (confirmer *confirmer) updateFragmentStatus(comp Computation) error {
 	}
 
 	return confirmer.fragmentStore.UpdateSellOrderFragmentStatus(comp.Epoch, comp.Sell.OrderID, order.Confirmed)
+}
+
+func writeError(done <-chan struct{}, errs chan<- error, err error) {
+	select {
+	case <-done:
+		return
+	case errs <- err:
+	}
 }

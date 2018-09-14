@@ -395,14 +395,14 @@ func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
 	}
 }
 
-// isCompatible checks if the notification's order is compatible with another 
+// isCompatible checks if the notification's order is compatible with another
 // order based on the following conditions:
-// 1. If the trader is the same as the notification's trader, the 2 orders are 
+// 1. If the trader is the same as the notification's trader, the 2 orders are
 //    incompatible.
 // 2. Orders from the same epoch must not be matched twice (i.e. if both orders
 //    are at depth 1, they are incompatible).
 // 3. If both orders are Fill-or-Kill (FOK), they are incompatible.
-// 4. If one of the orders is a FOK, then both orders are incompatible if the 
+// 4. If one of the orders is a FOK, then both orders are incompatible if the
 //    other order is of a higher priority.
 func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment order.Fragment, trader string, priority uint64) bool {
 
@@ -411,7 +411,7 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 		return false
 	}
 
-	// Order fragments with depth 1 should have been found compatible at epoch 
+	// Order fragments with depth 1 should have been found compatible at epoch
 	// depth of 0.
 	if orderFragment.EpochDepth == 1 && notification.OrderFragment.EpochDepth == orderFragment.EpochDepth {
 		return false
@@ -438,7 +438,7 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 	default:
 		switch notification.OrderFragment.OrderType {
 		case order.TypeMidpointFOK, order.TypeLimitFOK:
-			// Does notification.OrderFragment, which is an FOK order, have a 
+			// Does notification.OrderFragment, which is an FOK order, have a
 			// lower priority than the other order ?
 			if priority > uint64(notification.Priority) {
 				return false
