@@ -190,12 +190,24 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			}
 
 			if err == ErrComputationNotFound {
-				_ = confirmer.updateFragmentStatus(com) // ignore the error
 				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
+				err = confirmer.updateFragmentStatus(com)
+				if err != nil {
+					log.Printf("[error] (confirm) cannot update status of computation, buy=%v, sell=%v, %v", com.Buy.OrderID, com.Sell.OrderID)
+				}
 				continue
 			}
 			writeError(done, errs, err)
 		}
+
+		// Check that these orders have not already been confirmed
+		if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+			continue
+		}
+		if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+			continue
+		}
+
 		if err := confirmer.updateFragmentStatus(com); err != nil {
 			if err != ErrOrderFragmentNotFound {
 				writeError(done, errs, err)
