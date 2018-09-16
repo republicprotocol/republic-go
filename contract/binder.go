@@ -1113,7 +1113,8 @@ func (binder *Binder) SubmitChallengeOrder(ord order.Order) error {
 }
 
 func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction, error) {
-	return binder.darknodeSlasher.SubmitChallengeOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
+	// return binder.darknodeSlasher.SubmitChallengeOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
+	return nil, nil
 }
 
 // SubmitChallenge will submit a challenge and, if successful, slash the bond
