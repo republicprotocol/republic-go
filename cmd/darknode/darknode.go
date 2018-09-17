@@ -119,7 +119,7 @@ func main() {
 	}
 
 	// New gRPC components
-	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 50), 4, 10)
+	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 100), 8, 20)
 	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 100), 8, 20)
 	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
