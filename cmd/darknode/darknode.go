@@ -119,8 +119,8 @@ func main() {
 	}
 
 	// New gRPC components
-	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
-	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 50), 4, 10)
+	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 100), 8, 20)
 	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
