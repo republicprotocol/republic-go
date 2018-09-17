@@ -181,23 +181,24 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
-			if orderParity == order.ParityBuy {
-				delete(confirmer.confirmingBuyOrders, ord)
-				delete(confirmer.confirmingSellOrders, ordMatch)
-				confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
-				confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
-			} else {
-				delete(confirmer.confirmingBuyOrders, ordMatch)
-				delete(confirmer.confirmingSellOrders, ord)
-				confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
-				confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
-			}
-
 			if err == ErrComputationNotFound {
+				if orderParity == order.ParityBuy {
+					delete(confirmer.confirmingBuyOrders, ord)
+					delete(confirmer.confirmingSellOrders, ordMatch)
+					confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
+					confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
+				} else {
+					delete(confirmer.confirmingBuyOrders, ordMatch)
+					delete(confirmer.confirmingSellOrders, ord)
+					confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
+					confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
+				}
+
 				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
 				continue
 			}
 			writeError(done, errs, err)
+			continue
 		}
 
 		// Check that these orders have not already been confirmed
