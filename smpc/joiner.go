@@ -207,15 +207,6 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 		return ErrJoinLengthExceedsMax
 	}
 
-	// Verify that all shares in the join have unique indices.
-	seenIndices := map[uint64]struct{}{}
-	for _, share := range join.Shares {
-		if _, ok := seenIndices[share.Index]; ok {
-			return ErrUnverifiedJoin
-		}
-		seenIndices[share.Index] = struct{}{}
-	}
-
 	maybeCallback := Callback(nil)
 	maybeValues := [MaxJoinLength]uint64{}
 	maybeValuesLen := 0
@@ -245,6 +236,12 @@ func (joiner *Joiner) insertJoin(join Join, callback Callback, overrideCallback 
 			return ErrJoinLengthUnequal
 		}
 		if !joinSet.ValuesOk {
+			// Verify that all shares in the join have unique indices.
+			for _, share := range join.Shares {
+				if share.Index != uint64(join.Index) {
+					return ErrUnverifiedJoin
+				}
+			}
 			joinSet.Set[join.Index] = join
 		}
 		if overrideCallback {
