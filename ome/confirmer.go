@@ -184,17 +184,17 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			if orderParity == order.ParityBuy {
 				delete(confirmer.confirmingBuyOrders, ord)
 				delete(confirmer.confirmingSellOrders, ordMatch)
+				confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
+				confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
 			} else {
 				delete(confirmer.confirmingBuyOrders, ordMatch)
 				delete(confirmer.confirmingSellOrders, ord)
+				confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
+				confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
 			}
 
 			if err == ErrComputationNotFound {
 				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
-				err = confirmer.updateFragmentStatus(com)
-				if err != nil {
-					log.Printf("[error] (confirm) cannot update status of computation, buy=%v, sell=%v", com.Buy.OrderID, com.Sell.OrderID)
-				}
 				continue
 			}
 			writeError(done, errs, err)
@@ -291,11 +291,13 @@ func (confirmer *confirmer) updateFragmentStatus(comp Computation) error {
 	// TODO: As the fragment storer interface needs the trader and priority,
 	// so we cannot just insert the new fragment. we should fix this to
 	// reduce the time of I/O
-	if err := confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(comp.Epoch, comp.Buy.OrderID, order.Confirmed); err != nil {
-		return err
-	}
+	buyErr := confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(comp.Epoch, comp.Buy.OrderID, order.Confirmed)
+	sellErr := confirmer.fragmentStore.UpdateSellOrderFragmentStatus(comp.Epoch, comp.Sell.OrderID, order.Confirmed)
 
-	return confirmer.fragmentStore.UpdateSellOrderFragmentStatus(comp.Epoch, comp.Sell.OrderID, order.Confirmed)
+	if buyErr != nil {
+		return buyErr
+	}
+	return sellErr
 }
 
 func writeError(done <-chan struct{}, errs chan<- error, err error) {
