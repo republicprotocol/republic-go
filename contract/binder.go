@@ -108,6 +108,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
+	darknodeSlasher, err := bindings.NewDarknodeSlasher(common.HexToAddress(conn.Config.DarknodeSlasherAddress), bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to DarknodeSlasher: %v", err))
+		return Binder{}, err
+	}
+
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
@@ -117,6 +123,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 		republicToken:    republicToken,
 		darknodeRegistry: darknodeRegistry,
+		darknodeSlasher:  darknodeSlasher,
 		orderbook:        orderbook,
 
 		settlementRegistry: settlementRegistry,
@@ -1182,17 +1189,6 @@ func (binder *Binder) SubmitChallengeOrder(ord order.Order) error {
 }
 
 func (binder *Binder) submitChallengeOrder(ord order.Order) (*types.Transaction, error) {
-	log.Printf("[info] (slash) ord = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
-		ord.ID,
-		ord.Parity,
-		ord.Type,
-		ord.Expiry,
-		ord.Nonce,
-		ord.Settlement,
-		ord.Tokens,
-		ord.Price,
-		ord.Volume,
-		ord.MinimumVolume)
 	return binder.darknodeSlasher.SubmitChallengeOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), uint64(ord.Tokens), big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
 }
 
