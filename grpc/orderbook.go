@@ -22,6 +22,13 @@ var ErrOpenOrderRequestIsNil = errors.New("open order request is nil")
 // nil fields.
 var ErrOrderFragmentIsNil = errors.New("order fragment is nil")
 
+// ErrEncryptedCoExpShareIsNil is returned when the encrypted CoExp is nil.
+var ErrEncryptedCoExpShareIsNil = errors.New("encrypted coexp is nil")
+
+// ErrEncryptedOrderFragmentIsNil is returned when the encrypted order fragmetn
+// is nil.
+var ErrEncryptedOrderFragmentIsNil = errors.New("encrypted order fragment is nil")
+
 type orderbookClient struct {
 }
 
@@ -87,7 +94,11 @@ func (service *OrderbookService) OpenOrder(ctx context.Context, request *OpenOrd
 		return nil, ErrOrderFragmentIsNil
 	}
 
-	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, unmarshalEncryptedOrderFragment(request.OrderFragment))
+	fragment, err := unmarshalEncryptedOrderFragment(request.OrderFragment)
+	if err != nil {
+		return nil, err
+	}
+	return &OpenOrderResponse{}, service.server.OpenOrder(ctx, fragment)
 }
 
 func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *EncryptedOrderFragment {
@@ -111,7 +122,24 @@ func marshalEncryptedOrderFragment(orderFragmentIn order.EncryptedFragment) *Enc
 	}
 }
 
-func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) order.EncryptedFragment {
+func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) (order.EncryptedFragment, error) {
+	if orderFragmentIn == nil {
+		return order.EncryptedFragment{}, ErrEncryptedOrderFragmentIsNil
+	}
+
+	price, err := unmarshalEncryptedCoExpShare(orderFragmentIn.Price)
+	if err != nil {
+		return order.EncryptedFragment{}, err
+	}
+	volume, err := unmarshalEncryptedCoExpShare(orderFragmentIn.Volume)
+	if err != nil {
+		return order.EncryptedFragment{}, err
+	}
+	minVolume, err := unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume)
+	if err != nil {
+		return order.EncryptedFragment{}, err
+	}
+
 	orderFragment := order.EncryptedFragment{
 		OrderType:       order.Type(orderFragmentIn.OrderType),
 		OrderParity:     order.Parity(orderFragmentIn.OrderParity),
@@ -120,9 +148,9 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 
 		EpochDepth:    order.FragmentEpochDepth(orderFragmentIn.EpochDepth),
 		Tokens:        orderFragmentIn.Tokens,
-		Price:         unmarshalEncryptedCoExpShare(orderFragmentIn.Price),
-		Volume:        unmarshalEncryptedCoExpShare(orderFragmentIn.Volume),
-		MinimumVolume: unmarshalEncryptedCoExpShare(orderFragmentIn.MinimumVolume),
+		Price:         price,
+		Volume:        volume,
+		MinimumVolume: minVolume,
 		Nonce:         orderFragmentIn.Nonce,
 
 		Blinding:    orderFragmentIn.Blinding,
@@ -130,7 +158,8 @@ func unmarshalEncryptedOrderFragment(orderFragmentIn *EncryptedOrderFragment) or
 	}
 	copy(orderFragment.OrderID[:], orderFragmentIn.OrderId)
 	copy(orderFragment.ID[:], orderFragmentIn.Id)
-	return orderFragment
+
+	return orderFragment, nil
 }
 
 func marshalEncryptedCoExpShare(value order.EncryptedCoExpShare) *EncryptedCoExpShare {
@@ -140,11 +169,14 @@ func marshalEncryptedCoExpShare(value order.EncryptedCoExpShare) *EncryptedCoExp
 	}
 }
 
-func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) order.EncryptedCoExpShare {
+func unmarshalEncryptedCoExpShare(value *EncryptedCoExpShare) (order.EncryptedCoExpShare, error) {
+	if value == nil {
+		return order.EncryptedCoExpShare{}, ErrEncryptedCoExpShareIsNil
+	}
 	return order.EncryptedCoExpShare{
 		Co:  value.Co,
 		Exp: value.Exp,
-	}
+	}, nil
 }
 
 func marshalCommitments(values order.FragmentCommitments) map[uint64]*OrderFragmentCommitment {
@@ -165,6 +197,9 @@ func marshalCommitments(values order.FragmentCommitments) map[uint64]*OrderFragm
 func unmarshalCommitments(values map[uint64]*OrderFragmentCommitment) order.FragmentCommitments {
 	commitments := order.FragmentCommitments{}
 	for i, value := range values {
+		if value == nil {
+			continue
+		}
 		commitments[i] = order.FragmentCommitment{
 			PriceCo:          shamir.Commitment{Int: big.NewInt(0).SetBytes(value.PriceCo)},
 			PriceExp:         shamir.Commitment{Int: big.NewInt(0).SetBytes(value.PriceExp)},

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
+	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/shamir"
 	"github.com/republicprotocol/republic-go/smpc"
 )
@@ -72,6 +73,7 @@ type Matcher interface {
 
 type matcher struct {
 	computationStore ComputationStorer
+	fragmentStore    OrderFragmentStorer
 	smpcer           smpc.Smpcer
 }
 
@@ -79,9 +81,10 @@ type matcher struct {
 // each component in a pipeline. If a mismatch is encountered at any stage of
 // the pipeline, the Computation is short circuited and the MatchCallback will
 // be called immediately.
-func NewMatcher(computationStore ComputationStorer, smpcer smpc.Smpcer) Matcher {
+func NewMatcher(computationStore ComputationStorer, fragmentStore OrderFragmentStorer, smpcer smpc.Smpcer) Matcher {
 	return &matcher{
 		computationStore: computationStore,
+		fragmentStore:    fragmentStore,
 		smpcer:           smpcer,
 	}
 }
@@ -132,6 +135,10 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: unexpected number of values: %v", stage, len(values)))
 		return
 	}
+	if !matcher.checkFragmentStatus(com) {
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("stop resolving buy=%v, sell=%v as at lease one of them gets confirmed", com.Buy.OrderID, com.Sell.OrderID))
+		return
+	}
 
 	switch stage {
 	case ResolveStagePriceExp, ResolveStageBuyVolumeExp, ResolveStageSellVolumeExp:
@@ -178,6 +185,20 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	// Trigger the callback with a mismatch
 	log.Printf("[debug] (%v) ✗ buy = %v, sell = %v", stage, com.Buy.OrderID, com.Sell.OrderID)
 	callback(com)
+}
+
+func (matcher *matcher) checkFragmentStatus(com Computation) bool {
+	_, _, _, buyStatus, _ := matcher.fragmentStore.BuyOrderFragment(com.Epoch, com.Buy.OrderID)
+	if buyStatus != order.Open {
+		return false
+	}
+
+	_, _, _, sellStatus, _ := matcher.fragmentStore.SellOrderFragment(com.Epoch, com.Sell.OrderID)
+	if sellStatus != order.Open {
+		return false
+	}
+
+	return true
 }
 
 func buildJoin(com Computation, stage ResolveStage) (smpc.Join, smpc.JoinCommitments, error) {

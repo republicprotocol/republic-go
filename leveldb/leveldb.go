@@ -8,6 +8,7 @@ import (
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/swarm"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 // Constants for use in the OrderbookOrderTable. Keys in the
@@ -104,7 +105,12 @@ type Store struct {
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
 func NewStore(dir string, expiry time.Duration, multiAddressStorerExpiry time.Duration) (*Store, error) {
-	db, err := leveldb.OpenFile(path.Join(dir, "db"), nil)
+	option := opt.Options{
+		BlockCacheCapacity:     128 * opt.MiB,
+		OpenFilesCacheCapacity: 1000,
+	}
+	db, err := leveldb.OpenFile(path.Join(dir, "db"), &option)
+
 	if err != nil {
 		return nil, err
 	}

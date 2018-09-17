@@ -2,7 +2,6 @@ package smpc_test
 
 import (
 	"bytes"
-	"log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,6 +18,21 @@ var (
 
 var _ = Describe("Messages", func() {
 
+	Context("when checking if message is nil", func() {
+		It("should catch all situations where message is nil or invalid", func() {
+
+			var msg Message
+			Expect(msg.IsNil()).Should(BeTrue())
+
+			msg.MessageType = MessageType(0)
+			Expect(msg.IsNil()).Should(BeTrue())
+
+			nilPointer := new(Message)
+			nilPointer = nil
+			Expect(nilPointer.IsNil()).Should(BeTrue())
+		})
+	})
+
 	Context("when marshaling and unmarshaling message of type MessageTypeJoin", func() {
 		var messageJoins []MessageJoin
 		var messages []Message
@@ -32,6 +46,10 @@ var _ = Describe("Messages", func() {
 					MessageJoin:         &messageJoins[i],
 					MessageJoinResponse: nil,
 				}
+			}
+
+			for _, message := range messages {
+				Expect(message.IsNil()).Should(BeFalse())
 			}
 		})
 
@@ -58,9 +76,12 @@ var _ = Describe("Messages", func() {
 			for i := range messages {
 				messages[i].MessageType = MessageType(3)
 				_, err := messages[i].MarshalBinary()
-				log.Println(err)
 				Expect(err).Should(HaveOccurred())
 			}
+		})
+
+		It("should error when trying marshaling malformed data", func() {
+
 		})
 
 		It("should implements the stream.Message interface", func() {
@@ -76,13 +97,17 @@ var _ = Describe("Messages", func() {
 
 		BeforeEach(func() {
 			messageJoinResponses = generateMessageJoinResponse(n, k)
-			messages := make([]Message, len(messageJoinResponses))
+			messages = make([]Message, len(messageJoinResponses))
 			for i := range messages {
 				messages[i] = Message{
 					MessageType:         MessageTypeJoinResponse,
 					MessageJoin:         nil,
 					MessageJoinResponse: &messageJoinResponses[i],
 				}
+			}
+
+			for _, message := range messages {
+				Expect(message.IsNil()).Should(BeFalse())
 			}
 		})
 
@@ -107,9 +132,9 @@ var _ = Describe("Messages", func() {
 
 		It("should error if the messageType is wrong", func() {
 			for i := range messages {
+				// Catch invalid message type
 				messages[i].MessageType = MessageType(3)
 				_, err := messages[i].MarshalBinary()
-				log.Println(err)
 				Expect(err).Should(HaveOccurred())
 			}
 		})

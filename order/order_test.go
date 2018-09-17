@@ -104,10 +104,10 @@ var _ = Describe("Orders", func() {
 			Expect(TokenBTC.String()).Should(Equal("BTC"))
 			Expect(TokenETH.String()).Should(Equal("ETH"))
 			Expect(TokenDGX.String()).Should(Equal("DGX"))
-			Expect(TokenTUSD.String()).Should(Equal("TUSD"))
+			Expect(TokenABC.String()).Should(Equal("ABC"))
 			Expect(TokenREN.String()).Should(Equal("REN"))
-			Expect(TokenZRX.String()).Should(Equal("ZRX"))
-			Expect(TokenOMG.String()).Should(Equal("OMG"))
+			Expect(TokenPQR.String()).Should(Equal("PQR"))
+			Expect(TokenXYZ.String()).Should(Equal("XYZ"))
 
 			Expect(Token(100).String()).Should(Equal("unexpected token"))
 		})
@@ -115,10 +115,10 @@ var _ = Describe("Orders", func() {
 		It("should return token pair as a string", func() {
 			Expect(TokensBTCETH.String()).Should(Equal("BTC-ETH"))
 			Expect(TokensETHDGX.String()).Should(Equal("ETH-DGX"))
-			Expect(TokensETHTUSD.String()).Should(Equal("ETH-TUSD"))
+			Expect(TokensETHABC.String()).Should(Equal("ETH-ABC"))
 			Expect(TokensETHREN.String()).Should(Equal("ETH-REN"))
-			Expect(TokensETHZRX.String()).Should(Equal("ETH-ZRX"))
-			Expect(TokensETHOMG.String()).Should(Equal("ETH-OMG"))
+			Expect(TokensETHPQR.String()).Should(Equal("ETH-PQR"))
+			Expect(TokensETHXYZ.String()).Should(Equal("ETH-XYZ"))
 
 			Expect(Tokens(100).String()).Should(Equal("unexpected tokens"))
 		})
@@ -133,14 +133,14 @@ var _ = Describe("Orders", func() {
 			Expect(TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
 			Expect(TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHTUSD.PriorityToken()).Should(Equal(TokenTUSD))
-			Expect(TokensETHTUSD.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHABC.PriorityToken()).Should(Equal(TokenABC))
+			Expect(TokensETHABC.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHZRX.PriorityToken()).Should(Equal(TokenZRX))
-			Expect(TokensETHZRX.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHPQR.PriorityToken()).Should(Equal(TokenPQR))
+			Expect(TokensETHPQR.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHOMG.PriorityToken()).Should(Equal(TokenOMG))
-			Expect(TokensETHOMG.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHXYZ.PriorityToken()).Should(Equal(TokenXYZ))
+			Expect(TokensETHXYZ.NonPriorityToken()).Should(Equal(TokenETH))
 		})
 	})
 
@@ -182,11 +182,11 @@ var _ = Describe("Orders", func() {
 			}
 
 			expected := []CoExp{
-				{0, 26},
-				{1000, 26}, {1200, 26}, {200, 27},
-				{520, 27}, {700, 27}, {1760, 27}, {200, 28},
-				{224, 29}, {873, 29}, {1975, 29}, {200, 30},
-				{487, 31}, {477, 35}, {256, 36},
+				{Co: 0, Exp: 26},
+				{Co: 1000, Exp: 26}, {Co: 1200, Exp: 26}, {Co: 200, Exp: 27},
+				{Co: 520, Exp: 27}, {Co: 700, Exp: 27}, {Co: 1760, Exp: 27}, {Co: 200, Exp: 28},
+				{Co: 224, Exp: 29}, {Co: 873, Exp: 29}, {Co: 1975, Exp: 29}, {Co: 200, Exp: 30},
+				{Co: 487, Exp: 31}, {Co: 477, Exp: 35}, {Co: 256, Exp: 36},
 			}
 
 			for i := range testData {

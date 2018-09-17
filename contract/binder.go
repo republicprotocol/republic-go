@@ -108,6 +108,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
+	darknodeSlasher, err := bindings.NewDarknodeSlasher(common.HexToAddress(conn.Config.DarknodeSlasherAddress), bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to DarknodeSlasher: %v", err))
+		return Binder{}, err
+	}
+
 	return Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
@@ -117,6 +123,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 		republicToken:    republicToken,
 		darknodeRegistry: darknodeRegistry,
+		darknodeSlasher:  darknodeSlasher,
 		orderbook:        orderbook,
 
 		settlementRegistry: settlementRegistry,

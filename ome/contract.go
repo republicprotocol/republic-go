@@ -6,12 +6,7 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-const StatusUndefined = 0
-const StatusOpen = 1
-const StatusConfirmed = 2
-const StatusCanceled = 3
-
-// ErrOrderNotFound is return when attempting to load an order that cannot be
+// ErrOrderNotFound is returned when attempting to load an order that cannot be
 // found.
 var ErrOrderNotFound = errors.New("order not found")
 

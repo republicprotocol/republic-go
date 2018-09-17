@@ -3,6 +3,7 @@ package ome
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ type Confirmer interface {
 
 type confirmer struct {
 	computationStore ComputationStorer
+	fragmentStore    OrderFragmentStorer
 
 	contract              ContractBinder
 	orderbookPollInterval time.Duration
@@ -45,9 +47,10 @@ type confirmer struct {
 // and checks for consensus on confirmations by waiting until a submitted
 // Computation has been confirmed has the confirmation has passed the block
 // depth limit.
-func NewConfirmer(computationStore ComputationStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
+func NewConfirmer(computationStore ComputationStorer, fragmentStore OrderFragmentStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
 		computationStore: computationStore,
+		fragmentStore:    fragmentStore,
 
 		contract:              contract,
 		orderbookPollInterval: orderbookPollInterval,
@@ -82,13 +85,13 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					return
 				}
 
-				// // Check that these orders have not already been confirmed
-				// if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-				// 	continue
-				// }
-				// if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-				// 	continue
-				// }
+				// Check that these orders have not already been confirmed
+				if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
+					continue
+				}
+				if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
+					continue
+				}
 
 				go func() {
 					// Wait for the confirmation of these orders to pass the depth
@@ -131,6 +134,7 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				confirmer.confirmingMu.Lock()
 				confirmer.checkOrdersForConfirmationFinality(order.ParityBuy, done, confirmations, errs)
 				confirmer.checkOrdersForConfirmationFinality(order.ParitySell, done, confirmations, errs)
+
 				// Clean up confirmed orders that are old enough to forget about
 				for key, t := range confirmer.confirmed {
 					if time.Since(t) > time.Hour {
@@ -172,45 +176,49 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 			if err == ErrOrderNotConfirmed {
 				continue
 			}
-			select {
-			case <-done:
-				return
-			case errs <- err:
-				continue
-			}
+			writeError(done, errs, err)
 		}
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
-			select {
-			case <-done:
-				return
-			case errs <- err:
-				if orderParity == order.ParityBuy {
-					delete(confirmer.confirmingBuyOrders, ord)
-					delete(confirmer.confirmingSellOrders, ordMatch)
-					continue
-				}
+			if orderParity == order.ParityBuy {
+				delete(confirmer.confirmingBuyOrders, ord)
+				delete(confirmer.confirmingSellOrders, ordMatch)
+			} else {
 				delete(confirmer.confirmingBuyOrders, ordMatch)
 				delete(confirmer.confirmingSellOrders, ord)
+			}
+
+			if err == ErrComputationNotFound {
+				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
+				err = confirmer.updateFragmentStatus(com)
+				if err != nil {
+					log.Printf("[error] (confirm) cannot update status of computation, buy=%v, sell=%v", com.Buy.OrderID, com.Sell.OrderID)
+				}
 				continue
 			}
-		}
-		if err := confirmer.computationStore.PutComputation(com); err != nil {
-			select {
-			case <-done:
-				return
-			case errs <- err:
-			}
+			writeError(done, errs, err)
 		}
 
-		// Check that these orders have not already been output
+		// Check that these orders have not already been confirmed
 		if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
 			continue
 		}
 		if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
 			continue
 		}
+
+		if err := confirmer.updateFragmentStatus(com); err != nil {
+			if err != ErrOrderFragmentNotFound {
+				writeError(done, errs, err)
+				logger.Debug(fmt.Sprintf("cannot update order fragment status, %v", err))
+			}
+		}
+		if err := confirmer.computationStore.PutComputation(com); err != nil {
+			logger.Debug(fmt.Sprintf("cannot put computation into storer, %v", err))
+			writeError(done, errs, err)
+		}
+
 		select {
 		case <-done:
 			return
@@ -238,7 +246,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	if err != nil {
 		return order.ID{}, err
 	}
-	if status != StatusConfirmed {
+	if status != order.Confirmed {
 		if orderParity == order.ParityBuy {
 			delete(confirmer.confirmingBuyOrders, ord)
 		} else {
@@ -251,6 +259,7 @@ func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orde
 	if err != nil {
 		return order.ID{}, err
 	}
+
 	return match, nil
 }
 
@@ -268,12 +277,31 @@ func (confirmer *confirmer) computationFromOrders(orderParity order.Parity, ord,
 	com, err := confirmer.computationStore.Computation(comIDDepth0)
 	if err != nil {
 		com, err = confirmer.computationStore.Computation(comIDDepth1)
-	}
-	if err != nil {
-		return com, err
+		if err != nil {
+			return com, err
+		}
 	}
 
 	com.State = ComputationStateAccepted
 	com.Timestamp = time.Now()
 	return com, nil
+}
+
+func (confirmer *confirmer) updateFragmentStatus(comp Computation) error {
+	// TODO: As the fragment storer interface needs the trader and priority,
+	// so we cannot just insert the new fragment. we should fix this to
+	// reduce the time of I/O
+	if err := confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(comp.Epoch, comp.Buy.OrderID, order.Confirmed); err != nil {
+		return err
+	}
+
+	return confirmer.fragmentStore.UpdateSellOrderFragmentStatus(comp.Epoch, comp.Sell.OrderID, order.Confirmed)
+}
+
+func writeError(done <-chan struct{}, errs chan<- error, err error) {
+	select {
+	case <-done:
+		return
+	case errs <- err:
+	}
 }
