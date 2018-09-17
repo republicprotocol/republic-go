@@ -193,7 +193,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
 				err = confirmer.updateFragmentStatus(com)
 				if err != nil {
-					log.Printf("[error] (confirm) cannot update status of computation, buy=%v, sell=%v, %v", com.Buy.OrderID, com.Sell.OrderID)
+					log.Printf("[error] (confirm) cannot update status of computation, buy=%v, sell=%v", com.Buy.OrderID, com.Sell.OrderID)
 				}
 				continue
 			}
