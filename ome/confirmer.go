@@ -194,7 +194,7 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 					confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
 				}
 
-				log.Printf("[info] (confirm) order=%v confirmed with order=%v by some one else", ord, ordMatch)
+				log.Printf("[info] (confirm) order=%v confirmed with order=%v by someone else", ord, ordMatch)
 				continue
 			}
 			writeError(done, errs, err)

@@ -136,7 +136,7 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 		return
 	}
 	if !matcher.checkFragmentStatus(com) {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("stop resolving buy=%v, sell=%v as at lease one of them gets confirmed", com.Buy.OrderID, com.Sell.OrderID))
+		logger.Compute(logger.LevelDebug, fmt.Sprintf("stop resolving buy=%v, sell=%v : atleast one of the orders has been confirmed", com.Buy.OrderID, com.Sell.OrderID))
 		return
 	}
 
