@@ -598,15 +598,18 @@ func (binder *Binder) darknodes() (identity.Addresses, error) {
 	numDarknodes := numDarknodesBig.Int64()
 	darknodes := make(identity.Addresses, 0, numDarknodes)
 
-	// Get the first 20 pods worth of darknodes
 	nilValue := common.HexToAddress("0x0000000000000000000000000000000000000000")
-	values, err := binder.darknodeRegistry.GetDarknodes(binder.callOpts, nilValue, big.NewInt(480))
-
-	// Loop until all darknode have been loaded
+	pointer := nilValue
 	for {
+		values, err := binder.darknodeRegistry.GetDarknodes(binder.callOpts, pointer, big.NewInt(24))
 		if err != nil {
 			return nil, err
 		}
+		// If it's not the first round, ignore the first value in the array.
+		if pointer.Hex() != nilValue.Hex() {
+			values = values[1:]
+		}
+
 		for _, value := range values {
 			if bytes.Equal(value.Bytes(), nilValue.Bytes()) {
 				// We are finished when a nil address is returned
@@ -614,13 +617,7 @@ func (binder *Binder) darknodes() (identity.Addresses, error) {
 			}
 			darknodes = append(darknodes, identity.ID(value.Bytes()).Address())
 		}
-		lastValue := values[len(values)-1]
-		values, err = binder.darknodeRegistry.GetDarknodes(binder.callOpts, lastValue, big.NewInt(480))
-		if err != nil {
-			return nil, err
-		}
-		// Skip the first value returned so that we do not duplicate values
-		values = values[1:]
+		pointer = values[len(values)-1]
 	}
 }
 
@@ -632,15 +629,18 @@ func (binder *Binder) previousDarknodes() (identity.Addresses, error) {
 	numDarknodes := numDarknodesBig.Int64()
 	darknodes := make(identity.Addresses, 0, numDarknodes)
 
-	// Get the first 20 pods worth of darknodes
 	nilValue := common.HexToAddress("0x0000000000000000000000000000000000000000")
-	values, err := binder.darknodeRegistry.GetPreviousDarknodes(binder.callOpts, nilValue, big.NewInt(480))
-
-	// Loop until all darknode have been loaded
+	pointer := nilValue
 	for {
+		values, err := binder.darknodeRegistry.GetPreviousDarknodes(binder.callOpts, pointer, big.NewInt(24))
 		if err != nil {
 			return nil, err
 		}
+		// If it's not the first round, ignore the first value in the array.
+		if pointer.Hex() != nilValue.Hex() {
+			values = values[1:]
+		}
+
 		for _, value := range values {
 			if bytes.Equal(value.Bytes(), nilValue.Bytes()) {
 				// We are finished when a nil address is returned
@@ -648,13 +648,7 @@ func (binder *Binder) previousDarknodes() (identity.Addresses, error) {
 			}
 			darknodes = append(darknodes, identity.ID(value.Bytes()).Address())
 		}
-		lastValue := values[len(values)-1]
-		values, err = binder.darknodeRegistry.GetPreviousDarknodes(binder.callOpts, lastValue, big.NewInt(480))
-		if err != nil {
-			return nil, err
-		}
-		// Skip the first value returned so that we do not duplicate values
-		values = values[1:]
+		pointer = values[len(values)-1]
 	}
 }
 
@@ -738,7 +732,6 @@ func (binder *Binder) PreviousPods() ([]registry.Pod, error) {
 }
 
 func (binder *Binder) pods(epochVal *big.Int, darknodeAddrs identity.Addresses) ([]registry.Pod, error) {
-
 	numberOfNodesInPod, err := binder.minimumPodSize()
 	if err != nil {
 		return []registry.Pod{}, err
@@ -753,22 +746,16 @@ func (binder *Binder) pods(epochVal *big.Int, darknodeAddrs identity.Addresses) 
 	for i := 0; i < len(darknodeAddrs); i++ {
 		positionInOcean[i] = -1
 	}
-	pods := make([]registry.Pod, (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64())))
+	numberOfPods := len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64())
+	pods := make([]registry.Pod, numberOfPods)
+
 	for i := 0; i < len(darknodeAddrs); i++ {
-		isRegistered, err := binder.isRegistered(darknodeAddrs[x.Int64()])
-		if err != nil {
-			return []registry.Pod{}, err
-		}
-		for !isRegistered || positionInOcean[x.Int64()] != -1 {
+		for positionInOcean[x.Int64()] != -1 {
 			x.Add(x, big.NewInt(1))
 			x.Mod(x, numberOfDarknodes)
-			isRegistered, err = binder.isRegistered(darknodeAddrs[x.Int64()])
-			if err != nil {
-				return []registry.Pod{}, err
-			}
 		}
 		positionInOcean[x.Int64()] = i
-		podID := i % (len(darknodeAddrs) / int(numberOfNodesInPod.ToBigInt().Int64()))
+		podID := i % numberOfPods
 		pods[podID].Darknodes = append(pods[podID].Darknodes, darknodeAddrs[x.Int64()])
 		x.Mod(x.Add(x, epochVal), numberOfDarknodes)
 	}
@@ -824,6 +811,7 @@ func (binder *Binder) PreviousEpoch() (registry.Epoch, error) {
 	if err != nil {
 		return registry.Epoch{}, err
 	}
+
 	previousDarknodes, err := binder.previousDarknodes()
 	if err != nil {
 		return registry.Epoch{}, err
@@ -848,16 +836,10 @@ func (binder *Binder) epoch(epoch struct {
 	if err != nil {
 		return registry.Epoch{}, err
 	}
-
-	darknodes, err := binder.darknodes()
-	if err != nil {
-		return registry.Epoch{}, err
-	}
-
 	return registry.Epoch{
 		Hash:          blockhash,
 		Pods:          pods,
-		Darknodes:     darknodes,
+		Darknodes:     darknodeAddrs,
 		BlockNumber:   epoch.Blocknumber,
 		BlockInterval: blockInterval,
 	}, nil
