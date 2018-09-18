@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
 
+	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 )
 
@@ -51,6 +52,8 @@ var _ = Describe("Rate-limiter", func() {
 
 				r := rateLimiter.Reserve(addrs[i])
 				Expect(r.OK()).To(BeTrue())
+
+				Expect(rateLimiter.Wait(context.Background(), addrs[i])).ShouldNot(HaveOccurred())
 			}
 		})
 	})
