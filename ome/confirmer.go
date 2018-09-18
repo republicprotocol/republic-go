@@ -142,13 +142,13 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				}
 
 				for key, t := range confirmer.confirmingBuyOrders {
-					if time.Since(t) > 20*time.Minute {
+					if time.Since(t) > 10*time.Minute {
 						delete(confirmer.confirmingBuyOrders, key)
 					}
 				}
 
 				for key, t := range confirmer.confirmingSellOrders {
-					if time.Since(t) > 20*time.Minute {
+					if time.Since(t) > 10*time.Minute {
 						delete(confirmer.confirmingSellOrders, key)
 					}
 				}
