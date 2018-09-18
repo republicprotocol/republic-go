@@ -192,7 +192,9 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
-			writeError(done, errs, err)
+			if err != ErrComputationNotFound {
+				writeError(done, errs, err)
+			}
 			continue
 		}
 
