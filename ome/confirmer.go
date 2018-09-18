@@ -3,7 +3,6 @@ package ome
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -37,8 +36,8 @@ type confirmer struct {
 	orderbookBlockDepth   uint
 
 	confirmingMu         *sync.Mutex
-	confirmingBuyOrders  map[order.ID]struct{}
-	confirmingSellOrders map[order.ID]struct{}
+	confirmingBuyOrders  map[order.ID]time.Time
+	confirmingSellOrders map[order.ID]time.Time
 	confirmed            map[order.ID]time.Time
 }
 
@@ -57,8 +56,8 @@ func NewConfirmer(computationStore ComputationStorer, fragmentStore OrderFragmen
 		orderbookBlockDepth:   orderbookBlockDepth,
 
 		confirmingMu:         new(sync.Mutex),
-		confirmingBuyOrders:  map[order.ID]struct{}{},
-		confirmingSellOrders: map[order.ID]struct{}{},
+		confirmingBuyOrders:  map[order.ID]time.Time{},
+		confirmingSellOrders: map[order.ID]time.Time{},
 		confirmed:            map[order.ID]time.Time{},
 	}
 }
@@ -97,8 +96,8 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					// Wait for the confirmation of these orders to pass the depth
 					// limit
 					confirmer.confirmingMu.Lock()
-					confirmer.confirmingBuyOrders[com.Buy.OrderID] = struct{}{}
-					confirmer.confirmingSellOrders[com.Sell.OrderID] = struct{}{}
+					confirmer.confirmingBuyOrders[com.Buy.OrderID] = time.Now()
+					confirmer.confirmingSellOrders[com.Sell.OrderID] = time.Now()
 					confirmer.confirmingMu.Unlock()
 
 					// Confirm Computations on the blockchain and register them for
@@ -141,6 +140,18 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 						delete(confirmer.confirmed, key)
 					}
 				}
+
+				for key, t := range confirmer.confirmingBuyOrders {
+					if time.Since(t) > 20*time.Minute {
+						delete(confirmer.confirmingBuyOrders, key)
+					}
+				}
+
+				for key, t := range confirmer.confirmingSellOrders {
+					if time.Since(t) > 20*time.Minute {
+						delete(confirmer.confirmingSellOrders, key)
+					}
+				}
 				confirmer.confirmingMu.Unlock()
 			}
 		}
@@ -164,7 +175,7 @@ func (confirmer *confirmer) beginConfirmation(orderMatch Computation) error {
 }
 
 func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order.Parity, done <-chan struct{}, confirmations chan<- Computation, errs chan<- error) {
-	var confirmingOrders map[order.ID]struct{}
+	var confirmingOrders map[order.ID]time.Time
 	if orderParity == order.ParityBuy {
 		confirmingOrders = confirmer.confirmingBuyOrders
 	} else {
@@ -181,22 +192,6 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 
 		com, err := confirmer.computationFromOrders(orderParity, ord, ordMatch)
 		if err != nil {
-			if err == ErrComputationNotFound {
-				if orderParity == order.ParityBuy {
-					delete(confirmer.confirmingBuyOrders, ord)
-					delete(confirmer.confirmingSellOrders, ordMatch)
-					confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
-					confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
-				} else {
-					delete(confirmer.confirmingBuyOrders, ordMatch)
-					delete(confirmer.confirmingSellOrders, ord)
-					confirmer.fragmentStore.UpdateBuyOrderFragmentStatus(com.Epoch, ordMatch, order.Confirmed)
-					confirmer.fragmentStore.UpdateSellOrderFragmentStatus(com.Epoch, ord, order.Confirmed)
-				}
-
-				log.Printf("[info] (confirm) order=%v confirmed with order=%v by someone else", ord, ordMatch)
-				continue
-			}
 			writeError(done, errs, err)
 			continue
 		}
