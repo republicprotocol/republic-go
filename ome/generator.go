@@ -281,7 +281,7 @@ func (mat *computationMatrix) handleNotification(notification orderbook.Notifica
 	// Notifications that close an order result in the removal of that order
 	// from storage
 	case orderbook.NotificationConfirmOrder:
-		// mat.removeOrderFragment(notification.OrderID)
+		mat.removeOrderFragment(notification.OrderID)
 	case orderbook.NotificationCancelOrder:
 		mat.removeOrderFragment(notification.OrderID)
 	default:
