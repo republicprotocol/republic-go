@@ -24,7 +24,7 @@ type Config struct {
 	RepublicTokenAddress       string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress    string  `json:"darknodeRegistryAddress"`
 	DarknodeRewardVaultAddress string  `json:"darknodeRewardVaultAddress"`
-	DarknodeSlasherAddress     string  `json:"darkodeSlasherAddress"`
+	DarknodeSlasherAddress     string  `json:"darknodeSlasherAddress"`
 	OrderbookAddress           string  `json:"orderbookAddress"`
 	SettlementRegistryAddress  string  `json:"settlementRegistryAddress"`
 }
