@@ -145,14 +145,14 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				}
 
 				for key, t := range confirmer.confirmingBuyOrders {
-					if time.Since(t) > 24*time.Minute {
+					if time.Since(t) > 24*time.Hour {
 						logger.Error(fmt.Sprintf("buy order= %v hasn't been confirmed after 30 mins", key))
 						delete(confirmer.confirmingBuyOrders, key)
 					}
 				}
 
 				for key, t := range confirmer.confirmingSellOrders {
-					if time.Since(t) > 24*time.Minute {
+					if time.Since(t) > 24*time.Hour {
 						logger.Error(fmt.Sprintf("sell order= %v hasn't been confirmed after 30 mins", key))
 						delete(confirmer.confirmingSellOrders, key)
 					}
