@@ -58,6 +58,7 @@ var _ = Describe("Swarming", func() {
 	AfterEach(func() {
 		os.RemoveAll("./tmp")
 		server.Stop()
+		time.Sleep(1 * time.Second)
 	})
 
 	Context("when pinging a service", func() {

@@ -55,7 +55,7 @@ var _ = Describe("Computations", func() {
 		})
 	})
 
-	Context("computations state ", func() {
+	Context("computations state", func() {
 		It("should implement the Stringer interface ", func() {
 			Expect(fmt.Sprintf("%v", ComputationStateNil)).Should(Equal("nil"))
 			Expect(fmt.Sprintf("%v", ComputationStateMatched)).Should(Equal("matched"))
