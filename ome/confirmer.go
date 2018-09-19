@@ -142,14 +142,14 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 				}
 
 				for key, t := range confirmer.confirmingBuyOrders {
-					if time.Since(t) > 30*time.Minute {
+					if time.Since(t) > 24*time.Minute {
 						logger.Error(fmt.Sprintf("buy order= %v hasn't been confirmed after 30 mins", key))
 						delete(confirmer.confirmingBuyOrders, key)
 					}
 				}
 
 				for key, t := range confirmer.confirmingSellOrders {
-					if time.Since(t) > 30*time.Minute {
+					if time.Since(t) > 24*time.Minute {
 						logger.Error(fmt.Sprintf("sell order= %v hasn't been confirmed after 30 mins", key))
 						delete(confirmer.confirmingSellOrders, key)
 					}
@@ -237,26 +237,31 @@ func (confirmer *confirmer) checkOrdersForConfirmationFinality(orderParity order
 }
 
 func (confirmer *confirmer) checkOrderForConfirmationFinality(ord order.ID, orderParity order.Parity) (order.ID, error) {
+	status, err := confirmer.contract.Status(ord)
+	if err != nil {
+		return order.ID{}, err
+	}
+	switch status {
+	case order.Canceled:
+		if orderParity == order.ParityBuy {
+			delete(confirmer.confirmingBuyOrders, ord)
+		} else {
+			delete(confirmer.confirmingSellOrders, ord)
+		}
+		return order.ID{}, ErrOrderNotConfirmed
+	case order.Open:
+		return order.ID{}, ErrOrderNotConfirmed
+	case order.Nil:
+		logger.Error(fmt.Sprintf("order %v status = nil, something goes wrong.", ord))
+		return order.ID{}, ErrOrderNotConfirmed
+	}
+
 	// Ignore orders that are not pass the depth limit
 	depth, err := confirmer.contract.Depth(ord)
 	if err != nil {
 		return order.ID{}, err
 	}
 	if depth < confirmer.orderbookBlockDepth {
-		return order.ID{}, ErrOrderNotConfirmed
-	}
-
-	// Purge orders that are not confirmed
-	status, err := confirmer.contract.Status(ord)
-	if err != nil {
-		return order.ID{}, err
-	}
-	if status != order.Confirmed {
-		if orderParity == order.ParityBuy {
-			delete(confirmer.confirmingBuyOrders, ord)
-		} else {
-			delete(confirmer.confirmingSellOrders, ord)
-		}
 		return order.ID{}, ErrOrderNotConfirmed
 	}
 
