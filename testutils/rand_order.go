@@ -10,9 +10,9 @@ import (
 var tokens = []order.Tokens{order.TokensBTCETH,
 	order.TokensETHDGX,
 	order.TokensETHREN,
-	order.TokensETHABC,
-	order.TokensETHPQR,
-	order.TokensETHXYZ,
+	order.TokensETHTUSD,
+	order.TokensETHZRX,
+	order.TokensETHOMG,
 }
 
 // RandomOrder will generate a random order.
@@ -21,9 +21,9 @@ func RandomOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensETHABC,
-		order.TokensETHPQR,
-		order.TokensETHXYZ,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -36,9 +36,9 @@ func RandomBuyOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensETHABC,
-		order.TokensETHPQR,
-		order.TokensETHXYZ,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -59,9 +59,9 @@ func RandomSellOrder() order.Order {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensETHABC,
-		order.TokensETHPQR,
-		order.TokensETHXYZ,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -82,9 +82,9 @@ func RandomOrderMatch() (order.Order, order.Order) {
 	tokens := []order.Tokens{order.TokensBTCETH,
 		order.TokensETHDGX,
 		order.TokensETHREN,
-		order.TokensETHABC,
-		order.TokensETHPQR,
-		order.TokensETHXYZ,
+		order.TokensETHTUSD,
+		order.TokensETHZRX,
+		order.TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
