@@ -217,7 +217,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	// If the gas price is greater than the gas price limit, temporarily lower
 	// the gas price for this request
 	lastGasPrice := binder.transactOpts.GasPrice
-	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmitOrderGasPriceLimit(binder.callOpts)
+	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
 	if err == nil {
 		// Set gas price to the appropriate limit
 		if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
