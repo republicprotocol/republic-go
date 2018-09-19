@@ -5,11 +5,11 @@ func TokenAddresses(network Network) map[string]string {
 	tokens := map[string]string{}
 	switch network {
 	case NetworkTestnet:
-		tokens["TUSD"] = "0xfc42491547f1837e2d0f9a0e6b12b1d883fb8bd0"
-		tokens["DGX"] = "0x842F0Db4943174EC458b790868e330444c18c9F2"
-		tokens["REN"] = "0x99806D107eda625516d954621dF175a002D223e6"
-		tokens["ZRX"] = "0x724c964a614Eb0748b48dF79eD5D93C108E361c4"
-		tokens["OMG"] = "0xC9382f7b2C683e08AaDe773EB97BcE4a0d6461A0"
+		tokens["TUSD"] = "0xD09A65Fd6DF182dBf9cC853697eFA520369015E4"
+		tokens["DGX"] = "0x7583D3019b078037B8607487cc4c161e19C50869"
+		tokens["REN"] = "0x81793734c6Cf6961B5D0D2d8a30dD7DF1E1803f1"
+		tokens["ZRX"] = "0x932d170Cd254Db4c7321C6A89D7722714d82a69f"
+		tokens["OMG"] = "0xb57b1105F41e6117F8a67170e1bd7Ec9149D7ced"
 	case NetworkFalcon:
 		tokens["TUSD"] = "0xc96884276D70a1176b2fe102469348d224B0A1fa"
 		tokens["DGX"] = "0xF4FAf1b22CEe0a024ad6b12Bb29EC0E13F5827c2"
@@ -32,7 +32,7 @@ func TokenAddresses(network Network) map[string]string {
 func RepublicTokenAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0x99806d107eda625516d954621df175a002d223e6"
+		return "0x81793734c6Cf6961B5D0D2d8a30dD7DF1E1803f1"
 	case NetworkFalcon:
 		return "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
 	case NetworkNightly:
@@ -48,7 +48,7 @@ func RepublicTokenAddress(network Network) string {
 func DarknodeRegistryAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0xd1c3b5f2fe4eec6c262a5e1b161e5e099fd8325e"
+		return "0xf7daA0Baf257547A6Ad3CE7FFF71D55cb7426F76"
 	case NetworkFalcon:
 		return "0xdaa8c30af85070506f641e456afdb84d4ba972bd"
 	case NetworkNightly:
@@ -64,7 +64,7 @@ func DarknodeRegistryAddress(network Network) string {
 func DarknodeRewardVaultAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0xceac6b255ccdd901fefcdb874db092e6f682fee0"
+		return "0x0C03998EdF2fC7F29801A05CDeCA2289dD51A158"
 	case NetworkFalcon:
 		return "0x401e7d7ce6f51ea1a8d4f582413e2fabda68daa8"
 	case NetworkNightly:
@@ -80,7 +80,7 @@ func DarknodeRewardVaultAddress(network Network) string {
 func DarknodeSlasherAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0x6c52b2fd5b6c3e6baf47e05af880fc95b9c8079c"
+		return "0x9c65050f9Bc35De0B25f99643797667Ee300aeDa"
 	case NetworkFalcon:
 		return "0x71ec5f4558e87d6afb5c5ff0b4bdd058d62ed3d1"
 	case NetworkNightly:
@@ -96,7 +96,7 @@ func DarknodeSlasherAddress(network Network) string {
 func OrderbookAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0x9a016649d97d44a055c26cbcadbc45a1ac563c89"
+		return "0xA53Da4093c682a4259DE38302341BFEf7e9f7a4f"
 	case NetworkFalcon:
 		return "0x592d16f8c5fa8f1e074ab3c2cd1acd087adcdc0b"
 	case NetworkNightly:
@@ -112,7 +112,7 @@ func OrderbookAddress(network Network) string {
 func SettlementRegistryAddress(network Network) string {
 	switch network {
 	case NetworkTestnet:
-		return "0xc07780d6e1f24434b1766068f0e44b10a5ff5755"
+		return "0x762D83C9e39882b86cfdbd113a3B95804c1d6A31"
 	case NetworkFalcon:
 		return "0x6246ff83ddef23d9509ba80aa3ee650ab0321f0b"
 	case NetworkNightly:
