@@ -19,14 +19,15 @@ import (
 
 var _ = Describe("Streaming", func() {
 
-	// var server *Server
+	var server *Server
 	var connectorListener ConnectorListener
 	// var serviceMultiAddr identity.MultiAddress
 	BeforeEach(func() {
+		server = NewServer()
 	})
 
 	AfterEach(func() {
-
+		server.Stop()
 	})
 
 	Context("when sending a message to a service", func() {
@@ -40,7 +41,7 @@ var _ = Describe("Streaming", func() {
 			connectorListener, addr, err = newStreamer()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			server := NewServer()
+			// server := NewServer()
 			service, _, serviceAddr, err := newStreamerService(addr)
 			Expect(err).ShouldNot(HaveOccurred())
 			service.Register(server)
