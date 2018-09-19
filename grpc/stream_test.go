@@ -23,11 +23,10 @@ var _ = Describe("Streaming", func() {
 	var connectorListener ConnectorListener
 	// var serviceMultiAddr identity.MultiAddress
 	BeforeEach(func() {
-		server = NewServer()
+		
 	})
 
 	AfterEach(func() {
-		server.Stop()
 	})
 
 	Context("when sending a message to a service", func() {
@@ -41,7 +40,7 @@ var _ = Describe("Streaming", func() {
 			connectorListener, addr, err = newStreamer()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// server := NewServer()
+			server = NewServer()
 			service, _, serviceAddr, err := newStreamerService(addr)
 			Expect(err).ShouldNot(HaveOccurred())
 			service.Register(server)
@@ -55,6 +54,7 @@ var _ = Describe("Streaming", func() {
 				err := server.Start("0.0.0.0:18514")
 				Expect(err).ShouldNot(HaveOccurred())
 			}()
+			defer server.Stop()
 			time.Sleep(time.Millisecond)
 
 			sender, err := connectorListener.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
@@ -71,6 +71,10 @@ var _ = Describe("Streaming", func() {
 				MessageType: smpc.MessageTypeJoin,
 			})
 			Expect(err).ShouldNot(HaveOccurred())
+
+			// sender, err = connectorListener.Listen(context.Background(), smpc.NetworkID(testutils.Random32Bytes()), serviceAddr, testutils.NewSmpcReceiver())
+			// Expect(err).ShouldNot(HaveOccurred())
+
 		}, 60 /* 60 second timeout */)
 
 		It("should connect when the service is started after the connection request", func(done Done) {
