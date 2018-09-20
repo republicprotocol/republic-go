@@ -37,7 +37,7 @@ type computationGenerator struct {
 	broadcastComputations chan (<-chan Computation)
 	broadcastErrs         chan (<-chan error)
 
-	orderFragmentStore OrderFragmentStorer
+	fragmentStore OrderFragmentStorer
 }
 
 func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFragmentStorer) ComputationGenerator {
@@ -56,12 +56,12 @@ func NewComputationGenerator(addr identity.Address, orderFragmentStore OrderFrag
 		broadcastComputations: make(chan (<-chan Computation)),
 		broadcastErrs:         make(chan (<-chan error)),
 
-		orderFragmentStore: orderFragmentStore,
+		fragmentStore: orderFragmentStore,
 	}
 }
 
 func (gen *computationGenerator) Generate(done <-chan struct{}, notifications <-chan orderbook.Notification) (<-chan Computation, <-chan error) {
-	computations := make(chan Computation)
+	computations := make(chan Computation, 128)
 	errs := make(chan error)
 
 	// Handle all incoming notifications by mapping them to the appropriate
@@ -115,7 +115,7 @@ func (gen *computationGenerator) OnChangeEpoch(epoch registry.Epoch) {
 	gen.matCurrDone = make(chan struct{})
 	gen.matCurrNotifications = make(chan orderbook.Notification)
 
-	mat := newComputationMatrix(gen.addr, epoch, gen.orderFragmentStore)
+	mat := newComputationMatrix(gen.addr, epoch, gen.fragmentStore)
 	computations, errs := mat.generate(gen.matCurrDone, gen.matCurrNotifications)
 
 	go func() {
@@ -186,9 +186,9 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 }
 
 type computationMatrix struct {
-	pod                *registry.Pod
-	epoch              registry.Epoch
-	orderFragmentStore OrderFragmentStorer
+	pod           *registry.Pod
+	epoch         registry.Epoch
+	fragmentStore OrderFragmentStorer
 
 	sortedComputationsMu     *sync.Mutex
 	sortedComputations       []computationWeight
@@ -197,8 +197,8 @@ type computationMatrix struct {
 
 func newComputationMatrix(addr identity.Address, epoch registry.Epoch, orderFragmentStore OrderFragmentStorer) *computationMatrix {
 	mat := &computationMatrix{
-		epoch:              epoch,
-		orderFragmentStore: orderFragmentStore,
+		epoch:         epoch,
+		fragmentStore: orderFragmentStore,
 
 		sortedComputationsMu:     new(sync.Mutex),
 		sortedComputations:       []computationWeight{},
@@ -305,22 +305,22 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	var err error
 
 	if notification.OrderFragment.OrderParity == order.ParityBuy {
-		if err := mat.orderFragmentStore.PutBuyOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutBuyOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority), order.Open); err != nil {
 			log.Printf("[error] (generator) cannot store buy order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
-		oppositeOrderFragmentIter, err = mat.orderFragmentStore.SellOrderFragments(mat.epoch)
+		oppositeOrderFragmentIter, err = mat.fragmentStore.SellOrderFragments(mat.epoch.Hash)
 		if err != nil {
 			log.Printf("[error] (generator) cannot load buy order fragment iterator: %v", err)
 			return
 		}
 		defer oppositeOrderFragmentIter.Release()
 	} else {
-		if err := mat.orderFragmentStore.PutSellOrderFragment(mat.epoch, notification.OrderFragment, notification.Trader, uint64(notification.Priority)); err != nil {
+		if err := mat.fragmentStore.PutSellOrderFragment(mat.epoch.Hash, notification.OrderFragment, notification.Trader, uint64(notification.Priority), order.Open); err != nil {
 			log.Printf("[error] (generator) cannot store sell order fragment = %v: %v", notification.OrderID, err)
 			return
 		}
-		oppositeOrderFragmentIter, err = mat.orderFragmentStore.BuyOrderFragments(mat.epoch)
+		oppositeOrderFragmentIter, err = mat.fragmentStore.BuyOrderFragments(mat.epoch.Hash)
 		if err != nil {
 			log.Printf("[error] (generator) cannot load sell order fragment iterator: %v", err)
 			return
@@ -332,7 +332,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	// Iterate through the opposing list and generate computations
 	didGenerateNewComputation := false
 	for oppositeOrderFragmentIter.Next() {
-		orderFragment, trader, priority, err := oppositeOrderFragmentIter.Cursor()
+		orderFragment, trader, priority, status, err := oppositeOrderFragmentIter.Cursor()
 		if err != nil {
 			log.Printf("[error] (generator) cannot load cursor: %v", err)
 			continue
@@ -341,11 +341,9 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		if !isCompatible(notification, orderFragment, trader, priority) {
 			continue
 		}
-
-		// TODO: Check that at least one of the orders in the pairing was
-		// opened during this matrix epoch. Otherwise, orders that are opened
-		// in the same epoch will be matched twice. Once in the current epoch,
-		// and once in the previous epoch.
+		if status != order.Open {
+			continue
+		}
 
 		var computation Computation
 		if notification.OrderFragment.OrderParity == order.ParityBuy {
@@ -389,24 +387,33 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 }
 
 func (mat *computationMatrix) removeOrderFragment(orderID order.ID) {
-	if err := mat.orderFragmentStore.DeleteBuyOrderFragment(mat.epoch, orderID); err != nil {
+	if err := mat.fragmentStore.DeleteBuyOrderFragment(mat.epoch.Hash, orderID); err != nil {
 		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
-	if err := mat.orderFragmentStore.DeleteSellOrderFragment(mat.epoch, orderID); err != nil {
+	if err := mat.fragmentStore.DeleteSellOrderFragment(mat.epoch.Hash, orderID); err != nil {
 		log.Printf("[error] (generator) cannot delete order fragment = %v; %v", orderID, err)
 	}
 }
 
-// isCompatible checks if the notification's order is compatible with another order based
-// on the following conditions:
-// 1. If the trader is the same as the notification's trader, the 2 orders are incompatible.
-// 2. If both orders are Fill-or-Kill (FOK), they are incompatible.
-// 3. If one of the orders is a FOK, then both orders are incompatible if the other order
-//    is of a higher priority.
+// isCompatible checks if the notification's order is compatible with another
+// order based on the following conditions:
+// 1. If the trader is the same as the notification's trader, the 2 orders are
+//    incompatible.
+// 2. Orders from the same epoch must not be matched twice (i.e. if both orders
+//    are at depth 1, they are incompatible).
+// 3. If both orders are Fill-or-Kill (FOK), they are incompatible.
+// 4. If one of the orders is a FOK, then both orders are incompatible if the
+//    other order is of a higher priority.
 func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment order.Fragment, trader string, priority uint64) bool {
 
 	// Traders should not match against themselves
 	if trader == notification.Trader {
+		return false
+	}
+
+	// Order fragments with depth 1 should have been found compatible at epoch
+	// depth of 0.
+	if orderFragment.EpochDepth == 1 && notification.OrderFragment.EpochDepth == orderFragment.EpochDepth {
 		return false
 	}
 
@@ -419,8 +426,8 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 			// Both orders are FOK, thus, incompatible.
 			return false
 		default:
-			// Does notification.OrderFragment, which is not an FOK order, have a higher
-			// priority than the FOK order ?
+			// Does notification.OrderFragment, which is not an FOK order, have
+			// a higher priority than the FOK order ?
 			if uint64(notification.Priority) > priority {
 				return false
 			}
@@ -431,8 +438,8 @@ func isCompatible(notification orderbook.NotificationOpenOrder, orderFragment or
 	default:
 		switch notification.OrderFragment.OrderType {
 		case order.TypeMidpointFOK, order.TypeLimitFOK:
-			// Does notification.OrderFragment, which is an FOK order, have a lower
-			// priority than the other order ?
+			// Does notification.OrderFragment, which is an FOK order, have a
+			// lower priority than the other order ?
 			if priority > uint64(notification.Priority) {
 				return false
 			}

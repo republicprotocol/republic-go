@@ -25,4 +25,6 @@ type ContractBinder interface {
 	MinimumEpochInterval() (*big.Int, error)
 
 	Depth(orderID order.ID) (uint, error)
+
+	SettlementStatus(orderID order.ID) (uint8, error)
 }

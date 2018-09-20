@@ -26,7 +26,6 @@ import (
 	"github.com/republicprotocol/republic-go/leveldb"
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/ome"
-	"github.com/republicprotocol/republic-go/oracle"
 	"github.com/republicprotocol/republic-go/orderbook"
 	"github.com/republicprotocol/republic-go/registry"
 	"github.com/republicprotocol/republic-go/smpc"
@@ -87,8 +86,6 @@ func main() {
 	defer store.Release()
 	store.Prune()
 
-	midpointPriceStorer := leveldb.NewMidpointPriceStorer()
-
 	// New crypter for signing and verification
 	crypter := registry.NewCrypter(config.Keystore, &contractBinder, 256, time.Minute)
 	updateOwnAddress := func() {
@@ -122,8 +119,8 @@ func main() {
 	}
 
 	// New gRPC components
-	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(20, 40), 5, 50)
-	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 80), 4.0, 20)
+	unaryLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 100), 8, 20)
+	streamLimiter := grpc.NewRateLimiter(rate.NewLimiter(40, 100), 8, 20)
 	server := grpc.NewServerwithLimiter(unaryLimiter, streamLimiter)
 
 	swarmClient := grpc.NewSwarmClient(store.SwarmMultiAddressStore(), multiAddr.Address())
@@ -131,10 +128,10 @@ func main() {
 	swarmService := grpc.NewSwarmService(swarm.NewServer(swarmer, store.SwarmMultiAddressStore(), config.Alpha, &crypter))
 	swarmService.Register(server)
 
-	oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
-	oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
-	oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
-	oracleService.Register(server)
+	// oracleClient := grpc.NewOracleClient(multiAddr.Address(), store.SwarmMultiAddressStore())
+	// oracler := oracle.NewOracler(oracleClient, &config.Keystore.EcdsaKey, store.SwarmMultiAddressStore(), config.Alpha)
+	// oracleService := grpc.NewOracleService(oracle.NewServer(oracler, config.OracleAddress, store.SwarmMultiAddressStore(), midpointPriceStorer, config.Alpha), time.Millisecond)
+	// oracleService.Register(server)
 
 	orderbook := orderbook.NewOrderbook(config.Address, config.Keystore.RsaKey, store.OrderbookPointerStore(), store.OrderbookOrderStore(), store.OrderbookOrderFragmentStore(), &contractBinder, 5*time.Second, 32)
 	orderbookService := grpc.NewOrderbookService(orderbook)
@@ -245,10 +242,10 @@ func main() {
 			logger.Error(fmt.Sprintf("cannot get previous epoch: %v", err))
 		}
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
-		matcher := ome.NewMatcher(store.SomerComputationStore(), smpcer)
-		confirmer := ome.NewConfirmer(store.SomerComputationStore(), &contractBinder, 5*time.Second, 4)
-		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 5e11)
-		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, store.SomerComputationStore(), orderbook, smpcer, epoch)
+		matcher := ome.NewMatcher(store.SomerComputationStore(), store.SomerOrderFragmentStore(), smpcer)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), store.SomerOrderFragmentStore(), &contractBinder, 5*time.Second, 6)
+		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1e12)
+		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, orderbook, smpcer, epoch)
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
