@@ -31,6 +31,11 @@ func main() {
 	var ethereumConfig contract.Config
 
 	switch *network {
+	case string(contract.NetworkMainnet):
+		ethereumConfig = contract.Config{
+			Network: contract.NetworkMainnet,
+			URI:     "https://mainnet.infura.io",
+		}
 	case string(contract.NetworkTestnet):
 		ethereumConfig = contract.Config{
 			Network: contract.NetworkTestnet,
