@@ -78,8 +78,8 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 		// case ch, ok := <-in:
 		// }
 		chosen, ch, ok := reflect.Select([]reflect.SelectCase{
-			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
-			reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(in)},
+			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
+			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(in)},
 		})
 		if chosen == 0 || !ok {
 			break
@@ -95,8 +95,8 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 				// case val, ok := <-ch:
 				// }
 				chosen, val, ok := reflect.Select([]reflect.SelectCase{
-					reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
-					reflect.SelectCase{Dir: reflect.SelectRecv, Chan: ch},
+					{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
+					{Dir: reflect.SelectRecv, Chan: ch},
 				})
 				if chosen == 0 || !ok {
 					return
@@ -107,8 +107,8 @@ func Merge(done <-chan struct{}, in interface{}, out interface{}) {
 				// case out <- val:
 				// }
 				chosen, _, _ = reflect.Select([]reflect.SelectCase{
-					reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
-					reflect.SelectCase{Dir: reflect.SelectSend, Chan: reflect.ValueOf(out), Send: val},
+					{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(done)},
+					{Dir: reflect.SelectSend, Chan: reflect.ValueOf(out), Send: val},
 				})
 				if chosen == 0 {
 					return

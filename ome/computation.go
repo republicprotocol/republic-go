@@ -109,4 +109,5 @@ func (com *Computation) Equal(arg *Computation) bool {
 		com.Sell.Equal(&arg.Sell) &&
 		com.State == arg.State &&
 		com.Match == arg.Match
+	// TODO: Why do we want to compare state and match?
 }
