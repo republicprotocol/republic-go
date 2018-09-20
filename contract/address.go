@@ -4,6 +4,12 @@ package contract
 func TokenAddresses(network Network) map[string]string {
 	tokens := map[string]string{}
 	switch network {
+	case NetworkMainnet:
+		tokens["TUSD"] = "0x8dd5fbce2f6a956c3022ba3663759011dd51e73e"
+		tokens["DGX"] = "0x4f3afec4e5a3f2a6a1a411def7d7dfe50ee057bf"
+		tokens["REN"] = "0x408e41876cccdc0f92210600ef50372656052a38"
+		tokens["ZRX"] = "0xe41d2489571d322189246dafa5ebde1f4699f498"
+		tokens["OMG"] = "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07"
 	case NetworkTestnet:
 		tokens["TUSD"] = "0xD09A65Fd6DF182dBf9cC853697eFA520369015E4"
 		tokens["DGX"] = "0x7583D3019b078037B8607487cc4c161e19C50869"
@@ -31,6 +37,8 @@ func TokenAddresses(network Network) map[string]string {
 // RepublicTokenAddress returns the REN contract address.
 func RepublicTokenAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x21C482f153D0317fe85C60bE1F7fa079019fcEbD"
 	case NetworkTestnet:
 		return "0x81793734c6Cf6961B5D0D2d8a30dD7DF1E1803f1"
 	case NetworkFalcon:
@@ -47,6 +55,8 @@ func RepublicTokenAddress(network Network) string {
 // DarknodeRegistryAddress returns the darknode registry contract address.
 func DarknodeRegistryAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x3799006a87fde3ccfc7666b3e6553b03ed341c2f"
 	case NetworkTestnet:
 		return "0xf7daA0Baf257547A6Ad3CE7FFF71D55cb7426F76"
 	case NetworkFalcon:
@@ -63,6 +73,8 @@ func DarknodeRegistryAddress(network Network) string {
 // DarknodeRewardVaultAddress returns the reward vault contract address.
 func DarknodeRewardVaultAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x880407c9cd119bef48b1821cdfc434e3ca3cd588"
 	case NetworkTestnet:
 		return "0x0C03998EdF2fC7F29801A05CDeCA2289dD51A158"
 	case NetworkFalcon:
@@ -79,6 +91,8 @@ func DarknodeRewardVaultAddress(network Network) string {
 // DarknodeSlasherAddress returns slasher contract address.
 func DarknodeSlasherAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x04ed8f5730dd4d2b2064cdb6a5bffc26a72962f2"
 	case NetworkTestnet:
 		return "0x9c65050f9Bc35De0B25f99643797667Ee300aeDa"
 	case NetworkFalcon:
@@ -95,6 +109,8 @@ func DarknodeSlasherAddress(network Network) string {
 // OrderbookAddress returns the orderbook contract address.
 func OrderbookAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x6b8bb175c092de7d81860b18db360b734a2598e0"
 	case NetworkTestnet:
 		return "0xA53Da4093c682a4259DE38302341BFEf7e9f7a4f"
 	case NetworkFalcon:
@@ -111,6 +127,8 @@ func OrderbookAddress(network Network) string {
 // SettlementRegistryAddress returns the settlement registry contract address.
 func SettlementRegistryAddress(network Network) string {
 	switch network {
+	case NetworkMainnet:
+		return "0x119da7a8500ade0766f758d934808179dc551036"
 	case NetworkTestnet:
 		return "0x762D83C9e39882b86cfdbd113a3B95804c1d6A31"
 	case NetworkFalcon:
