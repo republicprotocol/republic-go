@@ -42,6 +42,10 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	multiAddrStr := ""
+	if !multiAddr.IsNil() {
+		multiAddrStr = multiAddr.String()
+	}
 	ethAddr, err := adapter.EthereumAddress()
 	if err != nil {
 		return Status{}, err
@@ -77,7 +81,7 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	hexPk := "0x" + hex.EncodeToString(pk)
 	return Status{
 		Network:                 network,
-		MultiAddress:            multiAddr.String(),
+		MultiAddress:            multiAddrStr,
 		EthereumNetwork:         ethNetwork,
 		EthereumAddress:         ethAddr,
 		DarknodeRegistryAddress: darknodeRegistryAddr,
