@@ -65,6 +65,7 @@ type Binder struct {
 func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := *auth
 	transactOpts.GasPrice = big.NewInt(8000000000)
+	transactOpts.GasLimit = 300000
 
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
 	if err != nil {
