@@ -64,7 +64,7 @@ type Binder struct {
 // NewBinder returns a Binder to communicate with contracts
 func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := *auth
-	transactOpts.GasPrice = big.NewInt(10000000000)
+	transactOpts.GasPrice = big.NewInt(8000000000)
 
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
 	if err != nil {
@@ -227,6 +227,8 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		defer func() {
 			binder.transactOpts.GasPrice = lastGasPrice
 		}()
+	} else {
+		log.Printf("[error] cannot get submission gas price limit,%v ", err)
 	}
 
 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",

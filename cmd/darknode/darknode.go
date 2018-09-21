@@ -256,7 +256,7 @@ func main() {
 		}, func() {
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(20 * time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()
