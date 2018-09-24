@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"strings"
 	"sync"
@@ -1222,8 +1223,9 @@ func (binder *Binder) checkBalance() {
 		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode balance: %v", err), nil)
 		return
 	}
-	if new(big.Float).SetInt(balance).Cmp(big.NewFloat(0.3)) == -1 {
-		raven.CaptureErrorAndWait(fmt.Errorf("darknode balance low (%s ETH)", balance.String()), nil)
+	minWei := new(big.Float).Mul(big.NewFloat(0.3), big.NewFloat(math.Pow10(18)))
+	if new(big.Float).SetInt(balance).Cmp(minWei) == -1 {
+		raven.CaptureErrorAndWait(fmt.Errorf("darknode balance low (%s Wei)", balance.String()), nil)
 	}
 }
 
