@@ -1238,7 +1238,7 @@ func (binder *Binder) checkBalance() {
 		return
 	}
 	log.Println(balance)
-	minWei := new(big.Float).Mul(big.NewFloat(0.3), big.NewFloat(math.Pow10(18)))
+	minWei := new(big.Float).Mul(big.NewFloat(0.1), big.NewFloat(math.Pow10(18)))
 	log.Println(minWei)
 	if new(big.Float).SetInt(balance).Cmp(minWei) == -1 {
 		raven.CaptureErrorAndWait(fmt.Errorf("darknode balance low (%s Wei)", balance.String()), nil)
