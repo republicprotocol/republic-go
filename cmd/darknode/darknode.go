@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -55,7 +56,9 @@ func main() {
 	// Configure Sentry and log an initial event
 	if config.SentryDSN != "" {
 		raven.SetDSN(config.SentryDSN)
-		raven.CaptureErrorAndWait(fmt.Errorf("darknode %s starting", config.Address.String()), nil)
+		raven.CaptureErrorAndWait(errors.New("darknode restarting"), map[string]string{
+			"darknode": config.Address.String(),
+		})
 	}
 
 	// Get IP-address
