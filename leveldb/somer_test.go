@@ -187,4 +187,35 @@ var _ = Describe("Somer storage", func() {
 
 		})
 	})
+
+	Context("when updating order fragment status", func() {
+		It("should return updated status", func() {
+			db := newDB(dbFile)
+			somerOrderFragmentTable := NewSomerOrderFragmentTable(db, time.Second)
+
+			// Put the computations into the table and attempt to retrieve
+			for i := 0; i < len(computations); i++ {
+				err := somerOrderFragmentTable.PutBuyOrderFragment(epoch.Hash, buyFragments[i], "trader1", uint64(i), order.Open)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = somerOrderFragmentTable.PutSellOrderFragment(epoch.Hash, sellFragments[i], "trader2", uint64(i), order.Open)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			for i := 0; i < len(computations); i++ {
+				err := somerOrderFragmentTable.UpdateBuyOrderFragmentStatus(epoch.Hash, buyFragments[i].OrderID, order.Canceled)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = somerOrderFragmentTable.UpdateSellOrderFragmentStatus(epoch.Hash, sellFragments[i].OrderID, order.Canceled)
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+
+			for i := 0; i < len(computations); i++ {
+				_, _, _, status, err := somerOrderFragmentTable.BuyOrderFragment(epoch.Hash, buyFragments[i].OrderID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(status).To(Equal(order.Canceled))
+				_, _, _, status, err = somerOrderFragmentTable.SellOrderFragment(epoch.Hash, sellFragments[i].OrderID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(status).To(Equal(order.Canceled))
+			}
+		})
+	})
 })
