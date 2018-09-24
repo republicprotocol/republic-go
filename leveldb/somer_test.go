@@ -70,34 +70,53 @@ var _ = Describe("Somer storage", func() {
 				Expect(trader).To(Equal("trader2"))
 			}
 
-			// Sleep and then prune to expire the data
-			time.Sleep(2 * time.Second)
-			somerComputationTable.Prune()
-			somerOrderFragmentTable.Prune()
-
-			// All data should have expired so we should not get any data back
+			// Collect should return all available computations back.
 			comsIter, err := somerComputationTable.Computations()
 			Expect(err).ShouldNot(HaveOccurred())
 			defer comsIter.Release()
 			coms, err := comsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(coms).Should(HaveLen(0))
+			Expect(coms).Should(HaveLen(len(computations)))
 
 			buysIter, err := somerOrderFragmentTable.BuyOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer buysIter.Release()
 			buys, _, _, _, err := buysIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
-
-			Expect(buys).Should(HaveLen(0))
+			Expect(buys).Should(HaveLen(1))
 
 			sellsIter, err := somerOrderFragmentTable.SellOrderFragments(epoch.Hash)
 			Expect(err).ShouldNot(HaveOccurred())
 			defer sellsIter.Release()
 			sells, _, _, _, err := sellsIter.Collect()
 			Expect(err).ShouldNot(HaveOccurred())
+			Expect(sells).Should(HaveLen(1))
 
+			// Sleep and then prune to expire the data
+			time.Sleep(2 * time.Second)
+			somerComputationTable.Prune()
+			somerOrderFragmentTable.Prune()
+
+			// All data should have expired so we should not get any data back
+			comsIter, err = somerComputationTable.Computations()
+			Expect(err).ShouldNot(HaveOccurred())
+			defer comsIter.Release()
+			coms, err = comsIter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(coms).Should(HaveLen(0))
+
+			buysIter, err = somerOrderFragmentTable.BuyOrderFragments(epoch.Hash)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer buysIter.Release()
+			buys, _, _, _, err = buysIter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(buys).Should(HaveLen(0))
+
+			sellsIter, err = somerOrderFragmentTable.SellOrderFragments(epoch.Hash)
+			Expect(err).ShouldNot(HaveOccurred())
+			defer sellsIter.Release()
+			sells, _, _, _, err = sellsIter.Collect()
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sells).Should(HaveLen(0))
 		})
 	})
