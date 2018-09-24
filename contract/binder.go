@@ -1222,7 +1222,7 @@ func (binder *Binder) checkBalance() {
 		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode balance: %v", err), nil)
 		return
 	}
-	if new(big.Float).SetInt(balance).Cmp(big.NewFloat(0.1)) == -1 {
+	if new(big.Float).SetInt(balance).Cmp(big.NewFloat(0.3)) == -1 {
 		raven.CaptureErrorAndWait(fmt.Errorf("darknode balance low (%s ETH)", balance.String()), nil)
 	}
 }
