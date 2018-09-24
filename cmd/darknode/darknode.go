@@ -58,6 +58,7 @@ func main() {
 		raven.SetDSN(config.SentryDSN)
 		raven.CaptureErrorAndWait(errors.New("darknode restarting"), map[string]string{
 			"darknode": config.Address.String(),
+			"level":    string(raven.INFO),
 		})
 	}
 

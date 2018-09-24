@@ -1221,6 +1221,7 @@ func (binder *Binder) checkBalance() {
 	if err != nil {
 		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode balance: %v", err), map[string]string{
 			"darknode": crypto.EthAddressToRepublicAddress(binder.transactOpts.From.String()).String(),
+			"level":    string(raven.INFO),
 		})
 		return
 	}
