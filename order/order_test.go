@@ -104,10 +104,10 @@ var _ = Describe("Orders", func() {
 			Expect(TokenBTC.String()).Should(Equal("BTC"))
 			Expect(TokenETH.String()).Should(Equal("ETH"))
 			Expect(TokenDGX.String()).Should(Equal("DGX"))
-			Expect(TokenABC.String()).Should(Equal("ABC"))
+			Expect(TokenTUSD.String()).Should(Equal("TUSD"))
 			Expect(TokenREN.String()).Should(Equal("REN"))
-			Expect(TokenPQR.String()).Should(Equal("PQR"))
-			Expect(TokenXYZ.String()).Should(Equal("XYZ"))
+			Expect(TokenZRX.String()).Should(Equal("ZRX"))
+			Expect(TokenOMG.String()).Should(Equal("OMG"))
 
 			Expect(Token(100).String()).Should(Equal("unexpected token"))
 		})
@@ -115,10 +115,10 @@ var _ = Describe("Orders", func() {
 		It("should return token pair as a string", func() {
 			Expect(TokensBTCETH.String()).Should(Equal("BTC-ETH"))
 			Expect(TokensETHDGX.String()).Should(Equal("ETH-DGX"))
-			Expect(TokensETHABC.String()).Should(Equal("ETH-ABC"))
+			Expect(TokensETHTUSD.String()).Should(Equal("ETH-TUSD"))
 			Expect(TokensETHREN.String()).Should(Equal("ETH-REN"))
-			Expect(TokensETHPQR.String()).Should(Equal("ETH-PQR"))
-			Expect(TokensETHXYZ.String()).Should(Equal("ETH-XYZ"))
+			Expect(TokensETHZRX.String()).Should(Equal("ETH-ZRX"))
+			Expect(TokensETHOMG.String()).Should(Equal("ETH-OMG"))
 
 			Expect(Tokens(100).String()).Should(Equal("unexpected tokens"))
 		})
@@ -133,14 +133,14 @@ var _ = Describe("Orders", func() {
 			Expect(TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
 			Expect(TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHABC.PriorityToken()).Should(Equal(TokenABC))
-			Expect(TokensETHABC.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHTUSD.PriorityToken()).Should(Equal(TokenTUSD))
+			Expect(TokensETHTUSD.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHPQR.PriorityToken()).Should(Equal(TokenPQR))
-			Expect(TokensETHPQR.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHZRX.PriorityToken()).Should(Equal(TokenZRX))
+			Expect(TokensETHZRX.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHXYZ.PriorityToken()).Should(Equal(TokenXYZ))
-			Expect(TokensETHXYZ.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(TokensETHOMG.PriorityToken()).Should(Equal(TokenOMG))
+			Expect(TokensETHOMG.NonPriorityToken()).Should(Equal(TokenETH))
 		})
 	})
 

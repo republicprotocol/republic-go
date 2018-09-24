@@ -134,7 +134,7 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 		logger.Compute(logger.LevelError, fmt.Sprintf("cannot resolve %v: unexpected number of values: %v", stage, len(values)))
 		return
 	}
-	if !matcher.checkFragmentStatus(com) {
+	if matcher.orderConfirmed(com) {
 		logger.Compute(logger.LevelDebug, fmt.Sprintf("stop resolving buy=%v, sell=%v as at lease one of them gets confirmed", com.Buy.OrderID, com.Sell.OrderID))
 		return
 	}
@@ -186,18 +186,18 @@ func (matcher *matcher) resolveValues(values []uint64, networkID smpc.NetworkID,
 	callback(com)
 }
 
-func (matcher *matcher) checkFragmentStatus(com Computation) bool {
+func (matcher *matcher) orderConfirmed(com Computation) bool {
 	_, _, _, buyStatus, _ := matcher.fragmentStore.BuyOrderFragment(com.Epoch, com.Buy.OrderID)
-	if buyStatus != order.Open {
-		return false
+	if buyStatus == order.Confirmed {
+		return true
 	}
 
 	_, _, _, sellStatus, _ := matcher.fragmentStore.SellOrderFragment(com.Epoch, com.Sell.OrderID)
-	if sellStatus != order.Open {
-		return false
+	if sellStatus == order.Confirmed {
+		return true
 	}
 
-	return true
+	return false
 }
 
 func buildJoin(com Computation, stage ResolveStage) (smpc.Join, smpc.JoinCommitments, error) {

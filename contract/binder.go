@@ -64,7 +64,8 @@ type Binder struct {
 // NewBinder returns a Binder to communicate with contracts
 func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := *auth
-	transactOpts.GasPrice = big.NewInt(5000000000)
+	transactOpts.GasPrice = big.NewInt(8000000000)
+	transactOpts.GasLimit = 300000
 
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
 	if err != nil {
@@ -216,18 +217,20 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	// If the gas price is greater than the gas price limit, temporarily lower
 	// the gas price for this request
-	lastGasPrice := binder.transactOpts.GasPrice
-	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmitOrderGasPriceLimit(binder.callOpts)
-	if err == nil {
-		// Set gas price to the appropriate limit
-		if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
-			binder.transactOpts.GasPrice = submitOrderGasPriceLimit
-		}
-		// Reset gas price
-		defer func() {
-			binder.transactOpts.GasPrice = lastGasPrice
-		}()
-	}
+	// lastGasPrice := binder.transactOpts.GasPrice
+	// submitOrderGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
+	// if err == nil {
+	// 	// Set gas price to the appropriate limit
+	// 	if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
+	// 		binder.transactOpts.GasPrice = submitOrderGasPriceLimit
+	// 	}
+	// 	// Reset gas price
+	// 	defer func() {
+	// 		binder.transactOpts.GasPrice = lastGasPrice
+	// 	}()
+	// } else {
+	// 	log.Printf("[error] cannot get submission gas price limit,%v ", err)
+	// }
 
 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
 		ord.ID,
@@ -355,7 +358,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 	}
 
 	// Wait for mining
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	dispatch.CoBegin(
 		func() {
@@ -416,7 +419,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 	}
 
 	// Wait for mining
-	matchCtx, matchCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	matchCtx, matchCancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer matchCancel()
 	_, matchErr = binder.conn.PatchedWaitMined(matchCtx, matchTx)
 	if matchErr != nil {
@@ -1217,7 +1220,7 @@ func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transactio
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	_, err := binder.conn.PatchedWaitMined(ctx, tx)

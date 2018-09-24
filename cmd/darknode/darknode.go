@@ -243,7 +243,7 @@ func main() {
 		}
 		gen := ome.NewComputationGenerator(config.Address, store.SomerOrderFragmentStore())
 		matcher := ome.NewMatcher(store.SomerComputationStore(), store.SomerOrderFragmentStore(), smpcer)
-		confirmer := ome.NewConfirmer(store.SomerComputationStore(), store.SomerOrderFragmentStore(), &contractBinder, 5*time.Second, 4)
+		confirmer := ome.NewConfirmer(store.SomerComputationStore(), store.SomerOrderFragmentStore(), &contractBinder, 5*time.Second, 6)
 		settler := ome.NewSettler(store.SomerComputationStore(), smpcer, &contractBinder, 1e12)
 		ome := ome.NewOme(config.Address, gen, matcher, confirmer, settler, orderbook, smpcer, epoch)
 
@@ -256,7 +256,7 @@ func main() {
 		}, func() {
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(20 * time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()

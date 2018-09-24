@@ -26,6 +26,8 @@ type Conn struct {
 func Connect(config Config) (Conn, error) {
 	if config.URI == "" {
 		switch config.Network {
+		case NetworkMainnet:
+			config.URI = "https://mainnet.infura.io"
 		case NetworkTestnet:
 			config.URI = "https://kovan.infura.io"
 		case NetworkFalcon:

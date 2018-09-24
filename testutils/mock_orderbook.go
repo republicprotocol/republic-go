@@ -200,6 +200,10 @@ func (binder *MockContractBinder) BlockNumber(orderID order.ID) (*big.Int, error
 	return binder.MinimumEpochInterval()
 }
 
+func (binder *MockContractBinder) SettlementStatus(orderID order.ID) (uint8, error) {
+	return 2, nil
+}
+
 func (binder *MockContractBinder) Status(orderID order.ID) (order.Status, error) {
 	binder.ordersMu.RLock()
 	defer binder.ordersMu.RUnlock()
