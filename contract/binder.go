@@ -45,7 +45,7 @@ var ErrMismatchedOrderLengths = errors.New("mismatched order lengths")
 // be confirmed. The functions `OpenBuyOrder`, `OpenSellOrder`, `CancelOrder`
 // and `ConfirmOrder` return only after the required number of confirmations has
 // been reached.
-const BlocksForConfirmation = 4
+const BlocksForConfirmation = 6
 
 // Binder implements all methods that will communicate with the smart contracts
 type Binder struct {
@@ -279,6 +279,10 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 
 // Settle the order pair which gets confirmed by the Orderbook
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
+	if binder.conn.Config.SentryDSN != "" {
+		binder.checkBalance()
+	}
+
 	var buyErr, sellErr, matchErr error
 
 	// Get order submission status
@@ -304,10 +308,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if buyStatus == 2 || sellStatus == 2 {
 		log.Printf("[info] (settle) already settled buy = %v, sell = %v", buy.ID, sell.ID)
 		return nil
-	}
-
-	if binder.conn.Config.SentryDSN != "" {
-		binder.checkBalance()
 	}
 
 	// Submit orders
@@ -964,23 +964,37 @@ func (binder *Binder) cancelOrder(id order.ID) (*types.Transaction, error) {
 
 // ConfirmOrder match on the Orderbook.
 func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
-	before, err := binder.orderDepth(id)
-	if err != nil {
-		return err
-	}
-
 	if binder.conn.Config.SentryDSN != "" {
 		binder.checkBalance()
 	}
 
-	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-		return binder.confirmOrder(id, match)
-	})
+	orderStatus, err := binder.status(id)
 	if err != nil {
 		return err
 	}
 
-	return binder.waitForOrderDepth(tx, id, before.Uint64())
+	switch orderStatus {
+	case order.Nil, order.Canceled:
+		return nil
+	case order.Open:
+		tx, err := binder.SendTx(func() (*types.Transaction, error) {
+			return binder.confirmOrder(id, match)
+		})
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+
+		_, err = binder.conn.PatchedWaitMined(ctx, tx)
+		if err != nil {
+			return err
+		}
+	case order.Confirmed:
+	}
+
+	return binder.waitForOrderDepth(id)
 }
 
 func (binder *Binder) orderDepth(id order.ID) (*big.Int, error) {
@@ -1231,16 +1245,7 @@ func (binder *Binder) checkBalance() {
 	}
 }
 
-func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-
-	_, err := binder.conn.PatchedWaitMined(ctx, tx)
-	if err != nil {
-		return err
-	}
-
+func (binder *Binder) waitForOrderDepth(id order.ID) error {
 	for {
 		binder.mu.RLock()
 		depth, err := binder.orderbook.OrderDepth(binder.callOpts, id)
@@ -1249,7 +1254,7 @@ func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, befo
 			return err
 		}
 
-		if depth.Uint64()-before >= BlocksForConfirmation {
+		if depth.Uint64() >= BlocksForConfirmation {
 			binder.mu.RUnlock()
 			return nil
 		}
