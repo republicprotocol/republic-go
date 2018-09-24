@@ -87,7 +87,7 @@ func (key EcdsaKey) MarshalJSON() ([]byte, error) {
 	jsonKey["d"] = key.D.Bytes()
 
 	// Public key
-	ethAddress, err := RepublicAddressToEthAddress(key.address)
+	ethAddress, err := republicAddressToEthAddress(key.address)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -263,8 +263,8 @@ func init() {
 	s256.BitSize = 256
 }
 
-// RepublicAddressToEthAddress converts a republic address to an ethereum address
-func RepublicAddressToEthAddress(repAddress string) (common.Address, error) {
+// Converts a republic address to an ethereum address
+func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
 	if len(addByte) == 0 {
 		return common.Address{}, errors.New("fail to decode the address")
@@ -273,8 +273,8 @@ func RepublicAddressToEthAddress(repAddress string) (common.Address, error) {
 	return address, nil
 }
 
-// EthAddressToRepublicAddress converts an ethereum address to a republic address
-func EthAddressToRepublicAddress(ethAddress string) identity.Address {
+// Converts an ethereum address to a republic address
+func ethAddressToRepublicAddress(ethAddress string) identity.Address {
 	address := common.HexToAddress(ethAddress)
 	addr := make([]byte, 2, 22)
 	addr[0] = multihash.KECCAK_256

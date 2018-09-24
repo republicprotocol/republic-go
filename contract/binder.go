@@ -1219,10 +1219,7 @@ func (binder *Binder) checkBalance() {
 	// Log an event to Sentry if the Darknode fees are running low.
 	balance, err := binder.conn.Client.BalanceAt(context.Background(), binder.transactOpts.From, nil)
 	if err != nil {
-		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode balance: %v", err), map[string]string{
-			"darknode": crypto.EthAddressToRepublicAddress(binder.transactOpts.From.String()).String(),
-			"level":    string(raven.INFO),
-		})
+		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode balance: %v", err), nil)
 		return
 	}
 	if new(big.Float).SetInt(balance).Cmp(big.NewFloat(0.1)) == -1 {

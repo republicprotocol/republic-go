@@ -56,10 +56,10 @@ func main() {
 	// Configure Sentry and log an initial event
 	if config.SentryDSN != "" {
 		raven.SetDSN(config.SentryDSN)
-		raven.CaptureErrorAndWait(errors.New("darknode restarting"), map[string]string{
+		raven.SetTagsContext(map[string]string{
 			"darknode": config.Address.String(),
-			"level":    string(raven.INFO),
 		})
+		raven.CaptureErrorAndWait(errors.New("darknode restarting"), nil)
 	}
 
 	// Get IP-address
