@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/getsentry/raven-go"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -49,6 +50,12 @@ func main() {
 	config, err := config.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
+	}
+
+	// Configure Sentry and log an initial event
+	if config.SentryDSN != "" {
+		raven.SetDSN(config.SentryDSN)
+		raven.CaptureErrorAndWait(fmt.Errorf("darknode %s starting", config.Address.String()), nil)
 	}
 
 	// Get IP-address

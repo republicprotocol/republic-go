@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/getsentry/raven-go"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -203,6 +205,10 @@ func (binder *Binder) settlementStatus(id order.ID) (uint8, error) {
 
 // SubmitOrder to the RenEx accounts
 func (binder *Binder) SubmitOrder(ord order.Order) error {
+	if binder.conn.Config.SentryDSN != "" {
+		binder.checkBalance()
+	}
+
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.submitOrder(ord)
 	})
@@ -297,6 +303,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	if buyStatus == 2 || sellStatus == 2 {
 		log.Printf("[info] (settle) already settled buy = %v, sell = %v", buy.ID, sell.ID)
 		return nil
+	}
+
+	if binder.conn.Config.SentryDSN != "" {
+		binder.checkBalance()
 	}
 
 	// Submit orders
@@ -958,6 +968,10 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 		return err
 	}
 
+	if binder.conn.Config.SentryDSN != "" {
+		binder.checkBalance()
+	}
+
 	tx, err := binder.SendTx(func() (*types.Transaction, error) {
 		return binder.confirmOrder(id, match)
 	})
@@ -1199,6 +1213,18 @@ func (binder *Binder) SubmitChallenge(buyID, sellID order.ID) error {
 
 func (binder *Binder) submitChallenge(buyID, sellID order.ID) (*types.Transaction, error) {
 	return binder.darknodeSlasher.SubmitChallenge(binder.transactOpts, buyID, sellID)
+}
+
+func (binder *Binder) checkBalance() {
+	// Log an event to Sentry if the Darknode fees are running low.
+	balance, err := binder.conn.Client.BalanceAt(context.Background(), binder.transactOpts.From, nil)
+	if err != nil {
+		raven.CaptureErrorAndWait(fmt.Errorf("cannot check darknode (%s) balance: %v", binder.transactOpts.From, err), nil)
+		return
+	}
+	if new(big.Float).SetInt(balance).Cmp(big.NewFloat(0.1)) == -1 {
+		raven.CaptureErrorAndWait(fmt.Errorf("darknode balance low (%s ETH)", balance.String()), nil)
+	}
 }
 
 func (binder *Binder) waitForOrderDepth(tx *types.Transaction, id order.ID, before uint64) error {
