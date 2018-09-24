@@ -968,30 +968,35 @@ func (binder *Binder) ConfirmOrder(id order.ID, match order.ID) error {
 		binder.checkBalance()
 	}
 
-	orderStatus, err := binder.status(id)
-	if err != nil {
-		return err
-	}
-
-	switch orderStatus {
-	case order.Nil, order.Canceled:
-		return nil
-	case order.Open:
-		tx, err := binder.SendTx(func() (*types.Transaction, error) {
-			return binder.confirmOrder(id, match)
-		})
+	for {
+		orderStatus, err := binder.status(id)
 		if err != nil {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-		defer cancel()
+		switch orderStatus {
+		case order.Nil, order.Canceled:
+			log.Printf("[debug] order =%v has unexpected status %v", id, orderStatus)
+			return nil
+		case order.Open:
+			tx, err := binder.SendTx(func() (*types.Transaction, error) {
+				return binder.confirmOrder(id, match)
+			})
+			if err != nil {
+				return err
+			}
 
-		_, err = binder.conn.PatchedWaitMined(ctx, tx)
-		if err != nil {
-			return err
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+			defer cancel()
+
+			_, err = binder.conn.PatchedWaitMined(ctx, tx)
+			if err != nil {
+				return err
+			}
+		case order.Confirmed:
+			break
 		}
-	case order.Confirmed:
+		time.Sleep(30 * time.Second)
 	}
 
 	return binder.waitForOrderDepth(id)
@@ -1256,8 +1261,9 @@ func (binder *Binder) waitForOrderDepth(id order.ID) error {
 			binder.mu.RUnlock()
 			return nil
 		}
-		time.Sleep(30 * time.Second)
 		binder.mu.RUnlock()
+
+		time.Sleep(30 * time.Second)
 	}
 }
 
