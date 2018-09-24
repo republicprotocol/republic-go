@@ -3,331 +3,87 @@ package grpc_test
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo"
-	// . "github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/grpc"
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/identity"
+	"github.com/republicprotocol/republic-go/smpc"
 	"github.com/republicprotocol/republic-go/testutils"
+	"golang.org/x/net/context"
 )
 
 var _ = Describe("Streaming", func() {
 
 	var server *Server
-	var service *StreamerService
-	// var serviceStreamer *ConnectorListener
-	// var serviceAddr identity.Address
+	var connectorListener ConnectorListener
 	// var serviceMultiAddr identity.MultiAddress
-	// var clientStreamer ConnectorListener
-	// var clientAddr identity.Address
-	// var clientMultiAddr identity.MultiAddress
-
 	BeforeEach(func() {
-		// var err error
-
-		// clientStreamer, clientAddr, err = newStreamer()
-		// Expect(err).ShouldNot(HaveOccurred())
-
-		server = NewServer()
-		// service, serviceStreamer, serviceAddr, err = newStreamerService(clientAddr)
-		// Expect(err).ShouldNot(HaveOccurred())
-		service.Register(server)
-
-		// serviceMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
-		// Expect(err).ShouldNot(HaveOccurred())
-
-		// clientMultiAddr, err = identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18515/republic/%v", clientAddr))
-		// Expect(err).ShouldNot(HaveOccurred())
+		
 	})
 
 	AfterEach(func() {
-		server.Stop()
 	})
 
-	// Context("when connecting to a service", func() {
+	Context("when sending a message to a service", func() {
 
-	// 	It("should connect when the service is started before the connection request", func(done Done) {
-	// 		defer close(done)
+		It("should not error", func(done Done) {
+			defer close(done)
 
-	// 		go func() {
-	// 			defer GinkgoRecover()
+			var addr identity.Address
+			var err error
 
-	// 			err := server.Start("0.0.0.0:18514")
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 		}()
-	// 		time.Sleep(time.Millisecond)
+			connectorListener, addr, err = newStreamer()
+			Expect(err).ShouldNot(HaveOccurred())
 
-	// 		_, err := clientStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		Expect(err).ShouldNot(HaveOccurred())
-	// 	}, 60 /* 60 second timeout */)
+			server = NewServer()
+			service, _, serviceAddr, err := newStreamerService(addr)
+			Expect(err).ShouldNot(HaveOccurred())
+			service.Register(server)
 
-	// 	It("should connect when the service is started after the connection request", func(done Done) {
-	// 		defer close(done)
+			serviceMultiAddr, err := identity.NewMultiAddressFromString(fmt.Sprintf("/ip4/0.0.0.0/tcp/18514/republic/%v", serviceAddr))
+			Expect(err).ShouldNot(HaveOccurred())
 
-	// 		go func() {
-	// 			defer GinkgoRecover()
+			go func() {
+				defer GinkgoRecover()
 
-	// 			time.Sleep(time.Second)
-	// 			err := server.Start("0.0.0.0:18514")
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 		}()
-	// 		time.Sleep(time.Millisecond)
+				err := server.Start("0.0.0.0:18514")
+				Expect(err).ShouldNot(HaveOccurred())
+			}()
+			defer server.Stop()
+			time.Sleep(time.Millisecond)
 
-	// 		_, err := clientStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		Expect(err).ShouldNot(HaveOccurred())
+			sender, err := connectorListener.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
+			Expect(err).Should(HaveOccurred())
 
-	// 	}, 60 /* 60 second timeout */)
+			sender, err = connectorListener.Connect(context.Background(), smpc.NetworkID(testutils.Random32Bytes()), serviceMultiAddr, testutils.NewSmpcReceiver())
+			Expect(err).ShouldNot(HaveOccurred())
 
-	// })
+			err = sender.Send(smpc.Message{
+				MessageJoin: &smpc.MessageJoin{
+					Join:      smpc.Join{},
+					NetworkID: smpc.NetworkID(testutils.Random32Bytes()),
+				},
+				MessageType: smpc.MessageTypeJoin,
+			})
+			Expect(err).ShouldNot(HaveOccurred())
 
-	// Context("when listening to a client", func() {
+			// sender, err = connectorListener.Listen(context.Background(), smpc.NetworkID(testutils.Random32Bytes()), serviceAddr, testutils.NewSmpcReceiver())
+			// Expect(err).ShouldNot(HaveOccurred())
 
-	// 	BeforeEach(func() {
-	// 		go func() {
-	// 			defer GinkgoRecover()
+		}, 60 /* 60 second timeout */)
 
-	// 			err := server.Start("0.0.0.0:18514")
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 		}()
-	// 		time.Sleep(time.Millisecond)
-	// 	})
+		It("should connect when the service is started after the connection request", func(done Done) {
+			defer close(done)
 
-	// 	It("should connect when the client sends the connection request before the service is listening", func() {
-	// 		_, err := clientStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		Expect(err).ShouldNot(HaveOccurred())
+		}, 60 /* 60 second timeout */)
 
-	// 		_, err = serviceStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		Expect(err).ShouldNot(HaveOccurred())
-	// 	})
+	})
 
-	// 	It("should connect when the client sends the connection request after the service is listening", func() {
-
-	// 		doneListening := make(chan struct{})
-	// 		go func() {
-	// 			defer GinkgoRecover()
-	// 			defer close(doneListening)
-
-	// 			_, err := serviceStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 		}()
-	// 		time.Sleep(time.Millisecond)
-
-	// 		_, err := clientStreamer.Connect(context.Background(), smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		Expect(err).ShouldNot(HaveOccurred())
-
-	// 		<-doneListening
-	// 	})
-
-	// })
-
-	// Context("when sending and receiving messages", func() {
-
-	// 	var serviceStream smpc.Sender
-	// 	var serviceStreamCancel context.CancelFunc
-
-	// 	var clientStream smpc.Sender
-	// 	var clientStreamCancel context.CancelFunc
-
-	// 	BeforeEach(func() {
-	// 		var err error
-
-	// 		go func() {
-	// 			defer GinkgoRecover()
-
-	// 			err := server.Start("0.0.0.0:18514")
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 		}()
-	// 		time.Sleep(time.Millisecond)
-
-	// 		ctx, cancel := context.WithCancel(context.Background())
-	// 		clientStream, err = clientStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 		clientStreamCancel = cancel
-	// 		Expect(err).ShouldNot(HaveOccurred())
-
-	// 		ctx, cancel = context.WithCancel(context.Background())
-	// 		serviceStream, err = serviceStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), clientMultiAddr, testutils.NewSmpcReceiver())
-	// 		serviceStreamCancel = cancel
-	// 		Expect(err).ShouldNot(HaveOccurred())
-	// 	})
-
-	// 	AfterEach(func() {
-	// 		clientStreamCancel()
-	// 		serviceStreamCancel()
-	// 	})
-
-	// 	It("should receive messages sent by the client", func() {
-	// 		dispatch.CoBegin(func() {
-	// 			defer GinkgoRecover()
-
-	// 			for i := 0; i < 1000; i++ {
-	// 				err := clientStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}
-	// 		}, func() {
-	// 			defer GinkgoRecover()
-
-	// 			// for i := 0; i < 1000; i++ {
-	// 			// 	message := mockStreamMessage{}
-	// 			// 	// err := serviceStream.Recv(&message)
-	// 			// 	// Expect(err).ShouldNot(HaveOccurred())
-	// 			// 	Expect(message.i).To(Equal(int64(i)))
-	// 			// }
-	// 		})
-	// 	})
-
-	// 	It("should receive messages sent by the server", func() {
-	// 		dispatch.CoBegin(func() {
-	// 			defer GinkgoRecover()
-
-	// 			for i := 0; i < 1000; i++ {
-	// 				err := serviceStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}
-	// 		}, func() {
-	// 			defer GinkgoRecover()
-
-	// 			// for i := 0; i < 1000; i++ {
-	// 			// 	message := mockStreamMessage{}
-	// 			// 	// err := clientStream.Recv(&message)
-	// 			// 	Expect(err).ShouldNot(HaveOccurred())
-	// 			// 	Expect(message.i).To(Equal(int64(i)))
-	// 			// }
-	// 		})
-	// 	})
-
-	// 	Context("when the client disconnects and reconnects", func() {
-	// 		It("should send messages to the server without the server opening a new stream", func() {
-	// 			var err error
-
-	// 			// Disconnect
-	// 			clientStreamCancel()
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Confirm that receiving returns an error
-	// 			// message := mockStreamMessage{}
-	// 			// err = serviceStream.Recv(&message)
-	// 			// Expect(err).Should(HaveOccurred())
-
-	// 			// Reconnect
-	// 			ctx, cancel := context.WithCancel(context.Background())
-	// 			clientStream, err = clientStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 			clientStreamCancel = cancel
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Send a message from the client
-	// 			go func() {
-	// 				defer GinkgoRecover()
-	// 				err := clientStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}()
-
-	// 			// Receive a message from the service without opening a new
-	// 			// stream
-	// 			// err = serviceStream.Recv(&message)
-	// 			// Expect(err).ShouldNot(HaveOccurred())
-	// 			// Expect(message.i).Should(Equal(int64(420)))
-	// 		})
-
-	// 		It("should receive messages from the server without the server opening a new stream", func() {
-	// 			var err error
-
-	// 			// Disconnect
-	// 			clientStreamCancel()
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Confirm that sending and receiving returns an error
-	// 			// err = serviceStream.Send(&mockStreamMessage{int64(420)})
-	// 			// Expect(err).Should(HaveOccurred())
-
-	// 			// Reconnect
-	// 			ctx, cancel := context.WithCancel(context.Background())
-	// 			clientStream, err = clientStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), serviceMultiAddr, testutils.NewSmpcReceiver())
-	// 			clientStreamCancel = cancel
-	// 			Expect(err).ShouldNot(HaveOccurred())
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Send a message from the client
-	// 			go func() {
-	// 				defer GinkgoRecover()
-	// 				err := serviceStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}()
-
-	// 			// Receive a message from the service without opening a new
-	// 			// stream
-	// 			// message := mockStreamMessage{}
-	// 			// err = clientStream.Recv(&message)
-	// 			// Expect(err).ShouldNot(HaveOccurred())
-	// 			// Expect(message.i).Should(Equal(int64(420)))
-	// 		})
-	// 	})
-
-	// 	Context("when the server disconnects and reconnects", func() {
-	// 		It("should send messages to the client without the client opening a new stream", func(done Done) {
-	// 			defer close(done)
-
-	// 			// Disconnect
-	// 			serviceStreamCancel()
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Send a message from the service
-	// 			go func() {
-	// 				defer GinkgoRecover()
-
-	// 				// Reconnect
-	// 				ctx, cancel := context.WithCancel(context.Background())
-	// 				serviceStream, err := serviceStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), clientMultiAddr, testutils.NewSmpcReceiver())
-	// 				serviceStreamCancel = cancel
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 				time.Sleep(10 * time.Millisecond)
-
-	// 				err = serviceStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}()
-
-	// 			// Receive a message from the client without opening a new
-	// 			// stream
-	// 			// message := mockStreamMessage{}
-	// 			// err := clientStream.Recv(&message)
-	// 			// Expect(err).ShouldNot(HaveOccurred())
-	// 			// Expect(message.i).Should(Equal(int64(420)))
-
-	// 		}, 60 /* 60s timeout */)
-
-	// 		It("should receive messages from the client without the client opening a new stream", func(done Done) {
-	// 			defer close(done)
-
-	// 			// Disconnect
-	// 			serviceStreamCancel()
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Send a message from the service
-	// 			go func() {
-	// 				defer GinkgoRecover()
-
-	// 				err := clientStream.Send(smpc.Message{})
-	// 				Expect(err).ShouldNot(HaveOccurred())
-	// 			}()
-
-	// 			// Reconnect
-	// 			_, cancel := context.WithCancel(context.Background())
-	// 			// serviceStream, err := serviceStreamer.Connect(ctx, smpc.NetworkID([32]byte{}), clientMultiAddr, testutils.NewSmpcReceiver())
-	// 			serviceStreamCancel = cancel
-	// 			// Expect(err).ShouldNot(HaveOccurred())
-	// 			time.Sleep(10 * time.Millisecond)
-
-	// 			// Receive a message from the client without opening a new
-	// 			// stream
-	// 			// message := mockStreamMessage{}
-	// 			// err = serviceStream.Recv(&message)
-	// 			// Expect(err).ShouldNot(HaveOccurred())
-	// 			// Expect(message.i).Should(Equal(int64(420)))
-	// 		}, 60 /* 60s timeout */)
-	// 	})
-	// })
 })
 
 func newStreamer() (ConnectorListener, identity.Address, error) {
