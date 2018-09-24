@@ -267,8 +267,26 @@ func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error
 	return binder.renExSettlement.Settle(binder.transactOpts, buy, sell)
 }
 
-// Settle the order pair which gets confirmed by the Orderbook
+// Settle the order pair that has been confirmed by the Orderbook.
 func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
+	start := time.Now()
+	var err error
+
+	// If settling attempts fail, retry for upto 5 minutes.
+	for time.Since(start) < time.Duration(5*time.Minute) {
+		err = binder.SettleOrders(buy, sell)
+		if err != nil {
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		return nil
+	}
+
+	return fmt.Errorf("settling timed out: %v", err)
+}
+
+// SettleOrders attempts to settle the order pair that has been confirmed by the Orderbook.
+func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 	var buyErr, sellErr, matchErr error
 
 	// Get order submission status
@@ -394,7 +412,6 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		})
 	}()
 	if matchErr != nil {
-
 		return fmt.Errorf("cannot settle buy = %v, sell = %v: %v", buy.ID, sell.ID, matchErr)
 	}
 
