@@ -64,7 +64,6 @@ type Binder struct {
 // NewBinder returns a Binder to communicate with contracts
 func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 	transactOpts := *auth
-	transactOpts.GasPrice = big.NewInt(8000000000)
 	transactOpts.GasLimit = 300000
 
 	nonce, err := conn.Client.PendingNonceAt(context.Background(), transactOpts.From)
@@ -217,20 +216,11 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	// If the gas price is greater than the gas price limit, temporarily lower
 	// the gas price for this request
-	// lastGasPrice := binder.transactOpts.GasPrice
-	// submitOrderGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
-	// if err == nil {
-	// 	// Set gas price to the appropriate limit
-	// 	if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
-	// 		binder.transactOpts.GasPrice = submitOrderGasPriceLimit
-	// 	}
-	// 	// Reset gas price
-	// 	defer func() {
-	// 		binder.transactOpts.GasPrice = lastGasPrice
-	// 	}()
-	// } else {
-	// 	log.Printf("[error] cannot get submission gas price limit,%v ", err)
-	// }
+	lastGasPrice := binder.transactOpts.GasPrice
+	defer func() {
+		binder.transactOpts.GasPrice = lastGasPrice
+	}()
+	binder.transactOpts.GasPrice = big.NewInt(10000000000)
 
 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
 		ord.ID,
