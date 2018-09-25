@@ -272,6 +272,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	for time.Since(start) < time.Duration(5*time.Minute) {
 		err = binder.SettleOrders(buy, sell)
 		if err != nil {
+			log.Printf("[debug] cannot submit match buy = %v, sell = %v", buy.ID, sell.ID)
 			time.Sleep(30 * time.Second)
 			continue
 		}
