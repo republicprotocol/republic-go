@@ -263,7 +263,7 @@ func init() {
 	s256.BitSize = 256
 }
 
-// Convert republic address to ethereum address
+// Converts a republic address to an ethereum address
 func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	addByte := base58.DecodeAlphabet(repAddress, base58.BTCAlphabet)[2:]
 	if len(addByte) == 0 {
@@ -273,7 +273,7 @@ func republicAddressToEthAddress(repAddress string) (common.Address, error) {
 	return address, nil
 }
 
-// Convert republic address to ethereum address
+// Converts an ethereum address to a republic address
 func ethAddressToRepublicAddress(ethAddress string) identity.Address {
 	address := common.HexToAddress(ethAddress)
 	addr := make([]byte, 2, 22)
