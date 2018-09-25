@@ -100,4 +100,39 @@ var _ = Describe("Connections", func() {
 		})
 	})
 
+	Context("when backing off max", func() {
+		It("should retry with a longer wait time until the operation succeeds", func() {
+			attempts := 0
+
+			start := time.Now()
+			err := BackoffMax(context.Background(), func() error {
+				if attempts < 2 {
+					attempts++
+					return errors.New("error")
+				}
+				return nil
+			}, 2.0)
+			end := time.Now()
+
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(attempts).Should(Equal(2))
+			Expect(end.Sub(start).Seconds()).Should(BeNumerically("<=", 2.0))
+		})
+
+		It("should timeout with an error after the context is done", func() {
+			attempts := 0
+
+			start := time.Now()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			err := BackoffMax(ctx, func() error {
+				attempts++
+				return errors.New("error")
+			}, 1.0)
+			end := time.Now()
+
+			Expect(err).Should(HaveOccurred())
+			Expect(int(end.Sub(start).Seconds())).Should(BeNumerically("==", 2))
+		})
+	})
 })
