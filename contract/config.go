@@ -21,7 +21,7 @@ const (
 type Config struct {
 	Network                    Network `json:"network"`
 	URI                        string  `json:"uri"`
-	SentryDSN                  string  `json:"sentry"`
+	SentryDSN                  string  `json:"sentry,omitempty"`
 	RepublicTokenAddress       string  `json:"republicTokenAddress"`
 	DarknodeRegistryAddress    string  `json:"darknodeRegistryAddress"`
 	DarknodeRewardVaultAddress string  `json:"darknodeRewardVaultAddress"`
