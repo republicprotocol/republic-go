@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/getsentry/raven-go"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
 	"github.com/republicprotocol/republic-go/crypto"
@@ -49,6 +51,15 @@ func main() {
 	config, err := config.NewConfigFromJSONFile(*configParam)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
+	}
+
+	// Configure Sentry and log an initial event
+	if config.SentryDSN != "" {
+		raven.SetDSN(config.SentryDSN)
+		raven.SetTagsContext(map[string]string{
+			"darknode": config.Address.String(),
+		})
+		raven.CaptureErrorAndWait(errors.New("darknode restarting"), nil)
 	}
 
 	// Get IP-address
@@ -256,7 +267,7 @@ func main() {
 		}, func() {
 			// Periodically sync the next ξ
 			for {
-				time.Sleep(5 * time.Second)
+				time.Sleep(20 * time.Second)
 
 				// Get the epoch
 				nextEpoch, err := contractBinder.Epoch()

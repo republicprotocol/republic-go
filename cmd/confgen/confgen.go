@@ -62,6 +62,7 @@ func main() {
 		Address:                 identity.Address(keystore.Address()),
 		OracleAddress:           identity.Address(*oracleAddress),
 		BootstrapMultiAddresses: []identity.MultiAddress{},
+		SentryDSN:               "",
 		Logs: logger.Options{
 			Plugins: []logger.PluginOptions{
 				{

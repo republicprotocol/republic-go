@@ -18,6 +18,7 @@ type Config struct {
 	Address                 identity.Address        `json:"address"`
 	OracleAddress           identity.Address        `json:"oracleAddress"`
 	BootstrapMultiAddresses identity.MultiAddresses `json:"bootstrapMultiAddresses"`
+	SentryDSN               string                  `json:"sentry,omitempty"`
 	Host                    string                  `json:"host"`
 	Port                    string                  `json:"port"`
 	Alpha                   int                     `json:"alpha"`
