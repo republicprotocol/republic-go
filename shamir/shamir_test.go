@@ -2,6 +2,7 @@ package shamir_test
 
 import (
 	"encoding/json"
+	"math/big"
 	"math/rand"
 
 	. "github.com/onsi/ginkgo"
@@ -80,6 +81,7 @@ var _ = Describe("Shamir's secret sharing", func() {
 					Index: uint64(rand.Int63()),
 					Value: uint64(rand.Int63()) % Prime,
 				}
+
 				data, err := share.MarshalBinary()
 				Expect(err).ShouldNot(HaveOccurred())
 				unmarshaledShare := Share{}
@@ -103,6 +105,17 @@ var _ = Describe("Shamir's secret sharing", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(share.Index).Should(Equal(unmarshaledShare.Index))
 				Expect(share.Value).Should(Equal(unmarshaledShare.Value))
+
+				blinding := Blinding{
+					big.NewInt(int64(rand.Int63())),
+				}
+
+				data, err = blinding.MarshalJSON()
+				Expect(err).ShouldNot(HaveOccurred())
+				unmarshaledBlinding := Blinding{}
+				err = unmarshaledBlinding.UnmarshalJSON(data)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(blinding).Should(Equal(unmarshaledBlinding))
 			}
 		})
 
@@ -129,13 +142,26 @@ var _ = Describe("Shamir's secret sharing", func() {
 					Index: uint64(rand.Int63()),
 					Value: uint64(rand.Int63()) % Prime,
 				}
+
+				blinding := Blinding{
+					big.NewInt(int64(rand.Int63())),
+				}
+
 				cipherText, err := share.Encrypt(rsaKey.PublicKey)
 				Expect(err).ShouldNot(HaveOccurred())
+				cipherBlinding, err := blinding.Encrypt(rsaKey.PublicKey)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				decryptedShare := Share{}
 				err = decryptedShare.Decrypt(rsaKey.PrivateKey, cipherText)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(share.Index).Should(Equal(decryptedShare.Index))
 				Expect(share.Value).Should(Equal(decryptedShare.Value))
+
+				decryptedBlinding := Blinding{}
+				err = decryptedBlinding.Decrypt(rsaKey.PrivateKey, cipherBlinding)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(blinding).Should(Equal(decryptedBlinding))
 			}
 		})
 
