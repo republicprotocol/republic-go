@@ -143,7 +143,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			client := &http.Client{}
 			response, err := client.Do(request)
 			if err != nil {
-				log.Println("failed to connect to ethGasStationAPI")
+				log.Printf("cannot connect to ethGasStationAPI: %v", err)
 				time.Sleep(1 * time.Minute)
 				continue
 			}
@@ -156,6 +156,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
+				log.Printf("cannot decode json response from ethGasStation: %v", err)
 				time.Sleep(1 * time.Minute)
 				continue
 			}
