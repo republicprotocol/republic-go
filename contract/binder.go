@@ -144,6 +144,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			response, err := client.Do(request)
 			if err != nil {
 				log.Println("failed to connect to ethGasStationAPI")
+				time.Sleep(1 * time.Minute)
 				continue
 			}
 
@@ -155,14 +156,13 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
+				time.Sleep(1 * time.Minute)
 				continue
 			}
 
 			binder.mu.Lock()
 			binder.transactOpts.GasPrice = big.NewInt(int64(data.Fast * math.Pow10(8)))
 			binder.mu.Unlock()
-
-			log.Println(big.NewInt(int64(data.Fast * math.Pow10(8))))
 
 			time.Sleep(1 * time.Minute)
 		}
