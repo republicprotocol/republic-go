@@ -148,6 +148,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 				continue
 			}
 
+			if response.StatusCode != http.StatusOK {
+				log.Printf("received status code %v from ethGasStation", response.StatusCode)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
 			type resp struct {
 				Fast float64 `json:"fast"`
 			}
@@ -370,6 +376,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 			})
 		} else {
 			log.Printf("[info] (settle) skipping submission of buy = %v", buy.ID)
+			time.Sleep(2 * time.Minute)
 		}
 		if sellStatus == 0 {
 			sellTx, sellErr = binder.sendTx(func() (*types.Transaction, error) {
@@ -377,6 +384,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 			})
 		} else {
 			log.Printf("[info] (settle) skipping submission of sell = %v", sell.ID)
+			time.Sleep(2 * time.Minute)
 		}
 	}()
 	if buyErr != nil {
