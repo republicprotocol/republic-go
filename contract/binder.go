@@ -158,21 +158,17 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			var data resp
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
-				log.Printf("failed to decode %v", response.Body)
 				continue
 			}
 
 			gasPrice, err := strconv.Atoi(data.Fast)
 			if err != nil {
-				log.Printf("failed to convert %v", data.Fast)
 				continue
 			}
 
 			binder.mu.Lock()
 			binder.transactOpts.GasPrice = big.NewInt(int64(float64(gasPrice) * math.Pow10(9)))
 			binder.mu.Unlock()
-
-			log.Println(big.NewInt(int64(float64(gasPrice) * math.Pow10(9))))
 
 			time.Sleep(1 * time.Minute)
 		}
