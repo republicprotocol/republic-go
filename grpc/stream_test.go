@@ -23,7 +23,7 @@ var _ = Describe("Streaming", func() {
 	var connectorListener ConnectorListener
 	// var serviceMultiAddr identity.MultiAddress
 	BeforeEach(func() {
-		
+
 	})
 
 	AfterEach(func() {

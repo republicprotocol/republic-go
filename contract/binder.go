@@ -144,13 +144,13 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			response, err := client.Do(request)
 			if err != nil {
 				log.Printf("cannot connect to ethGasStationAPI: %v", err)
-				time.Sleep(1 * time.Minute)
+				time.Sleep(3 * time.Minute)
 				continue
 			}
 
 			if response.StatusCode != http.StatusOK {
 				log.Printf("received status code %v from ethGasStation", response.StatusCode)
-				time.Sleep(1 * time.Minute)
+				time.Sleep(3 * time.Minute)
 				continue
 			}
 
@@ -163,7 +163,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
 				log.Printf("cannot decode json response from ethGasStation: %v", err)
-				time.Sleep(1 * time.Minute)
+				time.Sleep(3 * time.Minute)
 				continue
 			}
 
@@ -171,7 +171,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			binder.transactOpts.GasPrice = big.NewInt(int64(data.Fast * math.Pow10(8)))
 			binder.mu.Unlock()
 
-			time.Sleep(1 * time.Minute)
+			time.Sleep(3 * time.Minute)
 		}
 	}()
 	return binder, nil
@@ -460,7 +460,16 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 		defer binder.mu.Unlock()
 
 		matchTx, matchErr = binder.sendTx(func() (*types.Transaction, error) {
-			return binder.submitMatch(buy.ID, sell.ID)
+			if buy.Tokens.PriorityToken() == order.TokenDGX || buy.Tokens.NonPriorityToken() == order.TokenDGX {
+				lastGasLimit := binder.transactOpts.GasLimit
+				binder.transactOpts.GasLimit = 1000000
+				defer func() {
+					binder.transactOpts.GasLimit = lastGasLimit
+				}()
+			}
+
+			log.Printf("[info] (submit match) buy = %v, sell = %v", buy, sell)
+			return binder.renExSettlement.Settle(binder.transactOpts, buy.ID, sell.ID)
 		})
 	}()
 	if matchErr != nil {
