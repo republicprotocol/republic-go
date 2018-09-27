@@ -148,6 +148,12 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 				continue
 			}
 
+			if response.StatusCode != http.StatusOK {
+				log.Printf("received status code %v from ethGasStation", response.StatusCode)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
 			type resp struct {
 				Fast float64 `json:"fast"`
 			}
