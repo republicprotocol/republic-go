@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"math"
 	"math/big"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -116,7 +118,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		return Binder{}, err
 	}
 
-	return Binder{
+	binder := Binder{
 		mu:           new(sync.RWMutex),
 		network:      conn.Config.Network,
 		conn:         conn,
@@ -130,7 +132,43 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 		settlementRegistry: settlementRegistry,
 		renExSettlement:    renExSettlement,
-	}, nil
+	}
+
+	go func() {
+		for {
+			request, _ := http.NewRequest("GET", "https://ethgasstation.info/json/ethgasAPI.json", nil)
+
+			request.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			response, err := client.Do(request)
+			if err != nil {
+				log.Printf("cannot connect to ethGasStationAPI: %v", err)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
+			type resp struct {
+				Fast float64 `json:"fast"`
+			}
+
+			data := new(resp)
+
+			err = json.NewDecoder(response.Body).Decode(&data)
+			if err != nil {
+				log.Printf("cannot decode json response from ethGasStation: %v", err)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
+			binder.mu.Lock()
+			binder.transactOpts.GasPrice = big.NewInt(int64(data.Fast * math.Pow10(8)))
+			binder.mu.Unlock()
+
+			time.Sleep(1 * time.Minute)
+		}
+	}()
+	return binder, nil
 }
 
 // SendTx locks binder resources to execute function f (handling nonces explicitly)
@@ -216,10 +254,19 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 	// If the gas price is greater than the gas price limit, temporarily lower
 	// the gas price for this request
 	lastGasPrice := binder.transactOpts.GasPrice
-	defer func() {
-		binder.transactOpts.GasPrice = lastGasPrice
-	}()
-	binder.transactOpts.GasPrice = big.NewInt(10000000000)
+	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
+	if err == nil {
+		// Set gas price to the appropriate limit
+		if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
+			binder.transactOpts.GasPrice = submitOrderGasPriceLimit
+		}
+		// Reset gas price
+		defer func() {
+			binder.transactOpts.GasPrice = lastGasPrice
+		}()
+	} else {
+		log.Printf("[error] cannot get submission gas price limit,%v ", err)
+	}
 
 	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
 		ord.ID,
