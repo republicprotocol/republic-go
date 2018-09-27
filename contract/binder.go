@@ -11,7 +11,6 @@ import (
 	"math"
 	"math/big"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -137,7 +136,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 	go func() {
 		for {
-			request, _ := http.NewRequest("GET", "https://www.etherchain.org/api/gasPriceOracle", nil)
+			request, _ := http.NewRequest("GET", "https://ethgasstation.info/json/ethgasAPI.json", nil)
 
 			request.Header.Set("Content-Type", "application/json")
 
@@ -148,27 +147,18 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 				continue
 			}
 
-			type resp struct {
-				SafeLow  string `json:"safeLow"`
-				Standard string `json:"standard"`
-				Fast     string `json:"fast"`
-				Fastest  string `json:"fastest"`
-			}
+			data := make(map[string]interface{})
 
-			var data resp
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
 				continue
 			}
 
-			gasPrice, err := strconv.Atoi(data.Fast)
-			if err != nil {
-				continue
-			}
-
 			binder.mu.Lock()
-			binder.transactOpts.GasPrice = big.NewInt(int64(float64(gasPrice) * math.Pow10(9)))
+			binder.transactOpts.GasPrice = big.NewInt(int64(data["fast"].(float64) * math.Pow10(8)))
 			binder.mu.Unlock()
+
+			log.Println(big.NewInt(int64(data["fast"].(float64) * math.Pow10(8))))
 
 			time.Sleep(1 * time.Minute)
 		}
