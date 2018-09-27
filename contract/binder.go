@@ -460,7 +460,16 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 		defer binder.mu.Unlock()
 
 		matchTx, matchErr = binder.sendTx(func() (*types.Transaction, error) {
-			return binder.submitMatch(buy.ID, sell.ID)
+			if buy.Tokens.PriorityToken() == order.TokenDGX || buy.Tokens.NonPriorityToken() == order.TokenDGX {
+				lastGasLimit := binder.transactOpts.GasLimit
+				binder.transactOpts.GasLimit = 1000000
+				defer func() {
+					binder.transactOpts.GasLimit = lastGasLimit
+				}()
+			}
+
+			log.Printf("[info] (submit match) buy = %v, sell = %v", buy, sell)
+			return binder.renExSettlement.Settle(binder.transactOpts, buy.ID, sell.ID)
 		})
 	}()
 	if matchErr != nil {
