@@ -158,8 +158,6 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			binder.transactOpts.GasPrice = big.NewInt(int64(data["fast"].(float64) * math.Pow10(8)))
 			binder.mu.Unlock()
 
-			log.Println(big.NewInt(int64(data["fast"].(float64) * math.Pow10(8))))
-
 			time.Sleep(1 * time.Minute)
 		}
 	}()
