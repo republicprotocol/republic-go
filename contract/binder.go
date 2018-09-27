@@ -147,7 +147,11 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 				continue
 			}
 
-			data := make(map[string]interface{})
+			type resp struct {
+				Fast float64 `json:"fast"`
+			}
+
+			data := new(resp)
 
 			err = json.NewDecoder(response.Body).Decode(&data)
 			if err != nil {
@@ -155,8 +159,10 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 			}
 
 			binder.mu.Lock()
-			binder.transactOpts.GasPrice = big.NewInt(int64(data["fast"].(float64) * math.Pow10(8)))
+			binder.transactOpts.GasPrice = big.NewInt(int64(data.Fast * math.Pow10(8)))
 			binder.mu.Unlock()
+
+			log.Println(big.NewInt(int64(data.Fast * math.Pow10(8))))
 
 			time.Sleep(1 * time.Minute)
 		}
