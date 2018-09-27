@@ -370,6 +370,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 			})
 		} else {
 			log.Printf("[info] (settle) skipping submission of buy = %v", buy.ID)
+			time.Sleep(2 * time.Minute)
 		}
 		if sellStatus == 0 {
 			sellTx, sellErr = binder.sendTx(func() (*types.Transaction, error) {
@@ -377,6 +378,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 			})
 		} else {
 			log.Printf("[info] (settle) skipping submission of sell = %v", sell.ID)
+			time.Sleep(2 * time.Minute)
 		}
 	}()
 	if buyErr != nil {
