@@ -224,7 +224,7 @@ func (network *network) SendWithDelay(networkID NetworkID, message Message) {
 				}
 			}(addr)
 
-			time.Sleep(90 * time.Second)
+			time.Sleep(2 * time.Minute)
 		}
 	}()
 }
