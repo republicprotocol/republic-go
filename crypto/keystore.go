@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/randentropy"
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/scrypt"
 )
@@ -180,7 +181,10 @@ type cipherparamsJSON struct {
 // Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
 func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP int) (encryptedKeyJSONV3, error) {
 
-	salt := randentropy.GetEntropyCSPRNG(32)
+	salt, err := getEntropyCSPRNG(32)
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
 	keyDerived, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
@@ -190,7 +194,10 @@ func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP in
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
 	}
-	iv := randentropy.GetEntropyCSPRNG(aes.BlockSize) // 16
+	iv, err := getEntropyCSPRNG(aes.BlockSize) // 16
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
 	cipherText, err := aesCTRXOR(keyEncrypted, keyBytes, iv)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
@@ -225,7 +232,10 @@ func (keystore *Keystore) encryptEcdsaKey(passphrase string, scryptN, scryptP in
 // Adapted from https://github.com/ethereum/go-ethereum/accounts/keystore
 func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int) (encryptedKeyJSONV3, error) {
 
-	salt := randentropy.GetEntropyCSPRNG(32)
+	salt, err := getEntropyCSPRNG(32)
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
 	keyDerived, err := scrypt.Key([]byte(passphrase), salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
@@ -235,7 +245,10 @@ func (keystore *Keystore) encryptRsaKey(passphrase string, scryptN, scryptP int)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
 	}
-	iv := randentropy.GetEntropyCSPRNG(aes.BlockSize) // 16
+	iv, err := getEntropyCSPRNG(aes.BlockSize) // 16
+	if err != nil {
+		return encryptedKeyJSONV3{}, err
+	}
 	cipherText, err := aesCTRXOR(keyEncrypted, keyBytes, iv)
 	if err != nil {
 		return encryptedKeyJSONV3{}, err
@@ -371,4 +384,14 @@ func ensureInt(x interface{}) int {
 		res = int(x.(float64))
 	}
 	return res
+}
+
+// Adapted from https://github.com/ethereum/go-ethereum/crypto/randentropy v1.8.12
+func getEntropyCSPRNG(n int) ([]byte, error) {
+	mainBuff := make([]byte, n)
+	_, err := io.ReadFull(rand.Reader, mainBuff)
+	if err != nil {
+		return nil, fmt.Errorf("reading from crypto/rand failed: %v", err)
+	}
+	return mainBuff, nil
 }

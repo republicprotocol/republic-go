@@ -17,37 +17,22 @@
 package testutil
 
 import (
-	"context"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/swarm/api"
 	"github.com/ethereum/go-ethereum/swarm/storage"
-	"github.com/ethereum/go-ethereum/swarm/storage/mru"
+	"github.com/ethereum/go-ethereum/swarm/storage/feed"
 )
 
 type TestServer interface {
 	ServeHTTP(http.ResponseWriter, *http.Request)
 }
 
-type fakeBackend struct {
-	blocknumber int64
-}
-
-func (f *fakeBackend) HeaderByNumber(context context.Context, _ string, bigblock *big.Int) (*types.Header, error) {
-	f.blocknumber++
-	biggie := big.NewInt(f.blocknumber)
-	return &types.Header{
-		Number: biggie,
-	}, nil
-}
-
-func NewTestSwarmServer(t *testing.T, serverFunc func(*api.API) TestServer) *TestSwarmServer {
+func NewTestSwarmServer(t *testing.T, serverFunc func(*api.API) TestServer, resolver api.Resolver) *TestSwarmServer {
 	dir, err := ioutil.TempDir("", "swarm-storage-test")
 	if err != nil {
 		t.Fatal(err)
@@ -63,25 +48,21 @@ func NewTestSwarmServer(t *testing.T, serverFunc func(*api.API) TestServer) *Tes
 	}
 	fileStore := storage.NewFileStore(localStore, storage.NewFileStoreParams())
 
-	// mutable resources test setup
-	resourceDir, err := ioutil.TempDir("", "swarm-resource-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rhparams := &mru.HandlerParams{
-		QueryMaxPeriods: &mru.LookupParams{},
-		HeaderGetter: &fakeBackend{
-			blocknumber: 42,
-		},
-	}
-	rh, err := mru.NewTestHandler(resourceDir, rhparams)
+	// Swarm feeds test setup
+	feedsDir, err := ioutil.TempDir("", "swarm-feeds-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	a := api.NewAPI(fileStore, nil, rh)
+	rhparams := &feed.HandlerParams{}
+	rh, err := feed.NewTestHandler(feedsDir, rhparams)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := api.NewAPI(fileStore, resolver, rh.Handler, nil)
 	srv := httptest.NewServer(serverFunc(a))
-	return &TestSwarmServer{
+	tss := &TestSwarmServer{
 		Server:    srv,
 		FileStore: fileStore,
 		dir:       dir,
@@ -90,19 +71,27 @@ func NewTestSwarmServer(t *testing.T, serverFunc func(*api.API) TestServer) *Tes
 			srv.Close()
 			rh.Close()
 			os.RemoveAll(dir)
-			os.RemoveAll(resourceDir)
+			os.RemoveAll(feedsDir)
 		},
+		CurrentTime: 42,
 	}
+	feed.TimestampProvider = tss
+	return tss
 }
 
 type TestSwarmServer struct {
 	*httptest.Server
-	Hasher    storage.SwarmHash
-	FileStore *storage.FileStore
-	dir       string
-	cleanup   func()
+	Hasher      storage.SwarmHash
+	FileStore   *storage.FileStore
+	dir         string
+	cleanup     func()
+	CurrentTime uint64
 }
 
 func (t *TestSwarmServer) Close() {
 	t.cleanup()
+}
+
+func (t *TestSwarmServer) Now() feed.Timestamp {
+	return feed.Timestamp{Time: t.CurrentTime}
 }
