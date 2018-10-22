@@ -45,10 +45,8 @@ func RepublicTokenAddress(network Network) string {
 		return "0x87e83f957a2f3a2e5fe16d5c6b22e38fd28bdc06"
 	case NetworkNightly:
 		return "0x15f692d6b9ba8cec643c7d16909e8acdec431bf6"
-	case NetworkLocal:
-		return "0x0000000000000000000000000000000000000000"
 	default:
-		panic("unknown network")
+		return "0x0000000000000000000000000000000000000000"
 	}
 }
 
@@ -63,10 +61,8 @@ func DarknodeRegistryAddress(network Network) string {
 		return "0xdaa8c30af85070506f641e456afdb84d4ba972bd"
 	case NetworkNightly:
 		return "0x8a31d477267a5af1bc5142904ef0afa31d326e03"
-	case NetworkLocal:
-		return "0x0000000000000000000000000000000000000000"
 	default:
-		panic("unknown network")
+		return "0x0000000000000000000000000000000000000000"
 	}
 }
 
@@ -81,10 +77,8 @@ func DarknodeRewardVaultAddress(network Network) string {
 		return "0x401e7d7ce6f51ea1a8d4f582413e2fabda68daa8"
 	case NetworkNightly:
 		return "0xda43560f5fe6c6b5e062c06fee0f6fbc71bbf18a"
-	case NetworkLocal:
+	case default:
 		return "0x0000000000000000000000000000000000000000"
-	default:
-		panic("unknown network")
 	}
 }
 
@@ -99,10 +93,8 @@ func DarknodeSlasherAddress(network Network) string {
 		return "0x71ec5f4558e87d6afb5c5ff0b4bdd058d62ed3d1"
 	case NetworkNightly:
 		return "0x38458ef4a185455cba57a7594b0143c53ad057c1"
-	case NetworkLocal:
+	case default:
 		return "0x0000000000000000000000000000000000000000"
-	default:
-		panic("unknown network")
 	}
 }
 
@@ -117,10 +109,8 @@ func OrderbookAddress(network Network) string {
 		return "0x592d16f8c5fa8f1e074ab3c2cd1acd087adcdc0b"
 	case NetworkNightly:
 		return "0x376127adc18260fc238ebfb6626b2f4b59ec9b66"
-	case NetworkLocal:
+	case default:
 		return "0x0000000000000000000000000000000000000000"
-	default:
-		panic("unknown network")
 	}
 }
 
@@ -135,9 +125,7 @@ func SettlementRegistryAddress(network Network) string {
 		return "0x6246ff83ddef23d9509ba80aa3ee650ab0321f0b"
 	case NetworkNightly:
 		return "0x399a70ed71897836468fd74ea19138df90a78d79"
-	case NetworkLocal:
+	case default:
 		return "0x0000000000000000000000000000000000000000"
-	default:
-		panic("unknown network")
 	}
 }

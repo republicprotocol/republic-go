@@ -27,14 +27,6 @@ func Connect(config Config) (Conn, error) {
 		switch config.Network {
 		case NetworkMainnet:
 			config.URI = "https://mainnet.infura.io"
-		case NetworkTestnet:
-			config.URI = "https://kovan.infura.io"
-		case NetworkFalcon:
-			config.URI = "https://kovan.infura.io"
-		case NetworkNightly:
-			config.URI = "https://kovan.infura.io"
-		case NetworkLocal:
-			config.URI = "http://localhost:8545"
 		default:
 			config.URI = "https://kovan.infura.io"
 		}
