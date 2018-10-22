@@ -3,7 +3,6 @@ package contract
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -37,7 +36,7 @@ func Connect(config Config) (Conn, error) {
 		case NetworkLocal:
 			config.URI = "http://localhost:8545"
 		default:
-			return Conn{}, fmt.Errorf("cannot connect to %s: unsupported", config.Network)
+			config.URI = "https://kovan.infura.io"
 		}
 	}
 
