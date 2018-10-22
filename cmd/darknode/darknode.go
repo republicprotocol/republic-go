@@ -168,7 +168,9 @@ func main() {
 	statusProvider.WriteDarknodeRegistryAddress(conn.Config.DarknodeRegistryAddress)
 	statusProvider.WriteRewardVaultAddress(conn.Config.DarknodeRewardVaultAddress)
 	statusProvider.WriteInfuraURL(conn.Config.URI)
-	statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
+	if len(conn.Config.Tokens) == 0 {
+		statusProvider.WriteTokens(contract.TokenAddresses(conn.Config.Network))
+	}
 
 	pk, err := crypto.BytesFromRsaPublicKey(&config.Keystore.RsaKey.PublicKey)
 	if err != nil {
