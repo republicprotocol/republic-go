@@ -125,6 +125,8 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		return nil
 	}
 
+	log.Printf("[info] (resync) %v orders, resync ptr = %v", len(orders), syncer.resyncPointer)
+
 	// Log information about the resync at the end of the function
 	numClosedOrders := 0
 	defer func() {
