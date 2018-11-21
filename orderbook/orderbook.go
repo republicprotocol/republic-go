@@ -160,6 +160,7 @@ func (orderbook *orderbook) sync(done <-chan struct{}) {
 		case <-done:
 			return
 		case <-ticker.C:
+			log.Println("[info] (orderbook) going to sync syncer")
 			notifications, err := orderbook.syncer.Sync()
 			if err != nil {
 				select {

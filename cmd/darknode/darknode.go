@@ -266,6 +266,7 @@ func main() {
 
 		dispatch.CoBegin(func() {
 			// Synchronizing the OME
+			log.Println("[info] (darknode) going to run ome")
 			errs := ome.Run(done)
 			for err := range errs {
 				logger.Error(fmt.Sprintf("error in running the ome: %v", err))

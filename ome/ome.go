@@ -71,6 +71,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, OmeBufferLimit)
 
 	// Sync notifications from the orderbook
+	log.Println("[info] (ome) going to sync orderbook")
 	notifications, orderbookErrs := ome.orderbook.Sync(done)
 	wg.Add(1)
 	go func() {
