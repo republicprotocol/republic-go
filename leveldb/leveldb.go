@@ -22,12 +22,11 @@ var (
 )
 
 // Constants for use in the OrderbookOrderFragmentTable. Keys in the
-// OrderbookOrderFragmentTable have a length of 64 bytes, 32 bytes for the
-// epoch and 32 bytes for the order ID, and so no padding is needed to ensure
-// that keys are 64 bytes.
+// OrderbookOrderFragmentTable have a length of 32 bytes, and so 32 padding is
+// needed to ensure that keys are 64 bytes.
 var (
 	OrderbookOrderFragmentTableBegin   = []byte{0x02, 0x00}
-	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 0)
+	OrderbookOrderFragmentTablePadding = paddingBytes(0x00, 32)
 	OrderbookOrderFragmentIterBegin    = paddingBytes(0x00, 32)
 	OrderbookOrderFragmentIterEnd      = paddingBytes(0xFF, 32)
 )
@@ -104,7 +103,7 @@ type Store struct {
 // the given directory as the root for all LevelDB instances. A call to
 // Store.Release is needed to ensure that no resources are leaked when
 // the Store is no longer needed. Each Store must have a unique directory.
-func NewStore(dir string, expiry time.Duration, multiAddressStorerExpiry time.Duration) (*Store, error) {
+func NewStore(dir string, multiAddressStorerExpiry time.Duration) (*Store, error) {
 	option := opt.Options{
 		BlockCacheCapacity:     128 * opt.MiB,
 		OpenFilesCacheCapacity: 1000,
@@ -117,12 +116,12 @@ func NewStore(dir string, expiry time.Duration, multiAddressStorerExpiry time.Du
 	return &Store{
 		db: db,
 
-		orderbookOrderTable:         NewOrderbookOrderTable(db, expiry),
-		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db, expiry),
+		orderbookOrderTable:         NewOrderbookOrderTable(db),
+		orderbookOrderFragmentTable: NewOrderbookOrderFragmentTable(db),
 		orderbookPointerTable:       NewOrderbookPointerTable(db),
 
 		somerComputationTable:   NewSomerComputationTable(db),
-		somerOrderFragmentTable: NewSomerOrderFragmentTable(db, expiry),
+		somerOrderFragmentTable: NewSomerOrderFragmentTable(db),
 
 		swarmMultiAddressTable: NewSwarmMultiAddressTable(db, multiAddressStorerExpiry),
 	}, nil

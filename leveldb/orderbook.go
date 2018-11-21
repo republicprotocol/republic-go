@@ -6,7 +6,6 @@ import (
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
-	"github.com/republicprotocol/republic-go/registry"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -84,16 +83,14 @@ func (iter *OrderbookOrderIterator) Release() {
 
 // OrderbookOrderTable implements the orderbook.OrderStorer interface.
 type OrderbookOrderTable struct {
-	db     *leveldb.DB
-	expiry time.Duration
+	db *leveldb.DB
 }
 
 // NewOrderbookOrderTable returns a new OrderbookOrderTable that uses a LevelDB
 // instance to store and load values from the disk.
-func NewOrderbookOrderTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrderTable {
+func NewOrderbookOrderTable(db *leveldb.DB) *OrderbookOrderTable {
 	return &OrderbookOrderTable{
-		db:     db,
-		expiry: expiry,
+		db: db,
 	}
 }
 
@@ -145,7 +142,7 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderIterBegin), Limit: table.key(OrderbookOrderIterEnd)}, nil)
 	defer iter.Release()
 
-	now := time.Now()
+	// now := time.Now()
 	for iter.Next() {
 		key := iter.Key()
 		value := OrderbookOrderValue{}
@@ -153,7 +150,7 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(table.expiry).Before(now) {
+		if value.Status == order.Canceled || value.Status == order.Confirmed {
 			if localErr := table.db.Delete(key, nil); localErr != nil {
 				err = localErr
 			}
@@ -224,21 +221,19 @@ func (iter *OrderbookOrderFragmentIterator) Release() {
 
 // OrderbookOrderFragmentTable implements the orderbook.OrderFragmentStorer interface.
 type OrderbookOrderFragmentTable struct {
-	db     *leveldb.DB
-	expiry time.Duration
+	db *leveldb.DB
 }
 
 // NewOrderbookOrderFragmentTable returns a new OrderbookOrderFragmentTable that uses a LevelDB
 // instance to store and load values from the disk.
-func NewOrderbookOrderFragmentTable(db *leveldb.DB, expiry time.Duration) *OrderbookOrderFragmentTable {
+func NewOrderbookOrderFragmentTable(db *leveldb.DB) *OrderbookOrderFragmentTable {
 	return &OrderbookOrderFragmentTable{
-		db:     db,
-		expiry: expiry,
+		db: db,
 	}
 }
 
 // PutOrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (table *OrderbookOrderFragmentTable) PutOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error {
+func (table *OrderbookOrderFragmentTable) PutOrderFragment(orderFragment order.Fragment) error {
 	value := OrderbookOrderFragmentValue{
 		Timestamp:     time.Now(),
 		OrderFragment: orderFragment,
@@ -247,17 +242,17 @@ func (table *OrderbookOrderFragmentTable) PutOrderFragment(epoch registry.Epoch,
 	if err != nil {
 		return err
 	}
-	return table.db.Put(table.key(epoch.Hash[:], orderFragment.OrderID[:]), data, nil)
+	return table.db.Put(table.key(orderFragment.OrderID[:]), data, nil)
 }
 
 // DeleteOrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (table *OrderbookOrderFragmentTable) DeleteOrderFragment(epoch registry.Epoch, id order.ID) error {
-	return table.db.Delete(table.key(epoch.Hash[:], id[:]), nil)
+func (table *OrderbookOrderFragmentTable) DeleteOrderFragment(id order.ID) error {
+	return table.db.Delete(table.key(id[:]), nil)
 }
 
 // OrderFragment implements the orderbook.OrderFragmentStorer interface.
-func (table *OrderbookOrderFragmentTable) OrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error) {
-	data, err := table.db.Get(table.key(epoch.Hash[:], id[:]), nil)
+func (table *OrderbookOrderFragmentTable) OrderFragment(id order.ID) (order.Fragment, error) {
+	data, err := table.db.Get(table.key(id[:]), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			err = orderbook.ErrOrderFragmentNotFound
@@ -273,35 +268,35 @@ func (table *OrderbookOrderFragmentTable) OrderFragment(epoch registry.Epoch, id
 }
 
 // OrderFragments implements the orderbook.OrderFragmentStorer interface.
-func (table *OrderbookOrderFragmentTable) OrderFragments(epoch registry.Epoch) (orderbook.OrderFragmentIterator, error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key(epoch.Hash[:], OrderbookOrderFragmentIterBegin), Limit: table.key(epoch.Hash[:], OrderbookOrderFragmentIterEnd)}, nil)
+func (table *OrderbookOrderFragmentTable) OrderFragments() (orderbook.OrderFragmentIterator, error) {
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderFragmentIterBegin), Limit: table.key(OrderbookOrderFragmentIterEnd)}, nil)
 	return newOrderbookOrderFragmentIterator(iter), nil
 }
 
 // Prune iterates over all orders and deletes those that have expired.
 func (table *OrderbookOrderFragmentTable) Prune() (err error) {
-	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderFragmentIterBegin, OrderbookOrderFragmentIterBegin), Limit: table.key(OrderbookOrderFragmentIterEnd, OrderbookOrderFragmentIterEnd)}, nil)
+	iter := table.db.NewIterator(&util.Range{Start: table.key(OrderbookOrderFragmentIterBegin), Limit: table.key(OrderbookOrderFragmentIterEnd)}, nil)
 	defer iter.Release()
 
-	now := time.Now()
+	// now := time.Now()
 	for iter.Next() {
-		key := iter.Key()
+		// key := iter.Key()
 		value := OrderbookOrderFragmentValue{}
 		if localErr := json.Unmarshal(iter.Value(), &value); localErr != nil {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(table.expiry).Before(now) {
-			if localErr := table.db.Delete(key, nil); localErr != nil {
-				err = localErr
-			}
-		}
+		// if value.Timestamp.Add(table.expiry).Before(now) {
+		// 	if localErr := table.db.Delete(key, nil); localErr != nil {
+		// 		err = localErr
+		// 	}
+		// }
 	}
 	return err
 }
 
-func (table *OrderbookOrderFragmentTable) key(epoch, orderID []byte) []byte {
-	return append(append(append(OrderbookOrderFragmentTableBegin, epoch...), orderID...), OrderbookOrderFragmentTablePadding...)
+func (table *OrderbookOrderFragmentTable) key(k []byte) []byte {
+	return append(append(OrderbookOrderFragmentTableBegin, k...), OrderbookOrderFragmentTablePadding...)
 }
 
 type OrderbookPointerValue struct {

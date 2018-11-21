@@ -274,11 +274,11 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		log.Printf("[error] cannot get submission gas price limit,%v ", err)
 	}
 
-	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
+	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v }",
 		ord.ID,
 		ord.Parity,
 		ord.Type,
-		ord.Expiry,
+		// ord.Expiry,
 		ord.Nonce,
 		ord.Settlement,
 		ord.Tokens,

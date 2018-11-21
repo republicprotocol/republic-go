@@ -45,7 +45,7 @@ var _ = Describe("Somer storage", func() {
 		It("should not retrieve expired data", func() {
 			db := newDB(dbFile)
 			somerComputationTable := NewSomerComputationTable(db)
-			somerOrderFragmentTable := NewSomerOrderFragmentTable(db, time.Second)
+			somerOrderFragmentTable := NewSomerOrderFragmentTable(db)
 
 			// Put the computations into the table and attempt to retrieve
 			for i := 0; i < len(computations); i++ {
@@ -125,7 +125,7 @@ var _ = Describe("Somer storage", func() {
 		It("should trigger an out of range error", func() {
 			db := newDB(dbFile)
 			somerComputationTable := NewSomerComputationTable(db)
-			somerOrderFragmentTable := NewSomerOrderFragmentTable(db, time.Second)
+			somerOrderFragmentTable := NewSomerOrderFragmentTable(db)
 
 			// Put the computations into the table and attempt to retrieve
 			for i := 0; i < len(computations); i++ {
@@ -191,7 +191,7 @@ var _ = Describe("Somer storage", func() {
 	Context("when updating order fragment status", func() {
 		It("should return updated status", func() {
 			db := newDB(dbFile)
-			somerOrderFragmentTable := NewSomerOrderFragmentTable(db, time.Second)
+			somerOrderFragmentTable := NewSomerOrderFragmentTable(db)
 
 			// Put the computations into the table and attempt to retrieve
 			for i := 0; i < len(computations); i++ {
