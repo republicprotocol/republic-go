@@ -174,10 +174,10 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		return nil
 	}
 	for i := 0; i < limit; i++ {
-		syncer.resyncPointer = (offset + i + 1) % len(orders)
+		syncer.resyncPointer = (offset + i) % len(orders)
 
-		orderID := orders[syncer.resyncPointer-1]
-		trader := traders[syncer.resyncPointer-1]
+		orderID := orders[syncer.resyncPointer]
+		trader := traders[syncer.resyncPointer]
 		priority := priorities[syncer.resyncPointer-1]
 		orderStatus, err := syncer.contractBinder.Status(orderID)
 		if err != nil {
@@ -205,5 +205,6 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			}
 		}
 	}
+	syncer.resyncPointer = offset + limit
 	return nil
 }
