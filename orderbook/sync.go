@@ -39,12 +39,17 @@ func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragment
 // Sync implements the Syncer interface.
 func (syncer *syncer) Sync() (Notifications, error) {
 	notifications := make(Notifications, 0, syncer.limit)
+	log.Println("[info] (sync) started")
 	if err := syncer.sync(&notifications); err != nil {
+		log.Printf("[info] (sync) errored = %v", err)
 		return notifications, err
 	}
+	log.Println("[info] (resync) started")
 	if err := syncer.resync(&notifications); err != nil {
+		log.Printf("[info] (resync) errored = %v", err)
 		return notifications, err
 	}
+	log.Printf("[info] (sync) completed = %v", len(notifications))
 	return notifications, nil
 }
 
@@ -55,7 +60,7 @@ func (syncer *syncer) sync(notifications *Notifications) error {
 		return fmt.Errorf("cannot load pointer: %v", err)
 	}
 
-	// Synchronise new orders from the ContractBinder
+	// Synchronize new orders from the ContractBinder
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		return fmt.Errorf("cannot load orders from contract binder: %v", err)
