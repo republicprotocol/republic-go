@@ -178,7 +178,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 
 		orderID := orders[syncer.resyncPointer]
 		trader := traders[syncer.resyncPointer]
-		priority := priorities[syncer.resyncPointer-1]
+		priority := priorities[syncer.resyncPointer]
 		orderStatus, err := syncer.contractBinder.Status(orderID)
 		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
