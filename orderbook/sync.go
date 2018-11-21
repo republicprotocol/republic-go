@@ -189,6 +189,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			}
 		case order.Open:
 			if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
+				log.Println("[info] (resync) generating new notification ", orderID)
 				notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
 				*notifications = append(*notifications, notification)
 			}
