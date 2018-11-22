@@ -39,17 +39,17 @@ func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragment
 // Sync implements the Syncer interface.
 func (syncer *syncer) Sync() (Notifications, error) {
 	notifications := make(Notifications, 0, syncer.limit)
-	log.Println("[info] (sync) started")
+	// log.Println("[info] (sync) started")
 	if err := syncer.sync(&notifications); err != nil {
 		log.Printf("[info] (sync) errored = %v", err)
 		return notifications, err
 	}
-	log.Println("[info] (resync) started")
+	// log.Println("[info] (resync) started")
 	if err := syncer.resync(&notifications); err != nil {
 		log.Printf("[info] (resync) errored = %v", err)
 		return notifications, err
 	}
-	log.Printf("[info] (sync) completed = %v", len(notifications))
+	// log.Printf("[info] (sync) completed = %v", len(notifications))
 	return notifications, nil
 }
 
@@ -152,6 +152,8 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			log.Printf("[error] (resync) cannot delete order: %v", err)
 			return
 		}
+
+		log.Printf("[error] (resync) delete order: %v; status: %v", orderID, orderStatus)
 
 		switch orderStatus {
 		case order.Confirmed:
