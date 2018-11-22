@@ -90,9 +90,12 @@ func NewMatcher(computationStore ComputationStorer, fragmentStore OrderFragmentS
 // Resolve implements the Matcher interface.
 func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
 	if com, err := matcher.computationStore.Computation(com.ID); err == nil {
+		// If computation exists in store and it is a match, trigger callback
 		if com.State == ComputationStateMatched {
 			callback(com)
 		}
+		// If the computation has not been resolved, attempt to resolve, else
+		// return
 		if com.State != ComputationStateNil {
 			logger.Compute(logger.LevelDebug, fmt.Sprintf("computation has already been stored => buy = %v, sell = %v, state = %v", com.Buy.OrderID, com.Sell.OrderID, com.State))
 			return

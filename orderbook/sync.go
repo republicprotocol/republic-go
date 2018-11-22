@@ -22,7 +22,7 @@ type syncer struct {
 	contractBinder ContractBinder
 	limit          int
 	resyncPointer  int
-	firstSync      bool
+	firstSync      bool // Indicates if ongoing sync is the first one after a re-boot
 }
 
 func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, limit int) Syncer {
@@ -167,7 +167,6 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 
 	for i := 0; i < limit; i++ {
-		
 		if syncer.firstSync && syncer.resyncPointer == len(orders)-1 {
 			syncer.firstSync = false
 		}
@@ -193,16 +192,17 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 				deleteOrder(orderID, order.Confirmed)
 			}
 		case order.Open:
+			// If this is the first re-sync after a re-boot, open order
+			// notifications will be generated for all stored orders with order
+			// fragments
 			if syncer.firstSync {
-				trader := traders[syncer.resyncPointer]
-				priority := priorities[syncer.resyncPointer]
-
 				if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
+					trader := traders[syncer.resyncPointer]
+					priority := priorities[syncer.resyncPointer]
+
 					log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer)
 					notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
 					*notifications = append(*notifications, notification)
-				} else {
-					log.Printf("[info] (resync) dont have order fragment %v", orderID)
 				}
 			}
 		}
