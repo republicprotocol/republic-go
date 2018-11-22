@@ -47,10 +47,12 @@ func NewAggregator(addr identity.Address, epoch registry.Epoch, orderStore Order
 // InsertOrder implements the Aggregator interface.
 func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, trader string, priority uint) (Notification, error) {
 	if !agg.isInPathOfEpoch(orderID) {
+		log.Printf("[error] (aggregator) not in path of epoch order: %v", orderID)
 		return nil, nil
 	}
 
 	if orderStatus != order.Open {
+		log.Printf("[error] (aggregator) delete order: %v, status: %v", orderID, orderStatus)
 		// The order is no longer open
 		if err := agg.orderStore.DeleteOrder(orderID); err != nil {
 			log.Printf("[error] (sync) cannot delete order: %v", err)
@@ -62,15 +64,18 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 	}
 	// Store the order
 	if err := agg.orderStore.PutOrder(orderID, orderStatus, trader, priority); err != nil {
+		log.Printf("[error] (aggregator) put order: %v, err: %v", orderID, err)
 		return nil, err
 	}
 	// Fetch the order fragment
 	orderFragment, err := agg.orderFragmentStore.OrderFragment(orderID)
 	if err != nil {
 		if err == ErrOrderFragmentNotFound {
+			log.Printf("[error] (aggregator) no order fragment: %v, err: %v", orderID, err)
 			// No order fragment was found
 			return nil, nil
 		}
+		log.Printf("[error] (aggregator) error getting order fragment: %v, err: %v", orderID, err)
 		return nil, err
 	}
 	// Produce notification
