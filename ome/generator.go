@@ -300,6 +300,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 	// If we are not part of a pod during this epoch then we cannot process
 	// computations
 	if mat.pod == nil {
+		log.Printf("[error] (generator) not part of this pod %v", notification.OrderID)
 		return
 	}
 
@@ -343,9 +344,11 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		}
 
 		if !isCompatible(notification, orderFragment, trader, priority) {
+			log.Printf("[error] (generator) not compatible %v, %v", notification.OrderID, orderFragment.OrderID)
 			continue
 		}
 		if status != order.Open {
+			log.Printf("[error] (generator) not open status %v", orderFragment.OrderID)
 			continue
 		}
 
@@ -373,6 +376,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		didGenerateNewComputation = true
 		if len(mat.sortedComputations) == 0 {
 			mat.sortedComputations = append(mat.sortedComputations, comWeight)
+			log.Printf("[error] (generator) added to sorted coms %v", computation)
 			continue
 		}
 		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
