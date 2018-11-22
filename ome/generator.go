@@ -172,6 +172,7 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 			case <-done:
 				return
 			case gen.matCurrNotifications <- notification:
+				log.Printf("[info] (generator) added new notification %v at depth 0", notification)
 			}
 		}
 	case 1:
@@ -180,6 +181,7 @@ func (gen *computationGenerator) routeNotificationOpenOrder(notification orderbo
 			case <-done:
 				return
 			case gen.matPrevNotifications <- notification:
+				log.Printf("[info] (generator) added new notification %v at depth 1", notification)
 			}
 		}
 	}
@@ -277,6 +279,8 @@ func (mat *computationMatrix) handleNotification(notification orderbook.Notifica
 	// Notifications that open orders result in the insertion of that order
 	// into the matrix
 	case orderbook.NotificationOpenOrder:
+
+		log.Printf("[info] (generator) handling open notification %v", notification)
 		mat.insertOrderFragment(notification, done, computations, errs)
 	// Notifications that close an order result in the removal of that order
 	// from storage
@@ -374,6 +378,7 @@ func (mat *computationMatrix) insertOrderFragment(notification orderbook.Notific
 		n := sort.Search(len(mat.sortedComputations), func(i int) bool {
 			return comWeight.weight >= mat.sortedComputations[i].weight
 		})
+		log.Printf("[info] (generator) generated new computation %v", computation)
 		mat.sortedComputations = append(mat.sortedComputations[:n], append([]computationWeight{comWeight}, mat.sortedComputations[n:]...)...)
 	}
 	mat.sortedComputationsMu.Unlock()
