@@ -86,6 +86,7 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 		defer wg.Done()
 		dispatch.Forward(done, genErrs, errs)
 	}()
+	log.Printf("[info] (ome) generated %v computations", len(computations))
 
 	// Send the computations to the matcher and start resolving
 	matchErr := ome.sendComputationToMatcher(done, computations, matches)
