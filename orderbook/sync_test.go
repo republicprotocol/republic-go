@@ -104,7 +104,7 @@ var _ = Describe("Syncer", func() {
 
 			// Confirm random orders in the contract
 			numConfirms := contract.UpdateStatusRandomly(order.Confirmed)
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(60 * time.Millisecond)
 
 			// Notifications for all the confirmations must be returned
 			// on the notifications channel
@@ -118,7 +118,7 @@ var _ = Describe("Syncer", func() {
 
 			// Cancel random orders in the contract
 			numCancels := contract.UpdateStatusRandomly(order.Canceled)
-			time.Sleep(15 * time.Millisecond)
+			time.Sleep(60 * time.Millisecond)
 
 			// Notifications for all the canceled orders must be returned
 			// on the notifications channel
