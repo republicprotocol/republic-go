@@ -174,11 +174,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		return nil
 	}
 	for i := offset; i < limit; i++ {
-		syncer.resyncPointer = (i) % len(orders)
+		pointer := (i) % len(orders)
 
-		orderID := orders[syncer.resyncPointer]
-		trader := traders[syncer.resyncPointer]
-		priority := priorities[syncer.resyncPointer]
+		orderID := orders[pointer]
+		trader := traders[pointer]
+		priority := priorities[pointer]
 		orderStatus, err := syncer.contractBinder.Status(orderID)
 		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
@@ -199,7 +199,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			}
 		case order.Open:
 			if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
-				log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer)
+				log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer+pointer)
 				notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
 				*notifications = append(*notifications, notification)
 			}
