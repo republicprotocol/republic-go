@@ -130,8 +130,6 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 		return nil
 	}
 
-	log.Printf("[info] (resync) %v orders, resync ptr = %v", len(orders), syncer.resyncPointer)
-
 	// Log information about the resync at the end of the function
 	numClosedOrders := 0
 	defer func() {
@@ -175,6 +173,8 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if offset >= limit {
 		return nil
 	}
+
+	log.Printf("[info] (resync) %v orders, resync ptr = %v", len(orders), syncer.resyncPointer)
 	for i := offset; i < limit; i++ {
 		pointer := (i) % len(orders)
 
@@ -204,6 +204,8 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 				log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer+pointer)
 				notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
 				*notifications = append(*notifications, notification)
+			} else {
+				log.Printf("[info] (resync) dont have order fragment %v", orderID)
 			}
 		}
 	}
