@@ -45,47 +45,6 @@ var _ = Describe("LevelDB storage", func() {
 		os.RemoveAll("./tmp/")
 	})
 
-	Context("when pruning data", func() {
-
-		It("should not load any expired data", func() {
-			db, err := NewStore("./tmp", time.Second)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			for i := 0; i < 100; i++ {
-				err = db.OrderbookOrderStore().PutOrder(orders[i].ID, order.Open, "", uint(i))
-				Expect(err).ShouldNot(HaveOccurred())
-				err = db.OrderbookOrderFragmentStore().PutOrderFragment(orderFragments[i])
-				Expect(err).ShouldNot(HaveOccurred())
-				if i < 50 {
-					err = db.SomerComputationStore().PutComputation(computations[i])
-					Expect(err).ShouldNot(HaveOccurred())
-				}
-				err = db.SwarmMultiAddressStore().InsertMultiAddress(multiAddresses[i])
-				Expect(err).ShouldNot(HaveOccurred())
-			}
-
-			// Prune the data
-			time.Sleep(2 * time.Second)
-			db.Prune()
-
-			for i := 0; i < 100; i++ {
-				_, _, _, err = db.OrderbookOrderStore().Order(orders[i].ID)
-				Expect(err).Should(Equal(orderbook.ErrOrderNotFound))
-				_, err = db.OrderbookOrderFragmentStore().OrderFragment(orders[i].ID)
-				Expect(err).Should(Equal(orderbook.ErrOrderFragmentNotFound))
-				if i < 50 {
-					_, err = db.SomerComputationStore().Computation(computations[i].ID)
-					Expect(err).Should(Equal(ome.ErrComputationNotFound))
-				}
-				_, err = db.SwarmMultiAddressStore().MultiAddress(multiAddresses[i].Address())
-				Expect(err).Should(Equal(swarm.ErrMultiAddressNotFound))
-			}
-
-			err = db.Release()
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-	})
-
 	Context("when storing, loading, and removing data", func() {
 
 		It("should return a default value when loading pointers before storing them", func() {

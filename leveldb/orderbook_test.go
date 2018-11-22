@@ -39,27 +39,6 @@ var _ = Describe("Orderbook storage", func() {
 		os.RemoveAll(dbFolder)
 	})
 
-	Context("when pruning data", func() {
-		It("should not retrieve expired data", func() {
-			db := newDB(dbFile)
-			orderbookOrderTable := NewOrderbookOrderTable(db)
-			orderbookOrderFragmentTable := NewOrderbookOrderFragmentTable(db)
-
-			// Put data into the tables and attempt to retrieve
-			putAndExpectOrders(orderbookOrderTable)
-			putAndExpectOrderFragments(orderbookOrderFragmentTable)
-
-			// Sleep and then prune to expire the data
-			time.Sleep(2 * time.Second)
-			orderbookOrderTable.Prune()
-			orderbookOrderFragmentTable.Prune()
-
-			// All data should have expired so we should not get any data back
-			expectMissingOrders(orderbookOrderTable)
-			expectMissingOrderFragments(orderbookOrderFragmentTable)
-		})
-
-	})
 
 	Context("when deleting data", func() {
 		It("should not retrieve deleted data", func() {
