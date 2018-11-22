@@ -144,17 +144,17 @@ func (table *OrderbookOrderTable) Prune() (err error) {
 
 	// now := time.Now()
 	for iter.Next() {
-		key := iter.Key()
+		// key := iter.Key()
 		value := OrderbookOrderValue{}
 		if localErr := json.Unmarshal(iter.Value(), &value); localErr != nil {
 			err = localErr
 			continue
 		}
-		if value.Status == order.Canceled || value.Status == order.Confirmed {
-			if localErr := table.db.Delete(key, nil); localErr != nil {
-				err = localErr
-			}
-		}
+		// if value.Timestamp.Add(table.expiry).Before(now) {
+		// 	if localErr := table.db.Delete(key, nil); localErr != nil {
+		// 		err = localErr
+		// 	}
+		// }
 	}
 	return err
 }

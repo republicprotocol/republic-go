@@ -71,7 +71,6 @@ func (ome *ome) Run(done <-chan struct{}) <-chan error {
 	errs := make(chan error, OmeBufferLimit)
 
 	// Sync notifications from the orderbook
-	log.Println("[info] (ome) going to sync orderbook")
 	notifications, orderbookErrs := ome.orderbook.Sync(done)
 	wg.Add(1)
 	go func() {
@@ -167,7 +166,6 @@ func (ome *ome) sendComputationToMatcher(done <-chan struct{}, computations <-ch
 				logger.Compute(logger.LevelDebug, fmt.Sprintf("resolving buy = %v, sell = %v", computation.Buy.OrderID, computation.Sell.OrderID))
 				ome.matcher.Resolve(computation, func(com Computation) {
 					if !com.Match {
-						log.Printf("[debug] (resolve) XXXX buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID)
 						return
 					}
 					log.Printf("[debug] (resolve) ✔ buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID)

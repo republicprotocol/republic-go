@@ -220,7 +220,6 @@ func (orderbook *orderbook) routeOrder(done <-chan struct{}, orderID order.ID, o
 		select {
 		case <-done:
 		case orderbook.notifications <- n:
-			log.Printf("[info] (orderbook) added new notification %v", n)
 		}
 	}
 	return err
