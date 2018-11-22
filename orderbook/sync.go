@@ -173,8 +173,8 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if offset >= limit {
 		return nil
 	}
-	for i := 0; i < limit; i++ {
-		syncer.resyncPointer = (offset + i) % len(orders)
+	for i := offset; i < limit; i++ {
+		syncer.resyncPointer = (i) % len(orders)
 
 		orderID := orders[syncer.resyncPointer]
 		trader := traders[syncer.resyncPointer]
@@ -205,6 +205,6 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 			}
 		}
 	}
-	syncer.resyncPointer = offset + limit
+	syncer.resyncPointer += limit - offset
 	return nil
 }
