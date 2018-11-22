@@ -22,6 +22,7 @@ type syncer struct {
 	contractBinder ContractBinder
 	limit          int
 	resyncPointer  int
+	firstSync      bool
 }
 
 func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, limit int) Syncer {
@@ -33,6 +34,7 @@ func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragment
 		contractBinder: contractBinder,
 		limit:          limit,
 		resyncPointer:  0,
+		firstSync:      true,
 	}
 }
 
@@ -170,17 +172,17 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if limit > len(orders) {
 		limit = len(orders)
 	}
-	if offset >= limit {
-		return nil
-	}
+	// if offset >= limit {
+	// 	return nil
+	// }
 
 	log.Printf("[info] (resync) %v orders, resync ptr = %v", len(orders), syncer.resyncPointer)
-	for i := offset; i < limit; i++ {
-		pointer := (i) % len(orders)
+	for i := 0; i < limit; i++ {
+		syncer.resyncPointer = (i + offset) % len(orders)
 
-		orderID := orders[pointer]
-		trader := traders[pointer]
-		priority := priorities[pointer]
+		orderID := orders[syncer.resyncPointer]
+		trader := traders[syncer.resyncPointer]
+		priority := priorities[syncer.resyncPointer]
 		orderStatus, err := syncer.contractBinder.Status(orderID)
 		if err != nil {
 			log.Printf("[error] (resync) cannot load order status: %v", err)
@@ -200,15 +202,18 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 				deleteOrder(orderID, order.Confirmed)
 			}
 		case order.Open:
-			if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
-				log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer+pointer)
-				notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
-				*notifications = append(*notifications, notification)
-			} else {
-				log.Printf("[info] (resync) dont have order fragment %v", orderID)
+			if syncer.firstSync {
+				if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
+					log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer)
+					notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
+					*notifications = append(*notifications, notification)
+				} else {
+					log.Printf("[info] (resync) dont have order fragment %v", orderID)
+				}
 			}
 		}
 	}
-	syncer.resyncPointer += limit - offset
+	syncer.firstSync = false
+	// syncer.resyncPointer += limit - offset
 	return nil
 }
