@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/republicprotocol/republic-go/order"
-	"github.com/republicprotocol/republic-go/registry"
 )
 
 // ErrOrderNotFound is returned when attempting to read an order that cannot be
@@ -52,10 +51,10 @@ type OrderIterator interface {
 
 // OrderFragmentStorer for the order.Fragments that are received.
 type OrderFragmentStorer interface {
-	PutOrderFragment(epoch registry.Epoch, orderFragment order.Fragment) error
-	DeleteOrderFragment(epoch registry.Epoch, id order.ID) error
-	OrderFragment(epoch registry.Epoch, id order.ID) (order.Fragment, error)
-	OrderFragments(epoch registry.Epoch) (OrderFragmentIterator, error)
+	PutOrderFragment(orderFragment order.Fragment) error
+	DeleteOrderFragment(id order.ID) error
+	OrderFragment(id order.ID) (order.Fragment, error)
+	OrderFragments() (OrderFragmentIterator, error)
 }
 
 // OrderFragmentIterator is used to iterate over an order.Fragment collection.

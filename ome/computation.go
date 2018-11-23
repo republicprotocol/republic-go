@@ -43,7 +43,6 @@ const (
 	ComputationStateMatched
 	ComputationStateMismatched
 	ComputationStateAccepted
-	ComputationStateRejected
 	ComputationStateSettled
 )
 
@@ -58,8 +57,6 @@ func (state ComputationState) String() string {
 		return "mismatched"
 	case ComputationStateAccepted:
 		return "accepted"
-	case ComputationStateRejected:
-		return "rejected"
 	case ComputationStateSettled:
 		return "settled"
 	default:

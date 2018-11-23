@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/republicprotocol/republic-go/logger"
 	"github.com/republicprotocol/republic-go/order"
@@ -90,6 +89,18 @@ func NewMatcher(computationStore ComputationStorer, fragmentStore OrderFragmentS
 
 // Resolve implements the Matcher interface.
 func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
+	if com, err := matcher.computationStore.Computation(com.ID); err == nil {
+		// If computation exists in store and it is a match, trigger callback
+		if com.State == ComputationStateMatched {
+			callback(com)
+		}
+		// If the computation has not been resolved, attempt to resolve, else
+		// return
+		if com.State != ComputationStateNil {
+			logger.Compute(logger.LevelDebug, fmt.Sprintf("computation has already been stored => buy = %v, sell = %v, state = %v", com.Buy.OrderID, com.Sell.OrderID, com.State))
+			return
+		}
+	}
 	if com.Buy.OrderSettlement != com.Sell.OrderSettlement {
 		// Store the computation as a mismatch
 		com.State = ComputationStateMismatched
@@ -106,13 +117,6 @@ func (matcher *matcher) Resolve(com Computation, callback MatchCallback) {
 }
 
 func (matcher *matcher) resolve(networkID smpc.NetworkID, com Computation, callback MatchCallback, stage ResolveStage) {
-	if isExpired(com) {
-		com.State = ComputationStateRejected
-		if err := matcher.computationStore.PutComputation(com); err != nil {
-			logger.Error(fmt.Sprintf("cannot store expired computation buy = %v, sell = %v: %v", com.Buy.OrderID, com.Sell.OrderID, err))
-		}
-		return
-	}
 
 	join, joinCommitments, err := buildJoin(com, stage)
 	if err != nil {
@@ -274,12 +278,4 @@ func isGreaterThanZero(value uint64) bool {
 
 func isEqualToZero(value uint64) bool {
 	return value == 0 || value == shamir.Prime
-}
-
-func isExpired(com Computation) bool {
-	if time.Now().After(com.Buy.OrderExpiry) || time.Now().After(com.Sell.OrderExpiry) {
-		logger.Compute(logger.LevelDebug, fmt.Sprintf("⧖ expired => buy = %v, sell = %v", com.Buy.OrderID, com.Sell.OrderID))
-		return true
-	}
-	return false
 }

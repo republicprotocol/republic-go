@@ -35,7 +35,7 @@ var _ = Describe("Swarming", func() {
 	BeforeEach(func() {
 		var err error
 
-		db, err := leveldb.NewStore("./tmp/swarm.1.out", 10*time.Hour, time.Hour)
+		db, err := leveldb.NewStore("./tmp/swarm.1.out", time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		serviceClientDb = db.SwarmMultiAddressStore()
 		serviceClient, verifier, err = newSwarmClient(serviceClientDb)
@@ -48,7 +48,7 @@ var _ = Describe("Swarming", func() {
 		server = NewServer()
 		service.Register(server)
 
-		db, err = leveldb.NewStore("./tmp/swarm.2.out", 10*time.Hour, time.Hour)
+		db, err = leveldb.NewStore("./tmp/swarm.2.out", time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		clientDb = db.SwarmMultiAddressStore()
 		client, _, err = newSwarmClient(clientDb)

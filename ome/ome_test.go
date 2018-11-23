@@ -50,7 +50,7 @@ var _ = Describe("Ome", func() {
 			addr, epoch, err = testutils.RandomEpoch(0)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			store, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
+			store, err := leveldb.NewStore("./data.out", time.Hour)
 			Expect(err).ShouldNot(HaveOccurred())
 			comStorer = store.SomerComputationStore()
 			fragmentStorer = store.SomerOrderFragmentStore()
