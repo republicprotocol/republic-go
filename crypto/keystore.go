@@ -60,7 +60,7 @@ func RandomKeystore() (Keystore, error) {
 
 // NewKeystore returns a new Keystore that stores an EcdsaKey and an RsaKey and
 // has a randomly generated UUID.
-func (keystore *Keystore) NewKeystore(ecdsaKey EcdsaKey, rsaKey RsaKey) Keystore {
+func NewKeystore(ecdsaKey EcdsaKey, rsaKey RsaKey) Keystore {
 	return Keystore{
 		ID:       uuid.NewRandom(),
 		Version:  "3",

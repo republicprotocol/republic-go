@@ -44,7 +44,7 @@ type confirmer struct {
 // NewConfirmer returns a Confirmer that submits Computations to the
 // Orderbook for confirmation. It polls the Orderbook on an interval
 // and checks for consensus on confirmations by waiting until a submitted
-// Computation has been confirmed has the confirmation has passed the block
+// Computation has been confirmed and the confirmation has passed the block
 // depth limit.
 func NewConfirmer(computationStore ComputationStorer, fragmentStore OrderFragmentStorer, contract ContractBinder, orderbookPollInterval time.Duration, orderbookBlockDepth uint) Confirmer {
 	return &confirmer{
@@ -84,35 +84,35 @@ func (confirmer *confirmer) Confirm(done <-chan struct{}, coms <-chan Computatio
 					return
 				}
 
-				go func() {
-
-					// Wait for the confirmation of these orders to pass the depth
-					// limit
+				// Wait for the confirmation of these orders to pass the depth
+				// limit
+				func(com Computation) {
 					confirmer.confirmingMu.Lock()
+					defer confirmer.confirmingMu.Unlock()
+
 					// Check that these orders have not already been confirmed
 					if _, ok := confirmer.confirmed[com.Buy.OrderID]; ok {
-						confirmer.confirmingMu.Unlock()
 						return
 					}
 					if _, ok := confirmer.confirmed[com.Sell.OrderID]; ok {
-						confirmer.confirmingMu.Unlock()
 						return
 					}
 
 					confirmer.confirmingBuyOrders[com.Buy.OrderID] = time.Now()
 					confirmer.confirmingSellOrders[com.Sell.OrderID] = time.Now()
-					confirmer.confirmingMu.Unlock()
 
 					// Confirm Computations on the blockchain and register them for
 					// observation (we need to wait for finality)
-					if err := confirmer.beginConfirmation(com); err != nil {
-						// An error in confirmation should not stop the
-						// Confirmer from monitoring the Computation for
-						// confirmation (another node might have succeeded), so
-						// we pass through
-						logger.Error(err.Error())
-					}
-				}()
+					go func() {
+						if err := confirmer.beginConfirmation(com); err != nil {
+							// An error in confirmation should not stop the
+							// Confirmer from monitoring the Computation for
+							// confirmation (another node might have succeeded), so
+							// we pass through
+							logger.Error(err.Error())
+						}
+					}()
+				}(com)
 			}
 		}
 	}()
