@@ -290,7 +290,9 @@ func main() {
 			// Prune the database every hour and update the network with the
 			// darknode address
 			for {
-				time.Sleep(time.Hour)
+				sleepTime := 50 + rand.Intn(20)
+				time.Sleep(time.Duration(sleepTime) * time.Minute)
+
 				if err := pingNetwork(swarmer); err != nil {
 					log.Printf("[error] (prune) cannot ping network: %v", err)
 					continue
