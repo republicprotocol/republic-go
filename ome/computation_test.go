@@ -61,7 +61,6 @@ var _ = Describe("Computations", func() {
 			Expect(fmt.Sprintf("%v", ComputationStateMatched)).Should(Equal("matched"))
 			Expect(fmt.Sprintf("%v", ComputationStateMismatched)).Should(Equal("mismatched"))
 			Expect(fmt.Sprintf("%v", ComputationStateAccepted)).Should(Equal("accepted"))
-			Expect(fmt.Sprintf("%v", ComputationStateRejected)).Should(Equal("rejected"))
 			Expect(fmt.Sprintf("%v", ComputationStateSettled)).Should(Equal("settled"))
 			Expect(fmt.Sprintf("%v", ComputationState(100))).Should(Equal("unsupported state"))
 		})

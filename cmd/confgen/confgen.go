@@ -41,16 +41,6 @@ func main() {
 			Network: contract.NetworkTestnet,
 			URI:     "https://kovan.infura.io",
 		}
-	case string(contract.NetworkFalcon):
-		ethereumConfig = contract.Config{
-			Network: contract.NetworkFalcon,
-			URI:     "https://kovan.infura.io",
-		}
-	case string(contract.NetworkNightly):
-		ethereumConfig = contract.Config{
-			Network: contract.NetworkNightly,
-			URI:     "https://kovan.infura.io",
-		}
 	default:
 		log.Fatal("unrecognized network name")
 	}

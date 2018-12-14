@@ -274,11 +274,11 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		log.Printf("[error] cannot get submission gas price limit,%v ", err)
 	}
 
-	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v, %v }",
+	log.Printf("[info] (submit order) order = %v { %v, %v, %v, %v, %v, %v, %v, %v }",
 		ord.ID,
 		ord.Parity,
 		ord.Type,
-		ord.Expiry,
+		// ord.Expiry,
 		ord.Nonce,
 		ord.Settlement,
 		ord.Tokens,
@@ -325,7 +325,7 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 	for time.Since(start) < time.Duration(5*time.Minute) {
 		err = binder.SettleOrders(buy, sell)
 		if err != nil {
-			log.Printf("[debug] cannot submit match buy = %v, sell = %v", buy.ID, sell.ID)
+			log.Printf("[debug] cannot submit match buy = %v, sell = %v, err = %v", buy.ID, sell.ID, err)
 			time.Sleep(30 * time.Second)
 			continue
 		}

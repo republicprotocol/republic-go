@@ -21,7 +21,7 @@ var _ = Describe("Matcher", func() {
 	var buyFragment, sellFragment order.Fragment
 
 	BeforeEach(func() {
-		storer, err := leveldb.NewStore("./data.out", 24*time.Hour, time.Hour)
+		storer, err := leveldb.NewStore("./data.out", time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		compStore = storer.SomerComputationStore()
 		fragmentStore = storer.SomerOrderFragmentStore()
