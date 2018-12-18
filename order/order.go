@@ -153,6 +153,7 @@ const (
 	SettlementNil (Settlement) = iota
 	SettlementRenEx
 	SettlementRenExAtomic
+	SettlementRenExSwapper
 )
 
 // String implements the Stringer interface.

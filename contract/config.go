@@ -24,6 +24,7 @@ type Config struct {
 	DarknodeSlasherAddress     string            `json:"darknodeSlasherAddress"`
 	OrderbookAddress           string            `json:"orderbookAddress"`
 	SettlementRegistryAddress  string            `json:"settlementRegistryAddress"`
+	SwapperSettlement          string            `json:"swapperSettlement"`
 	Tokens                     map[string]string `json:"tokens"`
 }
 

@@ -39,7 +39,6 @@ var _ = Describe("Orderbook storage", func() {
 		os.RemoveAll(dbFolder)
 	})
 
-
 	Context("when deleting data", func() {
 		It("should not retrieve deleted data", func() {
 			db := newDB(dbFile)

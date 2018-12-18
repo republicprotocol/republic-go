@@ -63,6 +63,7 @@ type Binder struct {
 
 	settlementRegistry *bindings.SettlementRegistry
 	renExSettlement    *bindings.Settlement
+	swapperSettlement  *bindings.Settlement
 }
 
 // NewBinder returns a Binder to communicate with contracts
@@ -102,13 +103,25 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 	renExSettlementAddress, err := settlementRegistry.SettlementContract(&bind.CallOpts{}, uint64(order.SettlementRenEx))
 	if err != nil {
-		fmt.Println(fmt.Errorf("cannot bind to RenExSettlementAddress: %v", err))
+		fmt.Println(fmt.Errorf("cannot get RenExSettlement address: %v", err))
 		return Binder{}, err
 	}
 
 	renExSettlement, err := bindings.NewSettlement(renExSettlementAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
 		fmt.Println(fmt.Errorf("cannot bind to RenExSettlement: %v", err))
+		return Binder{}, err
+	}
+
+	swapperSettlementAddress, err := settlementRegistry.SettlementContract(&bind.CallOpts{}, uint64(order.SettlementRenExSwapper))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot get SwapperExSettlement address: %v", err))
+		return Binder{}, err
+	}
+
+	swapperSettlement, err := bindings.NewSettlement(swapperSettlementAddress, bind.ContractBackend(conn.Client))
+	if err != nil {
+		fmt.Println(fmt.Errorf("cannot bind to SwapperSettlement: %v", err))
 		return Binder{}, err
 	}
 
@@ -132,6 +145,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 
 		settlementRegistry: settlementRegistry,
 		renExSettlement:    renExSettlement,
+		swapperSettlement:  swapperSettlement,
 	}
 
 	go func() {
@@ -236,7 +250,18 @@ func (binder *Binder) SettlementStatus(id order.ID) (uint8, error) {
 }
 
 func (binder *Binder) settlementStatus(id order.ID) (uint8, error) {
-	return binder.renExSettlement.OrderStatus(binder.callOpts, id)
+	settlement, err := binder.Settlement(id)
+	if err != nil {
+		return 0, err
+	}
+	switch settlement {
+	case order.SettlementRenEx:
+		return binder.renExSettlement.OrderStatus(binder.callOpts, id)
+	case order.SettlementRenExSwapper:
+		return binder.swapperSettlement.OrderStatus(binder.callOpts, id)
+	default:
+		return 0, errors.New("unknown settlement id")
+	}
 }
 
 // SubmitOrder to the RenEx accounts
@@ -257,10 +282,21 @@ func (binder *Binder) SubmitOrder(ord order.Order) error {
 }
 
 func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
+	var settlement *bindings.Settlement
+	switch ord.Settlement {
+	case order.SettlementRenEx:
+		settlement = binder.renExSettlement
+	case order.SettlementRenExSwapper:
+		settlement = binder.swapperSettlement
+	default:
+		return nil, errors.New("unknown settlement id")
+	}
+
 	// If the gas price is greater than the gas price limit, temporarily lower
 	// the gas price for this request
 	lastGasPrice := binder.transactOpts.GasPrice
-	submitOrderGasPriceLimit, err := binder.renExSettlement.SubmissionGasPriceLimit(binder.callOpts)
+
+	submitOrderGasPriceLimit, err := settlement.SubmissionGasPriceLimit(binder.callOpts)
 	if err == nil {
 		// Set gas price to the appropriate limit
 		if binder.transactOpts.GasPrice.Cmp(submitOrderGasPriceLimit) == 1 {
@@ -291,25 +327,7 @@ func (binder *Binder) submitOrder(ord order.Order) (*types.Transaction, error) {
 		tokens = (tokens << 32) | (tokens >> 32)
 	}
 
-	return binder.renExSettlement.SubmitOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), tokens, big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
-}
-
-// SubmitMatch will submit a matched order pair to the RenEx accounts
-func (binder *Binder) SubmitMatch(buy, sell order.ID) error {
-	tx, err := binder.SendTx(func() (*types.Transaction, error) {
-		return binder.submitMatch(buy, sell)
-	})
-	if err != nil {
-		return err
-	}
-
-	_, err = binder.conn.PatchedWaitMined(context.Background(), tx)
-	return err
-}
-
-func (binder *Binder) submitMatch(buy, sell order.ID) (*types.Transaction, error) {
-	log.Printf("[info] (submit match) buy = %v, sell = %v", buy, sell)
-	return binder.renExSettlement.Settle(binder.transactOpts, buy, sell)
+	return settlement.SubmitOrder(binder.transactOpts, ord.PrefixHash(), uint64(ord.Settlement), tokens, big.NewInt(0).SetUint64(ord.Price), big.NewInt(0).SetUint64(ord.Volume), big.NewInt(0).SetUint64(ord.MinimumVolume))
 }
 
 // Settle the order pair that has been confirmed by the Orderbook.
@@ -318,13 +336,10 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		binder.checkBalance()
 	}
 
+	// If settling attempts fail, retry for up to 5 minutes.
 	start := time.Now()
-	var err error
-
-	// If settling attempts fail, retry for upto 5 minutes.
 	for time.Since(start) < time.Duration(5*time.Minute) {
-		err = binder.SettleOrders(buy, sell)
-		if err != nil {
+		if err := binder.SettleOrders(buy, sell); err != nil {
 			log.Printf("[debug] cannot submit match buy = %v, sell = %v, err = %v", buy.ID, sell.ID, err)
 			time.Sleep(30 * time.Second)
 			continue
@@ -332,12 +347,22 @@ func (binder *Binder) Settle(buy order.Order, sell order.Order) error {
 		return nil
 	}
 
-	return fmt.Errorf("settling timed out: %v", err)
+	return fmt.Errorf("[debug] cannot submit match buy = %v, sell = %v, err = settling time out", buy.ID, sell.ID)
 }
 
 // SettleOrders attempts to settle the order pair that has been confirmed by the Orderbook.
 func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 	var buyErr, sellErr, matchErr error
+
+	// Settle on the right contract depending on the settlement ID.
+	var settlement *bindings.Settlement
+	if buy.Settlement == order.SettlementRenEx && sell.Settlement == order.SettlementRenEx {
+		settlement = binder.renExSettlement
+	} else if buy.Settlement == order.SettlementRenExSwapper && sell.Settlement == order.SettlementRenExSwapper {
+		settlement = binder.swapperSettlement
+	} else {
+		return fmt.Errorf("[error] unmatched settlementmt, buy = %v, sell = %v", buy.ID, sell.ID)
+	}
 
 	// Get order submission status
 	var buyStatus, sellStatus uint8
@@ -347,10 +372,10 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 
 		dispatch.CoBegin(
 			func() {
-				buyStatus, buyErr = binder.settlementStatus(buy.ID)
+				buyStatus, buyErr = settlement.OrderStatus(binder.callOpts, buy.ID)
 			},
 			func() {
-				sellStatus, sellErr = binder.settlementStatus(sell.ID)
+				sellStatus, sellErr = settlement.OrderStatus(binder.callOpts, buy.ID)
 			})
 	}()
 	if buyErr != nil {
@@ -436,10 +461,10 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 
 		dispatch.CoBegin(
 			func() {
-				buyStatus, buyErr = binder.settlementStatus(buy.ID)
+				buyStatus, buyErr = settlement.OrderStatus(binder.callOpts, buy.ID)
 			},
 			func() {
-				sellStatus, sellErr = binder.settlementStatus(sell.ID)
+				sellStatus, sellErr = settlement.OrderStatus(binder.callOpts, buy.ID)
 			})
 	}()
 	if buyErr != nil {
@@ -469,7 +494,7 @@ func (binder *Binder) SettleOrders(buy order.Order, sell order.Order) error {
 			}
 
 			log.Printf("[info] (submit match) buy = %v, sell = %v", buy, sell)
-			return binder.renExSettlement.Settle(binder.transactOpts, buy.ID, sell.ID)
+			return settlement.Settle(binder.transactOpts, buy.ID, sell.ID)
 		})
 	}()
 	if matchErr != nil {
@@ -1245,6 +1270,14 @@ func (binder *Binder) orderCounts() (uint64, error) {
 	}
 
 	return counts.Uint64(), nil
+}
+
+func (binder *Binder) Settlement(id order.ID) (order.Settlement, error) {
+	details, err := binder.orderbook.Orders(binder.callOpts, id)
+	if err != nil {
+		return 0, err
+	}
+	return order.Settlement(details.SettlementID), nil
 }
 
 // SubmitChallengeOrder will submit the details for one of the two orders of a
