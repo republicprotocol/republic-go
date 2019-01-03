@@ -55,6 +55,9 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		if err := agg.orderStore.DeleteOrder(orderID); err != nil {
 			log.Printf("[error] (sync) cannot delete order: %v", err)
 		}
+		if err := agg.orderFragmentStore.DeleteOrderFragment(orderID); err != nil {
+			log.Printf("[error] (sync) cannot delete order fragment: %v", err)
+		}
 		return nil, nil
 	}
 	// Store the order
@@ -62,7 +65,7 @@ func (agg *aggregator) InsertOrder(orderID order.ID, orderStatus order.Status, t
 		return nil, err
 	}
 	// Fetch the order fragment
-	orderFragment, err := agg.orderFragmentStore.OrderFragment(agg.epoch, orderID)
+	orderFragment, err := agg.orderFragmentStore.OrderFragment(orderID)
 	if err != nil {
 		if err == ErrOrderFragmentNotFound {
 			// No order fragment was found
@@ -87,7 +90,7 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 	}
 
 	// Store the order fragment
-	if err := agg.orderFragmentStore.PutOrderFragment(agg.epoch, orderFragment); err != nil {
+	if err := agg.orderFragmentStore.PutOrderFragment(orderFragment); err != nil {
 		return nil, err
 	}
 	// Fetch the order
@@ -104,7 +107,7 @@ func (agg *aggregator) InsertOrderFragment(orderFragment order.Fragment) (Notifi
 		if err := agg.orderStore.DeleteOrder(orderFragment.OrderID); err != nil {
 			log.Printf("[error] (sync) cannot delete order: %v", err)
 		}
-		if err := agg.orderFragmentStore.DeleteOrderFragment(agg.epoch, orderFragment.OrderID); err != nil {
+		if err := agg.orderFragmentStore.DeleteOrderFragment(orderFragment.OrderID); err != nil {
 			log.Printf("[error] (sync) cannot delete order fragment: %v", err)
 		}
 		return nil, nil

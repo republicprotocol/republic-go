@@ -13,24 +13,28 @@ type Syncer interface {
 
 type syncer struct {
 	// Stores for storing and loading data
-	pointerStore PointerStorer
-	orderStore   OrderStorer
+	pointerStore       PointerStorer
+	orderStore         OrderStorer
+	orderFragmentStore OrderFragmentStorer
 
 	// ContractBinder exposes methods to pull changes from Ethereum and the
-	// control parameters for customising when to pull changes
+	// control parameters for customizing when to pull changes
 	contractBinder ContractBinder
 	limit          int
 	resyncPointer  int
+	firstSync      bool // Indicates if ongoing sync is the first one after a re-boot
 }
 
-func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, contractBinder ContractBinder, limit int) Syncer {
+func NewSyncer(pointerStore PointerStorer, orderStore OrderStorer, orderFragmentStore OrderFragmentStorer, contractBinder ContractBinder, limit int) Syncer {
 	return &syncer{
-		pointerStore: pointerStore,
-		orderStore:   orderStore,
+		pointerStore:       pointerStore,
+		orderStore:         orderStore,
+		orderFragmentStore: orderFragmentStore,
 
 		contractBinder: contractBinder,
 		limit:          limit,
 		resyncPointer:  0,
+		firstSync:      true,
 	}
 }
 
@@ -53,7 +57,7 @@ func (syncer *syncer) sync(notifications *Notifications) error {
 		return fmt.Errorf("cannot load pointer: %v", err)
 	}
 
-	// Synchronise new orders from the ContractBinder
+	// Synchronize new orders from the ContractBinder
 	orderIDs, orderStatuses, traders, err := syncer.contractBinder.Orders(int(pointer), syncer.limit)
 	if err != nil {
 		return fmt.Errorf("cannot load orders from contract binder: %v", err)
@@ -115,7 +119,7 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	}
 	defer orderIter.Release()
 
-	orders, _, _, _, err := orderIter.Collect()
+	orders, _, traders, priorities, err := orderIter.Collect()
 	if err != nil {
 		log.Printf("[error] (resync) cannot collect orders: %v", err)
 	}
@@ -134,6 +138,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	// Function for deleting order IDs from storage
 	deleteOrder := func(orderID order.ID, orderStatus order.Status) {
 		numClosedOrders++
+		if _, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
+			if err := syncer.orderFragmentStore.DeleteOrderFragment(orderID); err != nil {
+				log.Printf("[error] (resync) cannot delete order fragment: %v", err)
+			}
+		}
 		if err := syncer.orderStore.DeleteOrder(orderID); err != nil {
 			log.Printf("[error] (resync) cannot delete order: %v", err)
 			return
@@ -156,7 +165,11 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 	if limit > len(orders) {
 		limit = len(orders)
 	}
+
 	for i := 0; i < limit; i++ {
+		if syncer.firstSync && syncer.resyncPointer == len(orders)-1 {
+			syncer.firstSync = false
+		}
 		syncer.resyncPointer = (offset + i) % len(orders)
 
 		orderID := orders[syncer.resyncPointer]
@@ -179,15 +192,21 @@ func (syncer *syncer) resync(notifications *Notifications) error {
 				deleteOrder(orderID, order.Confirmed)
 			}
 		case order.Open:
-			orderDepth, err := syncer.contractBinder.Depth(orderID)
-			if err != nil {
-				log.Printf("[error] (resync) cannot load order settlement status: %v", err)
-				continue
-			}
-			if orderDepth > 10000 {
-				deleteOrder(orderID, order.Canceled)
+			// If this is the first re-sync after a re-boot, open order
+			// notifications will be generated for all stored orders with order
+			// fragments
+			if syncer.firstSync {
+				if fragment, err := syncer.orderFragmentStore.OrderFragment(orderID); err == nil {
+					trader := traders[syncer.resyncPointer]
+					priority := priorities[syncer.resyncPointer]
+
+					log.Printf("[info] (resync) generating new notification %v, resync ptr = %v", orderID, syncer.resyncPointer)
+					notification := NotificationOpenOrder{OrderID: orderID, OrderFragment: fragment, Priority: priority, Trader: trader}
+					*notifications = append(*notifications, notification)
+				}
 			}
 		}
 	}
+
 	return nil
 }

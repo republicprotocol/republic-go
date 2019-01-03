@@ -8,10 +8,6 @@ const (
 	NetworkMainnet Network = "mainnet"
 	// NetworkTestnet represents the internal F∅ testnet
 	NetworkTestnet Network = "testnet"
-	// NetworkFalcon represents the internal Falcon testnet
-	NetworkFalcon Network = "falcon"
-	// NetworkNightly represents the internal Nightly testnet
-	NetworkNightly Network = "nightly"
 	// NetworkLocal represents a local network
 	NetworkLocal Network = "local"
 )
@@ -19,15 +15,16 @@ const (
 // Config defines the different settings for connecting to Ethereum on
 // different Republic Protocol networks.
 type Config struct {
-	Network                    Network `json:"network"`
-	URI                        string  `json:"uri"`
-	SentryDSN                  string  `json:"sentry,omitempty"`
-	RepublicTokenAddress       string  `json:"republicTokenAddress"`
-	DarknodeRegistryAddress    string  `json:"darknodeRegistryAddress"`
-	DarknodeRewardVaultAddress string  `json:"darknodeRewardVaultAddress"`
-	DarknodeSlasherAddress     string  `json:"darknodeSlasherAddress"`
-	OrderbookAddress           string  `json:"orderbookAddress"`
-	SettlementRegistryAddress  string  `json:"settlementRegistryAddress"`
+	Network                    Network           `json:"network"`
+	URI                        string            `json:"uri"`
+	SentryDSN                  string            `json:"sentry,omitempty"`
+	RepublicTokenAddress       string            `json:"republicTokenAddress"`
+	DarknodeRegistryAddress    string            `json:"darknodeRegistryAddress"`
+	DarknodeRewardVaultAddress string            `json:"darknodeRewardVaultAddress"`
+	DarknodeSlasherAddress     string            `json:"darknodeSlasherAddress"`
+	OrderbookAddress           string            `json:"orderbookAddress"`
+	SettlementRegistryAddress  string            `json:"settlementRegistryAddress"`
+	Tokens                     map[string]string `json:"tokens"`
 }
 
 // IsNil returns true if Config or any of its fields are nil.

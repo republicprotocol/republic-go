@@ -216,16 +216,14 @@ func (iter *SomerOrderFragmentIterator) Release() {
 // SomerOrderFragmentTable implements the ome.OrderFragmentStorer interface using
 // LevelDB.
 type SomerOrderFragmentTable struct {
-	db     *leveldb.DB
-	expiry time.Duration
+	db *leveldb.DB
 }
 
 // NewSomerOrderFragmentTable returns a new SomerOrderFragmentTable that uses the
 // given LevelDB instance to store and load values from the disk.
-func NewSomerOrderFragmentTable(db *leveldb.DB, expiry time.Duration) *SomerOrderFragmentTable {
+func NewSomerOrderFragmentTable(db *leveldb.DB) *SomerOrderFragmentTable {
 	return &SomerOrderFragmentTable{
-		db:     db,
-		expiry: expiry,
+		db: db,
 	}
 }
 
@@ -367,36 +365,36 @@ func (table *SomerOrderFragmentTable) Prune() (err error) {
 	buyIter := table.db.NewIterator(&util.Range{Start: table.buyKey(SomerBuyOrderFragmentIterBegin, SomerBuyOrderFragmentIterBegin), Limit: table.buyKey(SomerBuyOrderFragmentIterEnd, SomerBuyOrderFragmentIterEnd)}, nil)
 	defer buyIter.Release()
 
-	now := time.Now()
+	// now := time.Now()
 	for buyIter.Next() {
-		key := buyIter.Key()
+		// key := buyIter.Key()
 		value := SomerOrderFragmentValue{}
 		if localErr := json.Unmarshal(buyIter.Value(), &value); localErr != nil {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(table.expiry).Before(now) {
-			if localErr := table.db.Delete(key, nil); localErr != nil {
-				err = localErr
-			}
-		}
+		// if value.Timestamp.Add(table.expiry).Before(now) {
+		// 	if localErr := table.db.Delete(key, nil); localErr != nil {
+		// 		err = localErr
+		// 	}
+		// }
 	}
 
 	sellIter := table.db.NewIterator(&util.Range{Start: table.sellKey(SomerSellOrderFragmentIterBegin, SomerSellOrderFragmentIterBegin), Limit: table.sellKey(SomerSellOrderFragmentIterEnd, SomerSellOrderFragmentIterEnd)}, nil)
 	defer sellIter.Release()
 
 	for sellIter.Next() {
-		key := sellIter.Key()
+		// key := sellIter.Key()
 		value := SomerOrderFragmentValue{}
 		if localErr := json.Unmarshal(sellIter.Value(), &value); localErr != nil {
 			err = localErr
 			continue
 		}
-		if value.Timestamp.Add(table.expiry).Before(now) {
-			if localErr := table.db.Delete(key, nil); localErr != nil {
-				err = localErr
-			}
-		}
+		// if value.Timestamp.Add(table.expiry).Before(now) {
+		// 	if localErr := table.db.Delete(key, nil); localErr != nil {
+		// 		err = localErr
+		// 	}
+		// }
 	}
 	return err
 }

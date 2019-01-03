@@ -90,7 +90,7 @@ func NewOrderbook(addr identity.Address, rsaKey crypto.RsaKey, pointerStore Poin
 		aggCurr: nil,
 		aggPrev: nil,
 
-		syncer:        NewSyncer(pointerStore, orderStore, contractBinder, limit),
+		syncer:        NewSyncer(pointerStore, orderStore, orderFragmentStore, contractBinder, limit),
 		notifications: make(chan Notification),
 		errs:          make(chan error),
 	}

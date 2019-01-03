@@ -24,7 +24,7 @@ var _ = Describe("Confirmer", func() {
 		var err error
 		depth, pollInterval := uint(0), time.Second
 		contract = newOmeBinder()
-		db, err := leveldb.NewStore("./data.out", time.Hour, time.Hour)
+		db, err := leveldb.NewStore("./data.out", time.Hour)
 		Expect(err).ShouldNot(HaveOccurred())
 		comStorer = db.SomerComputationStore()
 		fragmentStorer = db.SomerOrderFragmentStore()
