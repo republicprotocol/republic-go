@@ -25,3 +25,5 @@ cmd/keygen/keygen
 cmd/register/register
 cmd/relay/relay
 cmd/trader/trader
+
+releases
