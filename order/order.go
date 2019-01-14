@@ -74,6 +74,8 @@ type Tokens uint64
 // Tokens values.
 const (
 	TokensBTCETH  = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
+	TokensBTCTUSD = Tokens((uint64(TokenBTC) << 32) | uint64(TokenTUSD))
+	TokensBTCREN  = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
 	TokensETHDGX  = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
 	TokensETHTUSD = Tokens((uint64(TokenETH) << 32) | uint64(TokenTUSD))
 	TokensETHREN  = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
@@ -96,6 +98,10 @@ func (tokens Tokens) String() string {
 	switch tokens {
 	case TokensBTCETH:
 		return "BTC-ETH"
+	case TokensBTCTUSD:
+		return "BTC-TUSD"
+	case TokensBTCREN:
+		return "BTC-REN"
 	case TokensETHDGX:
 		return "ETH-DGX"
 	case TokensETHTUSD:
@@ -163,6 +169,8 @@ func (settlement Settlement) String() string {
 		return "RenEx"
 	case SettlementRenExAtomic:
 		return "RenEx Atomic"
+	case SettlementRenExSwapper:
+		return "RenEx Swapper"
 	default:
 		return "unexpected order settlement"
 	}
