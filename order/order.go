@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
 	"time"
@@ -33,6 +34,10 @@ func (id ID) String() string {
 // Token is a numerical representation of a token supported by Republic
 // Protocol.
 type Token uint32
+
+// These tokens are hard-coded for printing and debugging purposes.
+// The darknodes can process orders with arbitrary orders.
+// Additionally, the darknodes override some gas fees for DGX.
 
 // Token values.
 const (
@@ -63,25 +68,13 @@ func (token Token) String() string {
 	case TokenOMG:
 		return "OMG"
 	default:
-		return "unexpected token"
+		return fmt.Sprintf("%d", token)
 	}
 }
 
 // Tokens are a numerical representation of the token pairings supported by
 // Republic Protocol.
 type Tokens uint64
-
-// Tokens values.
-const (
-	TokensBTCETH  = Tokens((uint64(TokenBTC) << 32) | uint64(TokenETH))
-	TokensBTCTUSD = Tokens((uint64(TokenBTC) << 32) | uint64(TokenTUSD))
-	TokensBTCREN  = Tokens((uint64(TokenBTC) << 32) | uint64(TokenREN))
-	TokensETHDGX  = Tokens((uint64(TokenETH) << 32) | uint64(TokenDGX))
-	TokensETHTUSD = Tokens((uint64(TokenETH) << 32) | uint64(TokenTUSD))
-	TokensETHREN  = Tokens((uint64(TokenETH) << 32) | uint64(TokenREN))
-	TokensETHZRX  = Tokens((uint64(TokenETH) << 32) | uint64(TokenZRX))
-	TokensETHOMG  = Tokens((uint64(TokenETH) << 32) | uint64(TokenOMG))
-)
 
 // PriorityToken returns the priority token of a token pair.
 func (tokens Tokens) PriorityToken() Token {
@@ -95,26 +88,7 @@ func (tokens Tokens) NonPriorityToken() Token {
 
 // String returns a human-readable representation of Tokens.
 func (tokens Tokens) String() string {
-	switch tokens {
-	case TokensBTCETH:
-		return "BTC-ETH"
-	case TokensBTCTUSD:
-		return "BTC-TUSD"
-	case TokensBTCREN:
-		return "BTC-REN"
-	case TokensETHDGX:
-		return "ETH-DGX"
-	case TokensETHTUSD:
-		return "ETH-TUSD"
-	case TokensETHREN:
-		return "ETH-REN"
-	case TokensETHZRX:
-		return "ETH-ZRX"
-	case TokensETHOMG:
-		return "ETH-OMG"
-	default:
-		return "unexpected tokens"
-	}
+	return fmt.Sprintf("%s-%s", tokens.NonPriorityToken().String(), tokens.PriorityToken().String())
 }
 
 // A Type is a publicly bit of information that determines the type of

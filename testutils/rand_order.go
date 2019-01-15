@@ -7,23 +7,36 @@ import (
 	"github.com/republicprotocol/republic-go/order"
 )
 
-var tokens = []order.Tokens{order.TokensBTCETH,
-	order.TokensETHDGX,
-	order.TokensETHREN,
-	order.TokensETHTUSD,
-	order.TokensETHZRX,
-	order.TokensETHOMG,
+// Tokens values.
+const (
+	TokensBTCETH  = order.Tokens((uint64(order.TokenBTC) << 32) | uint64(order.TokenETH))
+	TokensBTCTUSD = order.Tokens((uint64(order.TokenBTC) << 32) | uint64(order.TokenTUSD))
+	TokensBTCREN  = order.Tokens((uint64(order.TokenBTC) << 32) | uint64(order.TokenREN))
+	TokensETHDGX  = order.Tokens((uint64(order.TokenETH) << 32) | uint64(order.TokenDGX))
+	TokensETHTUSD = order.Tokens((uint64(order.TokenETH) << 32) | uint64(order.TokenTUSD))
+	TokensETHREN  = order.Tokens((uint64(order.TokenETH) << 32) | uint64(order.TokenREN))
+	TokensETHZRX  = order.Tokens((uint64(order.TokenETH) << 32) | uint64(order.TokenZRX))
+	TokensETHOMG  = order.Tokens((uint64(order.TokenETH) << 32) | uint64(order.TokenOMG))
+)
+
+var tokens = []order.Tokens{
+	TokensBTCETH,
+	TokensETHDGX,
+	TokensETHREN,
+	TokensETHTUSD,
+	TokensETHZRX,
+	TokensETHOMG,
 }
 
 // RandomOrder will generate a random order.
 func RandomOrder() order.Order {
 	parity := []order.Parity{order.ParityBuy, order.ParitySell}[rand.Intn(2)]
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
+	tokens := []order.Tokens{TokensBTCETH,
+		TokensETHDGX,
+		TokensETHREN,
+		TokensETHTUSD,
+		TokensETHZRX,
+		TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -33,12 +46,12 @@ func RandomOrder() order.Order {
 
 // RandomBuyOrder will generate a random buy order.
 func RandomBuyOrder() order.Order {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
+	tokens := []order.Tokens{TokensBTCETH,
+		TokensETHDGX,
+		TokensETHREN,
+		TokensETHTUSD,
+		TokensETHZRX,
+		TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -56,12 +69,12 @@ func RandomBuyOrderFragments(n, k int64) ([]order.Fragment, error) {
 
 // RandomSellOrder will generate a random sell order.
 func RandomSellOrder() order.Order {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
+	tokens := []order.Tokens{TokensBTCETH,
+		TokensETHDGX,
+		TokensETHREN,
+		TokensETHTUSD,
+		TokensETHZRX,
+		TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 
@@ -79,12 +92,12 @@ func RandomSellOrderFragments(n, k int64) ([]order.Fragment, error) {
 
 // RandomOrderMatch will generate a random order and its match.
 func RandomOrderMatch() (order.Order, order.Order) {
-	tokens := []order.Tokens{order.TokensBTCETH,
-		order.TokensETHDGX,
-		order.TokensETHREN,
-		order.TokensETHTUSD,
-		order.TokensETHZRX,
-		order.TokensETHOMG,
+	tokens := []order.Tokens{TokensBTCETH,
+		TokensETHDGX,
+		TokensETHREN,
+		TokensETHTUSD,
+		TokensETHZRX,
+		TokensETHOMG,
 	}
 	token := tokens[rand.Intn(len(tokens))]
 

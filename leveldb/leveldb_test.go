@@ -27,7 +27,7 @@ var _ = Describe("LevelDB storage", func() {
 	BeforeEach(func() {
 		j := 0
 		for i := 0; i < 100; i++ {
-			ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, order.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
+			ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, testutils.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord

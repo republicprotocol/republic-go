@@ -32,7 +32,6 @@ var _ = Describe("Status adapter", func() {
 		prov.WriteNetwork("falcon")
 		prov.WritePublicKey([]byte{byte(103)})
 		prov.WriteRewardVaultAddress("0x123456789012345678")
-		prov.WriteTokens(map[string]string{"REN": "083", "DGX": "012", "ABC": "223"})
 	}
 
 	// assertStatus will assert that all the fields in the status match the
@@ -69,10 +68,6 @@ var _ = Describe("Status adapter", func() {
 		providerRewardVaultAddress, err := reader.RewardVaultAddress()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(status.RewardVaultAddress).To(Equal(providerRewardVaultAddress))
-
-		providerTokens, err := reader.Tokens()
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(status.Tokens).To(Equal(providerTokens))
 	}
 
 	// sendRequestAndAssertSuccess will send a GET http request to retrieve the

@@ -8,6 +8,7 @@ import (
 
 	"github.com/republicprotocol/republic-go/crypto"
 	"github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/testutils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -71,7 +72,7 @@ func (server *mockOrderbookServer) OpenOrder(ctx context.Context, orderFragment 
 }
 
 func createEncryptedFragment() (order.EncryptedFragment, error) {
-	ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now().Add(time.Hour), order.SettlementRenEx, order.TokensBTCETH, 1, 1, 1, 1)
+	ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now().Add(time.Hour), order.SettlementRenEx, testutils.TokensBTCETH, 1, 1, 1, 1)
 	ordFragments, err := ord.Split(6, 4)
 	if err != nil {
 		return order.EncryptedFragment{}, err

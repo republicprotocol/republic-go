@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/order"
+	"github.com/republicprotocol/republic-go/testutils"
 )
 
 var _ = Describe("Orders", func() {
@@ -25,8 +26,8 @@ var _ = Describe("Orders", func() {
 		It("should return true for orders that are equal", func() {
 			expiry := time.Now().Add(time.Hour)
 			nonce := uint64(10)
-			lhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
-			rhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(ParityBuy, TypeLimit, expiry, SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Expect(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(true))
 			Expect(lhs.Equal(&rhs)).Should(Equal(true))
@@ -34,9 +35,9 @@ var _ = Describe("Orders", func() {
 
 		It("should return false for orders that are not equal", func() {
 			nonce := uint64(10)
-			lhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			lhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			rhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			rhs := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			Expect(bytes.Equal(lhs.ID[:], rhs.ID[:])).Should(Equal(false))
 			Expect(lhs.Equal(&rhs)).Should(Equal(false))
@@ -47,7 +48,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return the correct number of order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -57,7 +58,7 @@ var _ = Describe("Orders", func() {
 
 		It("should return different order fragments", func() {
 			nonce := uint64(10)
-			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			fragments, err := ord.Split(n, k)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -74,9 +75,9 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load orders from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 			nonce = uint64(20)
-			ord2 := NewOrder(ParitySell, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord2 := NewOrder(ParitySell, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := WriteOrdersToJSONFile("orders.out", []*Order{&ord1, &ord2})
 			Expect(err).ShouldNot(HaveOccurred())
@@ -88,7 +89,7 @@ var _ = Describe("Orders", func() {
 
 		It("should unmarshal and load a single order from file", func() {
 			nonce := uint64(10)
-			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, TokensBTCETH, price, maxVolume, minVolume, nonce)
+			ord1 := NewOrder(ParityBuy, TypeLimit, time.Now().Add(time.Hour), SettlementRenEx, testutils.TokensBTCETH, price, maxVolume, minVolume, nonce)
 
 			err := writeOrderToJSONFile("orders.out", &ord1)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -108,39 +109,39 @@ var _ = Describe("Orders", func() {
 			Expect(TokenREN.String()).Should(Equal("REN"))
 			Expect(TokenZRX.String()).Should(Equal("ZRX"))
 			Expect(TokenOMG.String()).Should(Equal("OMG"))
-
-			Expect(Token(100).String()).Should(Equal("unexpected token"))
+			Expect(Token(1234).String()).Should(Equal("1234"))
+			Expect(Token(100).String()).Should(Equal("100"))
 		})
 
 		It("should return token pair as a string", func() {
-			Expect(TokensBTCETH.String()).Should(Equal("BTC-ETH"))
-			Expect(TokensETHDGX.String()).Should(Equal("ETH-DGX"))
-			Expect(TokensETHTUSD.String()).Should(Equal("ETH-TUSD"))
-			Expect(TokensETHREN.String()).Should(Equal("ETH-REN"))
-			Expect(TokensETHZRX.String()).Should(Equal("ETH-ZRX"))
-			Expect(TokensETHOMG.String()).Should(Equal("ETH-OMG"))
+			Expect(testutils.TokensBTCETH.String()).Should(Equal("BTC-ETH"))
+			Expect(testutils.TokensETHDGX.String()).Should(Equal("ETH-DGX"))
+			Expect(testutils.TokensETHTUSD.String()).Should(Equal("ETH-TUSD"))
+			Expect(testutils.TokensETHREN.String()).Should(Equal("ETH-REN"))
+			Expect(testutils.TokensETHZRX.String()).Should(Equal("ETH-ZRX"))
+			Expect(testutils.TokensETHOMG.String()).Should(Equal("ETH-OMG"))
 
-			Expect(Tokens(100).String()).Should(Equal("unexpected tokens"))
+			Expect(Tokens(0x0000006500000064).String()).Should(Equal("101-100"))
 		})
 
 		It("should be able to extract the first and second token from a token pair", func() {
-			Expect(TokensBTCETH.PriorityToken()).Should(Equal(TokenETH))
-			Expect(TokensBTCETH.NonPriorityToken()).Should(Equal(TokenBTC))
+			Expect(testutils.TokensBTCETH.PriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensBTCETH.NonPriorityToken()).Should(Equal(TokenBTC))
 
-			Expect(TokensETHDGX.PriorityToken()).Should(Equal(TokenDGX))
-			Expect(TokensETHDGX.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensETHDGX.PriorityToken()).Should(Equal(TokenDGX))
+			Expect(testutils.TokensETHDGX.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
-			Expect(TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensETHREN.PriorityToken()).Should(Equal(TokenREN))
+			Expect(testutils.TokensETHREN.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHTUSD.PriorityToken()).Should(Equal(TokenTUSD))
-			Expect(TokensETHTUSD.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensETHTUSD.PriorityToken()).Should(Equal(TokenTUSD))
+			Expect(testutils.TokensETHTUSD.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHZRX.PriorityToken()).Should(Equal(TokenZRX))
-			Expect(TokensETHZRX.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensETHZRX.PriorityToken()).Should(Equal(TokenZRX))
+			Expect(testutils.TokensETHZRX.NonPriorityToken()).Should(Equal(TokenETH))
 
-			Expect(TokensETHOMG.PriorityToken()).Should(Equal(TokenOMG))
-			Expect(TokensETHOMG.NonPriorityToken()).Should(Equal(TokenETH))
+			Expect(testutils.TokensETHOMG.PriorityToken()).Should(Equal(TokenOMG))
+			Expect(testutils.TokensETHOMG.NonPriorityToken()).Should(Equal(TokenETH))
 		})
 	})
 

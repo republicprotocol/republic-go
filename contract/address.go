@@ -1,27 +1,5 @@
 package contract
 
-// TokenAddresses returns the tokens for the provided network
-func TokenAddresses(network Network) map[string]string {
-	tokens := map[string]string{}
-	switch network {
-	case NetworkMainnet:
-		tokens["TUSD"] = "0x8dd5fbce2f6a956c3022ba3663759011dd51e73e"
-		tokens["DGX"] = "0x4f3afec4e5a3f2a6a1a411def7d7dfe50ee057bf"
-		tokens["REN"] = "0x408e41876cccdc0f92210600ef50372656052a38"
-		tokens["ZRX"] = "0xe41d2489571d322189246dafa5ebde1f4699f498"
-		tokens["OMG"] = "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07"
-	case NetworkTestnet:
-		tokens["TUSD"] = "0x525389752ffe6487d33EF53FBcD4E5D3AD7937a0"
-		tokens["DGX"] = "0x932F4580B261e9781A6c3c102133C8fDd4503DFc"
-		tokens["REN"] = "0x2CD647668494c1B15743AB283A0f980d90a87394"
-		tokens["ZRX"] = "0x6EB628dCeFA95802899aD3A9EE0C7650Ac63d543"
-		tokens["OMG"] = "0xb57b1105F41e6117F8a67170e1bd7Ec9149D7ced"
-	default:
-		panic("unknown network")
-	}
-	return tokens
-}
-
 // RepublicTokenAddress returns the REN contract address.
 func RepublicTokenAddress(network Network) string {
 	switch network {

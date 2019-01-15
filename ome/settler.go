@@ -1,6 +1,7 @@
 package ome
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -126,14 +127,16 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 
 	// Leave the orders if volume is too low and there is no profit for
 	// submitting such orders. Note: minimum volume is set to 1 ETH.
-	settleVolume := volumeInEth(buy, sell)
-	if settleVolume < settler.minimumSettleVolume {
+	// If we are unable to calculate volumeInEth, we currently don't check the
+	// volume.
+	settleVolume, err := volumeInEth(buy, sell)
+	if err != nil && settleVolume < settler.minimumSettleVolume {
 		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %v ETH too low", buy.ID, sell.ID, settleVolume)
 		return
 	}
 
 	// Try settling the orders for at most 3 times.
-	err := settler.contract.Settle(buy, sell)
+	err = settler.contract.Settle(buy, sell)
 	if err != nil {
 		log.Printf("[error] (settle) cannot store settlement buy = %v, sell = %v: %v", buy.ID, sell.ID, err)
 		return
@@ -146,39 +149,49 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 	}
 }
 
-func volumeInEth(buy, sell order.Order) uint64 {
-	if buy.Tokens.PriorityToken() == order.TokenETH {
-		// BTC-ETH
-		if buy.Volume >= sell.Volume {
-			return sell.Volume
-		} else {
-			return buy.Volume
-		}
+func lowestPriorityVolume(buy, sell order.Order) uint64 {
+	if buy.Volume >= sell.Volume {
+		return sell.Volume
 	} else {
-		// ETH-ERC20
-		var erc20Volume uint64
-		if buy.Volume >= sell.Volume {
-			erc20Volume = sell.Volume
-		} else {
-			erc20Volume = buy.Volume
-		}
+		return buy.Volume
+	}
+}
 
-		x := big.NewInt(0)
-		y := big.NewInt(0)
+func lowestNonPriorityVolume(buy, sell order.Order) uint64 {
+	erc20Volume := lowestNonPriorityVolume(buy, sell)
 
-		x.SetUint64(buy.Price)
-		y.SetUint64(sell.Price)
-		x.Add(x, y)
+	x := big.NewInt(0)
+	y := big.NewInt(0)
 
-		y.SetUint64(2)
-		x.Div(x, y)
+	x.SetUint64(buy.Price)
+	y.SetUint64(sell.Price)
+	x.Add(x, y)
 
-		y.SetUint64(erc20Volume)
-		x.Mul(x, y)
+	y.SetUint64(2)
+	x.Div(x, y)
 
-		y.SetUint64(1e12)
-		x.Div(x, y)
+	y.SetUint64(erc20Volume)
+	x.Mul(x, y)
 
-		return x.Uint64()
+	y.SetUint64(1e12)
+	x.Div(x, y)
+
+	return x.Uint64()
+}
+
+func volumeInEth(buy, sell order.Order) (uint64, error) {
+	if buy.Tokens.PriorityToken() == order.TokenETH {
+		// ETH-BTC, so return the lowest of the two volumes
+		return lowestPriorityVolume(buy, sell), nil
+	} else if buy.Tokens.NonPriorityToken() == order.TokenETH {
+		// ETH to another currency
+		return lowestNonPriorityVolume(buy, sell), nil
+	} else if buy.Tokens.NonPriorityToken() == order.TokenBTC {
+		// BTC to another currency. We don't have a valid minimum order amount,
+		// so we estimate by taking 1/100th the amount. This is only an
+		// approximation.
+		return lowestNonPriorityVolume(buy, sell) / 100, nil
+	} else {
+		return 0, errors.New("unable to calculate volume in eth")
 	}
 }

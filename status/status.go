@@ -18,7 +18,6 @@ type Writer interface {
 	WriteDarknodeRegistryAddress(address string) error
 	WriteRewardVaultAddress(address string) error
 	WriteInfuraURL(url string) error
-	WriteTokens(tokens map[string]string) error
 }
 
 // Reader the address
@@ -33,7 +32,6 @@ type Reader interface {
 	DarknodeRegistryAddress() (string, error)
 	RewardVaultAddress() (string, error)
 	InfuraURL() (string, error)
-	Tokens() (map[string]string, error)
 }
 
 /*
@@ -176,19 +174,6 @@ func (sp *provider) WriteInfuraURL(infuraURL string) error {
 // InfuraURL gets the public key
 func (sp *provider) InfuraURL() (string, error) {
 	return sp.infuraURL, nil
-}
-
-// WriteTokens writes the dark node's public key to the provider
-func (sp *provider) WriteTokens(tokens map[string]string) error {
-	sp.mu.Lock()
-	defer sp.mu.Unlock()
-	sp.tokens = tokens
-	return nil
-}
-
-// Tokens gets the public key
-func (sp *provider) Tokens() (map[string]string, error) {
-	return sp.tokens, nil
 }
 
 // Peers returns the number of peers the darknode is connected to

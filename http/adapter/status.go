@@ -8,16 +8,15 @@ import (
 
 // Status defines a structure for JSON marshalling
 type Status struct {
-	Network                 string            `json:"network"`
-	MultiAddress            string            `json:"multiAddress"`
-	EthereumNetwork         string            `json:"ethereumNetwork"`
-	EthereumAddress         string            `json:"ethereumAddress"`
-	DarknodeRegistryAddress string            `json:"darknodeRegistryAddress"`
-	RewardVaultAddress      string            `json:"rewardVaultAddress"`
-	PublicKey               string            `json:"publicKey"`
-	InfuraURL               string            `json:"infura"`
-	Tokens                  map[string]string `json:"tokens"`
-	Peers                   int               `json:"peers"`
+	Network                 string `json:"network"`
+	MultiAddress            string `json:"multiAddress"`
+	EthereumNetwork         string `json:"ethereumNetwork"`
+	EthereumAddress         string `json:"ethereumAddress"`
+	DarknodeRegistryAddress string `json:"darknodeRegistryAddress"`
+	RewardVaultAddress      string `json:"rewardVaultAddress"`
+	PublicKey               string `json:"publicKey"`
+	InfuraURL               string `json:"infura"`
+	Peers                   int    `json:"peers"`
 }
 
 // StatusAdapter defines a struct which has status reading capability
@@ -70,10 +69,6 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	tokens, err := adapter.Tokens()
-	if err != nil {
-		return Status{}, err
-	}
 	pk, err := adapter.PublicKey()
 	if err != nil {
 		return Status{}, err
@@ -88,7 +83,6 @@ func (adapter *StatusAdapter) Status() (Status, error) {
 		RewardVaultAddress:      rewardVaultAddr,
 		PublicKey:               hexPk,
 		InfuraURL:               infuraURL,
-		Tokens:                  tokens,
 		Peers:                   peers,
 	}, nil
 }

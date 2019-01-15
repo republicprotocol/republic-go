@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/republicprotocol/republic-go/leveldb"
+	"github.com/republicprotocol/republic-go/testutils"
 
 	"github.com/republicprotocol/republic-go/order"
 	"github.com/republicprotocol/republic-go/orderbook"
@@ -23,7 +24,7 @@ const orderStatus = order.Open
 var _ = Describe("Orderbook storage", func() {
 	BeforeEach(func() {
 		for i := 0; i < 100; i++ {
-			ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, order.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
+			ord := order.NewOrder(order.ParityBuy, order.TypeMidpoint, time.Now(), order.SettlementRenEx, testutils.TokensETHREN, uint64(i), uint64(i), uint64(i), uint64(i))
 			ordFragments, err := ord.Split(3, 2)
 			Expect(err).ShouldNot(HaveOccurred())
 			orders[i] = ord
