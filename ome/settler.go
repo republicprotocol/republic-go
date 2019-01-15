@@ -127,9 +127,9 @@ func (settler *settler) settleOrderMatch(com Computation, buy, sell order.Order)
 
 	// Leave the orders if volume is too low and there is no profit for
 	// submitting such orders. Note: minimum volume is set to 1 ETH.
-	// If we are unable to calculate volumeInEth, we currently don't check the
+	// If we are unable to calculate VolumeInEth, we currently don't check the
 	// volume.
-	settleVolume, err := volumeInEth(buy, sell)
+	settleVolume, err := VolumeInEth(buy, sell)
 	if err != nil && settleVolume < settler.minimumSettleVolume {
 		log.Printf("[info] (settle) cannot execute settlement buy = %v, sell = %v: volume = %v ETH too low", buy.ID, sell.ID, settleVolume)
 		return
@@ -158,7 +158,7 @@ func lowestPriorityVolume(buy, sell order.Order) uint64 {
 }
 
 func lowestNonPriorityVolume(buy, sell order.Order) uint64 {
-	erc20Volume := lowestNonPriorityVolume(buy, sell)
+	erc20Volume := lowestPriorityVolume(buy, sell)
 
 	x := big.NewInt(0)
 	y := big.NewInt(0)
@@ -179,7 +179,9 @@ func lowestNonPriorityVolume(buy, sell order.Order) uint64 {
 	return x.Uint64()
 }
 
-func volumeInEth(buy, sell order.Order) (uint64, error) {
+var ErrUnableToCalculateVolumeInEth = errors.New("unable to calculate volume in eth")
+
+func VolumeInEth(buy, sell order.Order) (uint64, error) {
 	if buy.Tokens.PriorityToken() == order.TokenETH {
 		// ETH-BTC, so return the lowest of the two volumes
 		return lowestPriorityVolume(buy, sell), nil
@@ -192,6 +194,6 @@ func volumeInEth(buy, sell order.Order) (uint64, error) {
 		// approximation.
 		return lowestNonPriorityVolume(buy, sell) / 100, nil
 	} else {
-		return 0, errors.New("unable to calculate volume in eth")
+		return 0, ErrUnableToCalculateVolumeInEth
 	}
 }
