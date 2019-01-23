@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/getsentry/raven-go"
 	"github.com/republicprotocol/republic-go/cmd/darknode/config"
 	"github.com/republicprotocol/republic-go/contract"
@@ -82,6 +83,7 @@ func main() {
 	}
 
 	auth := bind.NewKeyedTransactor(config.Keystore.EcdsaKey.PrivateKey)
+	fmt.Printf("Private key: %x", ethCrypto.FromECDSA(config.Keystore.EcdsaKey.PrivateKey))
 
 	// Get ethereum bindings
 	contractBinder, err := contract.NewBinder(auth, conn)
