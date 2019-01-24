@@ -118,6 +118,7 @@ func NewBinder(auth *bind.TransactOpts, conn Conn) (Binder, error) {
 		fmt.Println(fmt.Errorf("cannot get SwapperExSettlement address: %v", err))
 		return Binder{}, err
 	}
+	log.Printf("swapper settlement: %v", swapperSettlementAddress)
 
 	swapperSettlement, err := bindings.NewSettlement(swapperSettlementAddress, bind.ContractBackend(conn.Client))
 	if err != nil {
